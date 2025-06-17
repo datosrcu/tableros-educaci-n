@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Dashboard del Docente</h2>
+<ul>
+{% for sala in salas %}
+    <li>
+        <strong>{{ sala.nombre }} ({{ sala.turno }})</strong><br>
+        <a href="{% url 'alumnos:ver_asistencias' sala.id %}">👁️ Ver asistencias</a> |
+        <a href="{% url 'alumnos:cargar_asistencia' sala.id %}">📋 Cargar asistencia</a> |
+        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}">👶 Ver/gestionar alumnos</a>
+    </li>
+{% endfor %}
+</ul>
+{% endblock %}

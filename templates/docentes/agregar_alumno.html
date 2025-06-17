@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Agregar alumno a {{ sala.nombre }}</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    <fieldset>
+        <legend>Datos del alumno</legend>
+        {{ alumno_form.as_p }}
+    </fieldset>
+
+    <fieldset>
+        <legend>Tutores ya registrados</legend>
+        {{ alumno_form.tutores_existentes }}
+    </fieldset>
+
+    <fieldset>
+        <legend>Agregar nuevo tutor</legend>
+        {{ tutor_form.as_p }}
+    </fieldset>
+
+    <button type="submit">Guardar alumno</button>
+</form>
+
+<a href="{% url 'alumnos:alumnos_por_sala' sala.id %}">← Volver al listado de alumnos</a>
+{% endblock %}

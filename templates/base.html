@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Jardines - Sistema</title>
+    {% if user.is_authenticated %}
+    <p>Hola, {{ user.get_full_name }} | <form action="{% url 'logout' %}" method="post" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit">Cerrar sesión</button>
+</form>
+</p>
+    {% endif %}
+</head>
+<body>
+    <h1>Sistema de Jardines</h1>
+    <hr>
+    {% block content %}{% endblock %}
+
+</body>
+</html>

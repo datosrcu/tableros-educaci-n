@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Alumnos de {{ sala.nombre }}</h2>
+
+<a href="{% url 'alumnos:agregar_alumno' sala.id %}">➕ Agregar nuevo alumno</a>
+{% if alumno.id %}
+    <a href="{% url 'editar_alumno' alumno.id %}">✏️ Editar</a>
+{% else %}
+    <em>Alumno sin ID</em>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <table border="1" cellpadding="6" cellspacing="0">
+        <tr>
+            <th>Apellido</th>
+            <th>Nombre</th>
+            <th>DNI</th>
+            <th>Activo</th>
+            <th>Fecha de alta</th>
+            <th>Fecha de baja</th>
+        </tr>
+        {% for alumno in alumnos %}
+        <tr>
+            <td>{{ alumno.apellido }}</td>
+            <td>{{ alumno.nombre }}</td>
+            <td>{{ alumno.dni }}</td>
+            <td>
+                <input type="checkbox" name="activo_{{ alumno.id }}" {% if alumno.activo %}checked{% endif %}>
+            </td>
+            <td>{{ alumno.fecha_alta|date:"d/m/Y H:i" }}</td>
+            <td>
+                {% if alumno.fecha_baja %}
+                    {{ alumno.fecha_baja|date:"d/m/Y" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <button type="submit">Guardar cambios</button>
+</form>
+
+<a href="{% url 'alumnos:dashboard' %}">← Volver al Dashboard</a>
+{% endblock %}
+

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Acceso denegado 🚫</h2>
+  <p>No tenés permiso para acceder a esta sala.</p>
+  <p>Si creés que esto es un error, contactá con el administrador del sistema.</p>
+  <a href="{% url 'alumnos:dashboard' %}">Volver al dashboard</a>
+{% endblock %}

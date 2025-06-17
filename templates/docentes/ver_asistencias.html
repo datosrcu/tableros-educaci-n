@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load dict_filters %}
+{% block content %}
+<h2>Asistencias registradas - Sala {{ sala.nombre }}</h2>
+
+<form method="get" id="form-fecha">
+    <label for="fecha">Fecha:</label>
+    <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}" onchange="document.getElementById('form-fecha').submit();">
+</form>
+
+
+<hr>
+
+<table border="1" cellpadding="6" cellspacing="0">
+    <tr>
+        <th>Alumno</th>
+        <th>Estado</th>
+        <th>Motivo (si justificado)</th>
+    </tr>
+    {% for alumno in alumnos %}
+    <tr>
+        <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+        {% if alumno.id in asistencias_dict %}
+            {% with asistencia=asistencias_dict|dict_get:alumno.id %}
+                <td>{{ asistencia.get_estado_display }}</td>
+                <td>
+                    {% if asistencia.motivo %}
+                        {{ asistencia.motivo.nombre }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            {% endwith %}
+        {% else %}
+            <td colspan="2"><em>Sin registro</em></td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+
+<hr>
+
+<a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}">✏️ Editar asistencia</a> |
+<a href="{% url 'alumnos:dashboard' %}">← Volver al dashboard</a>
+{% endblock %}
