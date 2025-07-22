@@ -8,6 +8,12 @@ widgets = {
 class RegistroDocenteForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)
     confirmar_password = forms.CharField(widget=forms.PasswordInput, label="Confirmar contraseña")
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+
     class Meta:
         model = Usuario
         fields = ['first_name', 'last_name', 'dni', 'username', 'email', 'password', 'confirmar_password']

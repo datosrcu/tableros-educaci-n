@@ -3,14 +3,19 @@
 {% if user.is_authenticated %}
     <h2 class="text-center"><strong>Dashboard de:</strong> {{ user.first_name }} {{ user.last_name }}</h2>
 {% endif %}    
-<ul>
-{% for sala in salas %}
-    <li class= "list-group-item">
-        <strong>{{ sala.nombre }} ({{ sala.turno }})</strong><br>
-        <a href="{% url 'alumnos:ver_asistencias' sala.id %}" class= "btn btn-secondary">Ver asistencias</a>
-        <a href="{% url 'alumnos:cargar_asistencia' sala.id %}" class= "btn btn-secondary">Cargar asistencia</a>
-        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class= "btn btn-secondary">Gestionar alumnos</a>
-    </li>
-{% endfor %}
-</ul>
+<div class="row">
+    {% for sala in salas %}
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">{{ sala.nombre }} ({{ sala.turno }})</h5>
+                    <p class="card-text">{{ sala.jardin.nombre }}</p>
+                    <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class="btn btn-primary">Ver alumnos</a>
+                    <a href="{% url 'alumnos:ver_asistencias' sala.id %}" class= "btn btn-secondary">Ver asistencias</a>
+                    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}" class= "btn btn-secondary">Cargar asistencia</a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
 {% endblock %}
