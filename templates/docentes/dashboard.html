@@ -1,13 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Dashboard del Docente</h2>
+{% if user.is_authenticated %}
+    <h2 class="text-center"><strong>Dashboard de:</strong> {{ user.first_name }} {{ user.last_name }}</h2>
+{% endif %}    
 <ul>
 {% for sala in salas %}
-    <li>
+    <li class= "list-group-item">
         <strong>{{ sala.nombre }} ({{ sala.turno }})</strong><br>
-        <a href="{% url 'alumnos:ver_asistencias' sala.id %}">👁️ Ver asistencias</a> |
-        <a href="{% url 'alumnos:cargar_asistencia' sala.id %}">📋 Cargar asistencia</a> |
-        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}">👶 Ver/gestionar alumnos</a>
+        <a href="{% url 'alumnos:ver_asistencias' sala.id %}" class= "btn btn-secondary">Ver asistencias</a>
+        <a href="{% url 'alumnos:cargar_asistencia' sala.id %}" class= "btn btn-secondary">Cargar asistencia</a>
+        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class= "btn btn-secondary">Gestionar alumnos</a>
     </li>
 {% endfor %}
 </ul>

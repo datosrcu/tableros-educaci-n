@@ -1,12 +1,27 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+
 {% block content %}
-<h2>Editar alumno: {{ alumno.apellido }}, {{ alumno.nombre }}</h2>
+<div class="container mt-4">
+  <h2 class="text-center mb-4">Editar alumno: {{ alumno.apellido }}, {{ alumno.nombre }}</h2>
 
-<form method="post">
+  <form method="post" class="mx-auto" style="max-width: 600px;">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Guardar cambios</button>
-</form>
 
-<a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}">← Volver a la sala</a>
+    {% for field in form %}
+      <div class="mb-3">
+        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+          <div class="text-danger small">{{ field.errors }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="d-flex justify-content-between">
+      <button type="submit" class="btn btn-success">Guardar cambios</button>
+      <a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
 {% endblock %}
+

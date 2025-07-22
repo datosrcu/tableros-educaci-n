@@ -33,9 +33,18 @@ def cargar_asistencia(request, sala_id):
 
     if request.method == 'POST':
         for alumno in alumnos:
-            estado = request.POST.get(f'estado_{alumno.id}')
-            motivo_id = request.POST.get(f'motivo_{alumno.id}')
-            motivo = MotivoJustificacion.objects.filter(id=motivo_id).first() if estado == 'justificado' else None
+            estado_raw = request.POST.get(f'estado_{alumno.id}', 'P')
+
+            # Default
+            estado = 'P'
+            motivo = None
+
+            if estado_raw == 'A':
+                estado = 'A'
+            elif estado_raw.startswith('J-'):
+                estado = 'J'
+                motivo_id = estado_raw.split('-')[1]
+                motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
             if estado:
                 Asistencia.objects.update_or_create(
                     alumno=alumno,
@@ -96,7 +105,16 @@ def alumnos_por_sala(request, sala_id):
     if sala not in request.user.salas_asignadas.all():
         return render(request, 'docentes/permiso_denegado.html', status=403)
 
-    alumnos = Alumno.objects.filter(sala=sala)
+    alumnos = Alumno.objects.filter(
+    sala=sala,
+    nombre__isnull=False,
+    nombre__gt='',
+    apellido__isnull=False,
+    apellido__gt='',
+    dni__isnull=False,
+    dni__gt=''
+)
+
 
     if request.method == 'POST':
         for alumno in alumnos:
@@ -150,32 +168,18 @@ def agregar_alumno(request, sala_id):
         return render(request, 'docentes/permiso_denegado.html', status=403)
 
     if request.method == 'POST':
-        alumno_form = AlumnoForm(request.POST)
-        tutor_form = TutorForm(request.POST)
-
-        if alumno_form.is_valid() and tutor_form.is_valid():
-            alumno = alumno_form.save(commit=False)
+        form = AlumnoForm(request.POST)
+        if form.is_valid():
+            alumno = form.save(commit=False)
             alumno.sala = sala
-            alumno.activo = True
             alumno.save()
-
-            # Guardar tutor nuevo si se ingresó
-            if tutor_form.cleaned_data.get('dni'):
-                nuevo_tutor = tutor_form.save()
-                alumno.tutores.add(nuevo_tutor)
-
-            # Asociar tutores ya existentes
-            for tutor in alumno_form.cleaned_data['tutores_existentes']:
-                alumno.tutores.add(tutor)
-
+            form.save_m2m()
             return redirect('alumnos:alumnos_por_sala', sala_id=sala.id)
     else:
-        alumno_form = AlumnoForm()
-        tutor_form = TutorForm()
+        form = AlumnoForm(initial={'sala': sala})
 
     return render(request, 'docentes/agregar_alumno.html', {
-        'alumno_form': alumno_form,
-        'tutor_form': tutor_form,
+        'form': form,
         'sala': sala
     })
 

@@ -1,52 +1,54 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Asistencia - Sala {{ sala.nombre }}</h2>
+<h2 class= "text-center">Asistencia - Sala {{ sala.nombre }}</h2>
 
-<form method="get">
-    <label for="fecha">Seleccionar fecha:</label>
-    <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
-    <button type="submit">Ver asistencia</button>
+<form method="get" id="form-fecha">
+    <label for="fecha">Fecha:</label>
+    <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}" onchange="document.getElementById('form-fecha').submit();">
 </form>
 
 <hr>
 
-<form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
-    <h3>Fecha: {{ fecha }}</h3>
-    <table border="1">
-        <tr>
+  <div class="container mt-4">
+    <h2>Cargar asistencia - {{ sala.nombre }} ({{ fecha|date:"d/m/Y" }})</h2>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+
+      <table class="table table-bordered">
+        <thead class="table-dark">
+          <tr>
             <th>Alumno</th>
-            <th>Presente</th>
-            <th>Ausente</th>
-            <th>Justificado</th>
-        </tr>
-        {% for alumno in alumnos %}
-        <tr>
-            <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
-            <td><input type="radio" name="estado_{{ alumno.id }}" value="presente"
-                {% if asistencias_dict.alumno.id == 'presente' %}checked{% endif %}></td>
-            <td><input type="radio" name="estado_{{ alumno.id }}" value="ausente"
-                {% if asistencias_dict.alumno.id == 'ausente' %}checked{% endif %}></td>
-            <td>
-                <input type="radio" name="estado_{{ alumno.id }}" value="justificado"
-                    {% if asistencias_dict.alumno.id == 'justificado' %}checked{% endif %}><br>
-                <select name="motivo_{{ alumno.id }}">
-                    <option value="">-- Elegir motivo --</option>
-                    {% for m in motivos %}
-                    <option value="{{ m.id }}"
-                        {% if asistencias_dict_motivo.alumno.id == m.id %}selected{% endif %}>
-                        {{ m.nombre }}
-                    </option>
-                    {% endfor %}
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alumno in alumnos %}
+            <tr>
+              <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+              <td>
+                <select name="estado_{{ alumno.id }}" class="form-select">
+                  <option value="P">Presente</option>
+                  <option value="A">Ausente</option>
+                  {% for motivo in motivos %}
+                    <option value="J-{{ motivo.id }}">Justificado - {{ motivo.nombre }}</option>
+                  {% endfor %}
                 </select>
-            </td>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
-        </tr>
-        {% endfor %}
-    </table>
-    <button type="submit">Guardar asistencias</button>
-</form>
+<div class="d-flex justify-content-between mt-4">
+  <a href="{% url 'alumnos:dashboard' %}" class="btn btn-secondary">
+    Volver
+  </a>
 
-<a href="{% url 'alumnos:dashboard' %}">← Volver al Dashboard</a>
+  <div>
+    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-success me-2">
+      Guardar Asistencia
+    </a>
+  </div>
 {% endblock %}
