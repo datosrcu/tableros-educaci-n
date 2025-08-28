@@ -1,54 +1,54 @@
 {% extends 'base.html' %}
+{% load dict_filters %}
 {% block content %}
-<h2 class= "text-center">Asistencia - Sala {{ sala.nombre }}</h2>
+<h2 class="text-center">Registrar asistencias - Sala {{ sala.nombre }}</h2>
 
-<form method="get" id="form-fecha">
-    <label for="fecha">Fecha:</label>
-    <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}" onchange="document.getElementById('form-fecha').submit();">
-</form>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+  <p><strong>Fecha:</strong> {{ fecha|date:"d/m/Y" }}</p>
 
-<hr>
-
-  <div class="container mt-4">
-    <h2>Cargar asistencia - {{ sala.nombre }} ({{ fecha|date:"d/m/Y" }})</h2>
-
-    <form method="post">
-      {% csrf_token %}
-      <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
-
-      <table class="table table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>Alumno</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for alumno in alumnos %}
-            <tr>
-              <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
-              <td>
-                <select name="estado_{{ alumno.id }}" class="form-select">
-                  <option value="P">Presente</option>
-                  <option value="A">Ausente</option>
-                  {% for motivo in motivos %}
-                    <option value="J-{{ motivo.id }}">Justificado - {{ motivo.nombre }}</option>
-                  {% endfor %}
-                </select>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
+  <table class="table table-bordered mt-3">
+    <thead class="table-dark">
+      <tr>
+        <th>Alumno</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for alumno in alumnos %}
+        {% with asistencia=asistencias_dict|get_item:alumno.id %}
+        <tr>
+          <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
+          <td>
+            <select name="estado_{{ alumno.id }}" class="form-select">
+              <option value="P" {% if asistencia and asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
+              <option value="A" {% if asistencia and asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
+              {% for motivo in motivos %}
+                <option value="J_{{ motivo.id }}"
+                  {% if asistencia and asistencia.estado == 'J' and asistencia.motivo and asistencia.motivo.id == motivo.id %}
+                    selected
+                  {% endif %}>
+                  Justificado - {{ motivo.nombre }}
+                </option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
 <div class="d-flex justify-content-between mt-4">
-  <a href="{% url 'alumnos:dashboard' %}" class="btn btn-secondary">
+  <a href="{% url 'alumnos:ver_asistencias' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">
     Volver
   </a>
-
+ 
   <div>
-    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-success me-2">
-      Guardar Asistencia
-    </a>
-  </div>
+    <button type="submit" class="btn btn-success">
+      Guardar asistencias
+    </button>
+  </div>  
+</div>  
+</form>
 {% endblock %}

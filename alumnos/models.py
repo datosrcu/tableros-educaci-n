@@ -18,7 +18,7 @@ class Alumno(models.Model):
     sala = models.ForeignKey(Sala, on_delete=models.CASCADE)
     activo = models.BooleanField(default=True)
     fecha_alta = models.DateTimeField(auto_now_add=True)
-    fecha_baja = models.DateField(null=True, blank=True)
+    fecha_baja = models.DateTimeField(null=True, blank=True)
     tutores = models.ManyToManyField('Tutor', related_name='alumnos')
 
 
@@ -39,12 +39,12 @@ class MotivoJustificacion(models.Model):
     
 class Asistencia(models.Model):
     ESTADOS = [
-        ('presente', 'Presente'),
-        ('ausente', 'Ausente'),
-        ('justificado', 'Justificado'),
+        ('P', 'Presente'),
+        ('A', 'Ausente'),
+        ('J', 'Justificado'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE)
-    fecha = models.DateField()
+    fecha = models.DateField(max_length=50)
     estado = models.CharField(max_length=20, choices=ESTADOS)
     docente = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True)
     motivo = models.ForeignKey(
@@ -69,7 +69,7 @@ class Tutor(models.Model):
         unique=True
     )
     telefono = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
+    email = models.EmailField(max_length=100, blank=True)
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre} ({self.dni})"
