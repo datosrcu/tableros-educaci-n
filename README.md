@@ -36,6 +36,7 @@ Proyecto en **Django** para la gestión de jardines de infantes, incluyendo:
 5. Ejecuta el servidor:
   ```bash 
     python manage.py runserver
+
    
 ## 👥 Usuarios
 
