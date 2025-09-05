@@ -33,7 +33,8 @@ Proyecto en **Django** para la gestión de jardines de infantes, incluyendo:
     ```bash
     python manage.py migrate
     python manage.py createsuperuser
-5.  ```bash 
+5. Ejecuta el servidor:
+  ```bash 
     python manage.py runserver
    
 ## 👥 Usuarios
