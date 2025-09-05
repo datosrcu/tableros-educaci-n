@@ -1,0 +1,26 @@
+# Entorno virtual
+env/
+venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.swp
+*.swo
+
+# Archivos de configuración
+*.sqlite3
+db.sqlite3
+.env
+*.log
+
+# Archivos de compilación / IDE
+.DS_Store
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+
+# Archivos de migraciones que pueden regenerarse (opcional, si querés versionarlos, quitá esta línea)
+#migrations/
