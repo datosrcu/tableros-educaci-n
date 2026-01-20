@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'users',
     'jardines',
     'alumnos',
-    #'django_cron',
+    
 ]
 
 

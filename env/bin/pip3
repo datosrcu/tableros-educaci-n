@@ -1,4 +1,4 @@
-#!/home/usuario/sistema-jardines/env/bin/python3
+#!/home/usuario/sistema-jardines/env/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
