@@ -15,15 +15,15 @@ class Alumno(models.Model):
     unique=True,
     validators=[dni_validator]
 )
-    sala = models.ForeignKey(Sala, on_delete=models.CASCADE)
+    sala = models.ForeignKey(Sala, on_delete=models.PROTECT, related_name="alumnos")
     activo = models.BooleanField(default=True)
     fecha_alta = models.DateTimeField(auto_now_add=True)
     fecha_baja = models.DateTimeField(null=True, blank=True)
-    tutores = models.ManyToManyField('Tutor', related_name='alumnos')
+    tutores = models.ManyToManyField('Tutor', related_name='alumnos', blank=True)
 
 
     def __str__(self):
-        return f"{self.apellido, self.nombre}"
+        return f"{self.apellido}, {self.nombre}"
     
     def dni_formateado(self):
         dni = self.dni.replace(".", "")
@@ -38,21 +38,24 @@ class MotivoJustificacion(models.Model):
         return self.nombre
     
 class Asistencia(models.Model):
-    ESTADOS = [
+    ESTADO_CHOICES = [
         ('P', 'Presente'),
         ('A', 'Ausente'),
         ('J', 'Justificado'),
     ]
-    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE)
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asistencias")
     fecha = models.DateField(max_length=50)
-    estado = models.CharField(max_length=20, choices=ESTADOS)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
     docente = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True)
     motivo = models.ForeignKey(
     MotivoJustificacion,
     on_delete=models.SET_NULL,
     null=True,
     blank=True
+    
 )
+    class Meta:
+        unique_together = ("alumno", "fecha")
 
     def __str__(self):
         return f"{self.fecha} - {self.alumno.apellido}, {self.alumno.nombre}: {self.estado}"
@@ -68,7 +71,7 @@ class Tutor(models.Model):
         )],
         unique=True
     )
-    telefono = models.CharField(max_length=20, blank=True)
+    telefono = models.CharField(max_length=30, blank=True)
     email = models.EmailField(max_length=100, blank=True)
 
     def __str__(self):

@@ -8,6 +8,13 @@ dni_validator = RegexValidator(
 )
 
 class Usuario(AbstractUser):
+    ROLES = (
+    ("admin", "Administrador"),
+    ("docente", "Docente"),
+    )
+
+    rol = models.CharField(max_length=20, choices=ROLES, default="docente")
+    
     dni = models.CharField(
         max_length=10,
         unique=True,
