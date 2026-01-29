@@ -2,6 +2,7 @@ from django.db import models
 from jardines.models import Sala
 from users.models import Usuario
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
 
 class Alumno(models.Model):
     dni_validator = RegexValidator(
@@ -21,6 +22,16 @@ class Alumno(models.Model):
     fecha_baja = models.DateTimeField(null=True, blank=True)
     tutores = models.ManyToManyField('Tutor', related_name='alumnos', blank=True)
 
+    def clean(self):
+        if not self.sala:
+            raise ValidationError("El alumno debe estar asignado a una sala.")
+
+        if not self.nombre.strip():
+            raise ValidationError("El nombre del alumno no puede estar vacío.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre}"
@@ -56,6 +67,22 @@ class Asistencia(models.Model):
 )
     class Meta:
         unique_together = ("alumno", "fecha")
+        
+    def clean(self):
+        if self.estado == 'P' and self.motivo:
+            raise ValidationError(
+                "Un alumno presente no puede tener motivo."
+            )
+
+        if self.estado == 'J' and not self.motivo:
+            raise ValidationError(
+                "Una asistencia justificada requiere un motivo."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.fecha} - {self.alumno.apellido}, {self.alumno.nombre}: {self.estado}"

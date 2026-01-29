@@ -27,4 +27,6 @@ urlpatterns = [
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/accounts/login/'), name='logout'),
     path('', include('alumnos.urls')),
     path('registro/docente/', registrar_docente, name='registrar_docente'),
+    path("jardines/", include("jardines.urls")),
+
 ]

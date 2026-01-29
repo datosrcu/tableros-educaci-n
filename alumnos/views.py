@@ -1,24 +1,30 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Alumno, Asistencia, MotivoJustificacion
-from jardines.models import Sala
 from datetime import date, datetime
 from django.db.models import Count
 from django.contrib.auth.decorators import login_required
+
+from .models import Alumno, Asistencia, MotivoJustificacion
 from .forms import AlumnoForm, TutorForm, EditarAlumnoForm
+
+from jardines.models import Sala
+from jardines.permissions import validar_sala_para_usuario
+
 
 @login_required
 def dashboard_docente(request):
+    if request.user.rol != "docente" and not request.user.is_superuser:
+        return render(request, "docentes/permiso_denegado.html", status=403)
+
     salas = request.user.salas_asignadas.all()
-    return render(request, 'docentes/dashboard.html', {'salas': salas})
+    return render(request, 'alumnos/dashboard_docente.html', {'salas': salas})
+
+
 
 @login_required
 def cargar_asistencia(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
+    validar_sala_para_usuario(request.user, sala)
 
-    if sala not in request.user.salas_asignadas.all():
-        return render(request, 'docentes/permiso_denegado.html', status=403)
-
-    # 🆕 Obtenemos la fecha desde el formulario o usamos hoy
     fecha_str = request.GET.get('fecha') or request.POST.get('fecha')
     if fecha_str:
         try:
@@ -35,7 +41,6 @@ def cargar_asistencia(request, sala_id):
         for alumno in alumnos:
             estado_raw = request.POST.get(f'estado_{alumno.id}', 'P')
 
-            # Default
             estado = 'P'
             motivo = None
 
@@ -45,27 +50,23 @@ def cargar_asistencia(request, sala_id):
                 estado = 'J'
                 motivo_id = estado_raw.split('-')[1]
                 motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
-            if estado:
-                Asistencia.objects.update_or_create(
-                    alumno=alumno,
-                    fecha=fecha,
-                    defaults={
-                        'estado': estado,
-                        'motivo': motivo,
-                        'docente': request.user
-                    }
-                )
-        
+
+            Asistencia.objects.update_or_create(
+                alumno=alumno,
+                fecha=fecha,
+                defaults={
+                    'estado': estado,
+                    'motivo': motivo,
+                    'docente': request.user
+                }
+            )
+
         return redirect('alumnos:cargar_asistencia', sala_id=sala.id)
 
-    # Buscamos asistencias existentes para esa fecha
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos, fecha=fecha
     )
     asistencias_dict = {a.alumno_id: a.estado for a in asistencias_existentes}
-    asistencias_dict_motivo = {
-    a.alumno_id: a.motivo_id for a in asistencias_existentes if a.motivo
-}
 
     return render(request, 'docentes/asistencia_form.html', {
         'sala': sala,
@@ -75,19 +76,23 @@ def cargar_asistencia(request, sala_id):
         'motivos': motivos
     })
 
+
 @login_required
 def ver_alumno(request, alumno_id):
     alumno = get_object_or_404(Alumno, id=alumno_id)
+    validar_sala_para_usuario(request.user, alumno.sala)
+
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
 
     asistencias = Asistencia.objects.filter(alumno=alumno)
+
     if mes and anio:
         asistencias = asistencias.filter(
             fecha__month=int(mes),
             fecha__year=int(anio)
         )
-    
+
     resumen = asistencias.values('estado').annotate(total=Count('estado'))
 
     return render(request, 'docentes/alumno_detalle.html', {
@@ -95,35 +100,29 @@ def ver_alumno(request, alumno_id):
         'asistencias': asistencias.order_by('-fecha'),
         'resumen': resumen,
         'mes': mes,
-        'anio': anio,
+        'año': anio,
     })
+
 
 @login_required
 def alumnos_por_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
-
-    if sala not in request.user.salas_asignadas.all():
-        return render(request, 'docentes/permiso_denegado.html', status=403)
+    validar_sala_para_usuario(request.user, sala)
 
     alumnos = Alumno.objects.filter(
-    sala=sala,
-    nombre__isnull=False,
-    nombre__gt='',
-    apellido__isnull=False,
-    apellido__gt='',
-    dni__isnull=False,
-    dni__gt=''
-)
-
+        sala=sala,
+        nombre__gt='',
+        apellido__gt='',
+        dni__gt=''
+    )
 
     if request.method == 'POST':
         for alumno in alumnos:
-            activo_checkbox = request.POST.get(f'activo_{alumno.id}')
-            nuevo_estado = bool(activo_checkbox)
+            activo = request.POST.get(f'activo_{alumno.id}') == 'on'
 
-            if alumno.activo != nuevo_estado:
-                alumno.activo = nuevo_estado
-                alumno.fecha_baja = None if nuevo_estado else date.today()
+            if alumno.activo != activo:
+                alumno.activo = activo
+                alumno.fecha_baja = None if activo else date.today()
                 alumno.save()
 
         return redirect('alumnos:alumnos_por_sala', sala_id=sala.id)
@@ -132,6 +131,7 @@ def alumnos_por_sala(request, sala_id):
         'sala': sala,
         'alumnos': alumnos
     })
+
 
 @login_required
 def ver_asistencias(request, sala_id):
@@ -161,11 +161,10 @@ def ver_asistencias(request, sala_id):
         'asistencias_dict': asistencias_dict
     })
 
+@login_required
 def agregar_alumno(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
-
-    if sala not in request.user.salas_asignadas.all():
-        return render(request, 'docentes/permiso_denegado.html', status=403)
+    validar_sala_para_usuario(request.user, sala)
 
     if request.method == 'POST':
         form = AlumnoForm(request.POST)
@@ -176,19 +175,18 @@ def agregar_alumno(request, sala_id):
             form.save_m2m()
             return redirect('alumnos:alumnos_por_sala', sala_id=sala.id)
     else:
-        form = AlumnoForm(initial={'sala': sala})
+        form = AlumnoForm()
 
     return render(request, 'docentes/agregar_alumno.html', {
         'form': form,
         'sala': sala
     })
 
+
 @login_required
 def editar_alumno(request, alumno_id):
     alumno = get_object_or_404(Alumno, id=alumno_id)
-
-    if alumno.sala not in request.user.salas_asignadas.all():
-        return render(request, 'docentes/permiso_denegado.html', status=403)
+    validar_sala_para_usuario(request.user, alumno.sala)
 
     if request.method == 'POST':
         form = EditarAlumnoForm(request.POST, instance=alumno)
@@ -202,5 +200,6 @@ def editar_alumno(request, alumno_id):
         'form': form,
         'alumno': alumno
     })
+
 
 # Create your views here.

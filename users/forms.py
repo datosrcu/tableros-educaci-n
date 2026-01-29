@@ -1,9 +1,7 @@
 from django import forms
 from .models import Usuario
 
-widgets = {
-    'dni': forms.TextInput(attrs={'placeholder': 'XX.XXX.XXX'}),
-}
+
 
 class RegistroDocenteForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)
@@ -16,7 +14,7 @@ class RegistroDocenteForm(forms.ModelForm):
 
     class Meta:
         model = Usuario
-        fields = ['first_name', 'last_name', 'dni', 'username', 'email', 'password', 'confirmar_password']
+        fields = ['first_name', 'last_name', 'username', 'email', 'password', 'confirmar_password']
 
     def clean(self):
         cleaned_data = super().clean()

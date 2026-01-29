@@ -10,9 +10,23 @@ class AlumnoAdmin(admin.ModelAdmin):
 
 @admin.register(Asistencia)
 class AsistenciaAdmin(admin.ModelAdmin):
-    list_display = ('alumno', 'fecha', 'estado', 'docente')
-    list_filter = ('estado', 'fecha')
-    search_fields = ('alumno__nombre', 'alumno_apellido',)
+    list_display = (
+        'alumno',
+        'fecha',
+        'estado',
+        'motivo_resumido',
+    )
+
+    list_filter = ('estado', 'fecha', 'alumno__sala')
+    search_fields = ('alumno__nombre',)
+    ordering = ('-fecha',)
+
+    def motivo_resumido(self, obj):
+        if obj.motivo:
+            return obj.motivo[:40]
+        return '-'
+    motivo_resumido.short_description = 'Motivo'
+
 
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):

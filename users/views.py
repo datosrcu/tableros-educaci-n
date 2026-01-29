@@ -18,6 +18,11 @@ def registrar_docente(request):
             return redirect('alumnos:dashboard')
     else:
         form = RegistroDocenteForm()
+        
+def admin_redirect(request):
+    if request.user.rol == "docente":
+        return redirect("alumnos:dashboard_docente")
+    return redirect("/admin/")
 
     return render(request, 'registration/registrar_docente.html', {'form': form})
 

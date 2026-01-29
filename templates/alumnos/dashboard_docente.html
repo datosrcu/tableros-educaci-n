@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Dashboard del Docente</h1>
+
+{% if salas %}
+    <ul>
+        {% for sala in salas %}
+            <li>
+                {{ sala.nombre }}
+                <a href="{% url 'alumnos:cargar_asistencia' sala.id %}">
+                    Cargar asistencia
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No tenés salas asignadas.</p>
+{% endif %}
+{% endblock %}
