@@ -85,7 +85,7 @@ python manage.py runserver
 ---
 
 ## 👥 Contribuidores
-- **Marcos Saez** - [GitHub]()
+- **Marcos Saez** - [GitHub](https://github.com/marcos-225)
 - **Gobierno de Río Cuarto** - [GitHub](https://github.com/gobderiocuarto)
 
 ---
