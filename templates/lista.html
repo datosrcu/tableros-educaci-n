@@ -1,0 +1,11 @@
+<h2>Listado</h2>
+
+<a href="crear/">➕ Crear nuevo</a>
+
+<ul>
+  {% for obj in objetos %}
+    <li>{{ obj }}</li>
+  {% empty %}
+    <li>No hay registros</li>
+  {% endfor %}
+</ul>

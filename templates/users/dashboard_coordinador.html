@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load form_filters %}
+
+{% block content %}
+<div class="row mb-5 align-items-center">
+    <div class="col-12 text-center text-md-start">
+        <h1 class="fw-bold mb-1">Panel del Coordinador</h1>
+        <p class="text-muted">Bienvenido. Aquí tenés un resumen general de la administración actual.</p>
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4 col-xl-2">
+        <div class="card h-100 shadow-sm border-0 bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-school mb-3 fs-3"></i>
+                <h6 class="card-title opacity-75">Espacios</h6>
+                <h2 class="fw-bold mb-0">{{ espacios_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl-2">
+        <div class="card h-100 shadow-sm border-0 bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-project-diagram mb-3 fs-3"></i>
+                <h6 class="card-title opacity-75">Programas</h6>
+                <h2 class="fw-bold mb-0">{{ programas_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl-2">
+        <div class="card h-100 shadow-sm border-0 bg-info text-white">
+            <div class="card-body">
+                <i class="fas fa-layer-group mb-3 fs-3"></i>
+                <h6 class="card-title opacity-75">Subprog.</h6>
+                <h2 class="fw-bold mb-0">{{ subprogramas_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl-2">
+        <div class="card h-100 shadow-sm border-0 bg-warning text-dark">
+            <div class="card-body">
+                <i class="fas fa-door-open mb-3 fs-3"></i>
+                <h6 class="card-title opacity-75">Salas</h6>
+                <h2 class="fw-bold mb-0">{{ salas_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl-4">
+        <div class="card h-100 shadow-sm border-0 bg-dark text-white">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <i class="fas fa-user-tie mb-3 fs-3 text-info"></i>
+                    <h6 class="card-title opacity-75">Docentes Registrados</h6>
+                    <h2 class="fw-bold mb-0">{{ docentes_count }}</h2>
+                </div>
+                <div class="text-end">
+                    <a href="{% url 'users:crear_docente' %}" class="btn btn-info btn-sm rounded-pill fw-bold">+ Alta
+                        Nueva</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-5 opacity-25">
+
+<h3 class="fw-bold mb-4"><i class="fas fa-cog me-2 text-primary"></i>Gestión de Entidades</h3>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <a href="{% url 'users:lista_espacios' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm text-center">
+                <div class="mb-3 bg-light p-3 rounded-circle d-inline-block">
+                    <i class="fas fa-building fs-2 text-primary"></i>
+                </div>
+                <h5 class="fw-bold">Espacios</h5>
+                <p class="small text-muted mb-0">Administrar jardines y ubicaciones territoriales.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'users:lista_programas' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm text-center">
+                <div class="mb-3 bg-light p-3 rounded-circle d-inline-block">
+                    <i class="fas fa-tasks fs-2 text-success"></i>
+                </div>
+                <h5 class="fw-bold">Programas</h5>
+                <p class="small text-muted mb-0">Configura la oferta educativa y programas sociales.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'users:lista_docentes' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm text-center">
+                <div class="mb-3 bg-light p-3 rounded-circle d-inline-block">
+                    <i class="fas fa-user-graduate fs-2 text-dark"></i>
+                </div>
+                <h5 class="fw-bold">Docentes</h5>
+                <p class="small text-muted mb-0">Gestión de personal, usuarios y accesos.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a href="{% url 'users:lista_subprogramas' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm d-flex flex-row align-items-center">
+                <div class="bg-info bg-opacity-10 p-3 rounded me-3">
+                    <i class="fas fa-sitemap fs-3 text-info"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1">Subprogramas</h5>
+                    <p class="small text-muted mb-0">Gestión de áreas específicas por programa.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a href="{% url 'users:lista_salas' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm d-flex flex-row align-items-center h-100">
+                <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                    <i class="fas fa-chalkboard fs-3 text-warning"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1">Salas y Turnos</h5>
+                    <p class="small text-muted mb-0">Administración de aulas, horarios y cupos.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-12">
+        <a href="{% url 'formularios:lista_estructuras' %}" class="text-decoration-none">
+            <div
+                class="card p-4 border-0 shadow-sm d-flex flex-row align-items-center bg-primary bg-opacity-10 border-start border-4 border-primary">
+                <div class="bg-white p-3 rounded shadow-sm me-4">
+                    <i class="fas fa-file-alt fs-2 text-primary"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1 text-primary">Formularios Dinámicos</h5>
+                    <p class="small text-muted mb-0">Diseñe y configure las fichas de seguimiento específicas para cada
+                        programa educativo.</p>
+                </div>
+                <div class="ms-auto">
+                    <span class="btn btn-primary btn-sm rounded-pill px-3">Gestionar <i
+                            class="fas fa-chevron-right ms-1"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

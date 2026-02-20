@@ -1,54 +1,103 @@
-{% extends 'base.html' %}
-{% load dict_filters %}
+{% extends "base.html" %}
 {% block content %}
-<h2 class="text-center">Registrar asistencias - Sala {{ sala.nombre }}</h2>
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:dashboard_docente' %}" class="text-decoration-none text-muted small text-uppercase">Mi Panel</a>
+        </li>
+        <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">
+          Asistencia
+        </li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold"><i class="fas fa-calendar-check me-2 text-primary"></i>Registrar Asistencia</h2>
+    <p class="text-muted">{{ sala.nombre }} | {{ fecha }}</p>
+  </div>
+</div>
 
-<form method="post">
-  {% csrf_token %}
-  <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
-  <p><strong>Fecha:</strong> {{ fecha|date:"d/m/Y" }}</p>
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        <form method="post">
+          {% csrf_token %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4">Alumno</th>
+                  <th>DNI</th>
+                  <th>Asistencia</th>
+                  <th>Justificacion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in asistencia_data %}
+                <tr>
+                  <td class="ps-4">
+                    <div class="fw-bold text-dark">{{ item.alumno.apellido }}, {{ item.alumno.nombre }}</div>
+                  </td>
+                  <td>{{ item.alumno.dni }}</td>
+                  <td>
+                    <select name="estado_{{ item.alumno.id }}" id="estado_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill estado-select" data-alumno="{{ item.alumno.id }}">
+                      <option value="P" {% if item.asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
+                      <option value="A" {% if item.asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
+                      <option value="T" {% if item.asistencia.estado == 'T' %}selected{% endif %}>Tarde</option>
+                      <option value="J" {% if item.asistencia.estado == 'J' %}selected{% endif %}>Justificado</option>
+                    </select>
+                  </td>
+                  <td>
+                    <div id="motivo_wrapper_{{ item.alumno.id }}" {% if item.asistencia.estado == 'J' %}style="display:block"{% else %}style="display:none"{% endif %}>
+                      <select name="motivo_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill">
+                        <option value="">-- Sin motivo --</option>
+                        {% for motivo in motivos %}
+                        <option value="{{ motivo.id }}" {% if item.asistencia.motivo_id == motivo.id %}selected{% endif %}>{{ motivo.nombre }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <span id="motivo_placeholder_{{ item.alumno.id }}" {% if item.asistencia.estado == 'J' %}style="display:none"{% else %}style="display:block"{% endif %} class="text-muted small fst-italic">
+                      &mdash;
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer bg-white py-3 border-top border-light text-end">
+            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+              <i class="fas fa-save me-1"></i>Guardar Asistencia
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <table class="table table-bordered mt-3">
-    <thead class="table-dark">
-      <tr>
-        <th>Alumno</th>
-        <th>Estado</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for alumno in alumnos %}
-        {% with asistencia=asistencias_dict|get_item:alumno.id %}
-        <tr>
-          <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
-          <td>
-            <select name="estado_{{ alumno.id }}" class="form-select">
-              <option value="P" {% if asistencia and asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
-              <option value="A" {% if asistencia and asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
-              {% for motivo in motivos %}
-                <option value="J_{{ motivo.id }}"
-                  {% if asistencia and asistencia.estado == 'J' and asistencia.motivo and asistencia.motivo.id == motivo.id %}
-                    selected
-                  {% endif %}>
-                  Justificado - {{ motivo.nombre }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
-        {% endwith %}
-      {% endfor %}
-    </tbody>
-  </table>
-<div class="d-flex justify-content-between mt-4">
-  <a href="{% url 'alumnos:ver_asistencias' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">
-    Volver
-  </a>
- 
-  <div>
-    <button type="submit" class="btn btn-success">
-      Guardar asistencias
-    </button>
-  </div>  
-</div>  
-</form>
+<style>
+  .border-light-subtle { border-color: #e2e8f0 !important; }
+  .motivo-wrapper select { min-width: 160px; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.estado-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+      var alumnoId = this.dataset.alumno;
+      var wrapper = document.getElementById('motivo_wrapper_' + alumnoId);
+      var placeholder = document.getElementById('motivo_placeholder_' + alumnoId);
+      if (this.value === 'J') {
+        wrapper.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        wrapper.style.display = 'none';
+        placeholder.style.display = 'block';
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

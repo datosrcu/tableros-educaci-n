@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-user-graduate me-2 text-primary"></i>Gestión de Docentes</h2>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'users:crear_docente' %}" class="btn btn-primary shadow-sm rounded-pill">
+            <i class="fas fa-plus me-1"></i>Nuevo Docente
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4">Nombre y Apellido</th>
+                    <th>DNI</th>
+                    <th>Contacto</th>
+                    <th>Usuario</th>
+                    <th class="text-end pe-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in docentes %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">
+                            {{ d.last_name }}, {{ d.first_name }}
+                        </div>
+                        <div class="small text-muted">
+                            {{ d.email }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark fw-normal border">
+                            {{ d.dni|default:"-" }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="small"><i class="fas fa-phone me-1 text-muted"></i>
+                            {{ d.telefono|default:"—" }}
+                        </div>
+                    </td>
+                    <td>
+                        <code>
+{{ d.username }}
+</code>
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'users:editar_docente' d.id %}"
+                            class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fas fa-info-circle me-1"></i>No hay docentes registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'users:dashboard_coordinador' %}" class="btn btn-link text-decoration-none">
+        <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+    </a>
+</div>
+{% endblock %}

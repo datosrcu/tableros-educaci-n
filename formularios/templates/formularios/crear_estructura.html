@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load form_filters %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'users:dashboard_coordinador' %}"
+                        class="text-decoration-none text-muted small text-uppercase fw-semibold">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'formularios:lista_estructuras' %}"
+                        class="text-decoration-none text-muted small text-uppercase fw-semibold">Formularios</a></li>
+                <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">
+                    Nuevo Formulario</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold"><i class="fas fa-plus-circle me-2 text-primary"></i>Definir Estructura de Formulario</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                    <div class="mb-4">
+                        {% if field.field.widget.input_type == 'checkbox' %}
+                        <div class="form-check form-switch mt-1">
+                            {{ field|add_class:"form-check-input shadow-none" }}
+                            <label class="form-check-label small fw-bold text-muted text-uppercase ms-2"
+                                for="{{ field.id_for_label }}">
+                                {{ field.label }}
+                            </label>
+                        </div>
+                        {% else %}
+                        <label for="{{ field.id_for_label }}"
+                            class="form-label small fw-bold text-muted text-uppercase mb-1">
+                            {{ field.label }}
+                        </label>
+                        {{ field|add_class:"form-select shadow-none border-light-subtle" }}
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in field.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="mt-4 pt-3 border-top d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                            <i class="fas fa-save me-1"></i>Crear Estructura
+                        </button>
+                        <a href="{% url 'formularios:lista_estructuras' %}"
+                            class="btn btn-outline-secondary px-4 rounded-pill">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 bg-primary bg-opacity-10 border-start border-4 border-primary">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-primary text-uppercase mb-3 small"><i class="fas fa-info-circle me-1"></i>
+                    Información</h6>
+                <p class="text-muted small mb-3">
+                    Un programa solo puede tener **una estructura de formulario** activa a la vez.
+                </p>
+                <p class="text-muted small mb-0">
+                    Una vez creada la estructura, podrá proceder a definir los campos específicos (texto, números,
+                    listas desplegables, etc.) que desea capturar para ese programa.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-light-subtle {
+        border-color: #e2e8f0 !important;
+    }
+</style>
+{% endblock %}

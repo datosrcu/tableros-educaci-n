@@ -4,29 +4,63 @@ from .forms import SalaAdminForm, JardinAdminForm
 from users.admin_permissions import es_admin, es_directivo
 
 
-@admin.register(Programa)
-class ProgramaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre', 'activo')
+class BaseAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_add_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.rol == "administrador"
+
+admin.site.register(Programa)
+class ProgramaAdmin(BaseAdmin):
+    list_display = ('id', 'nombre', 'usa_formulario_ampliado', 'activo')
     search_fields = ('nombre',)
-    list_filter = ('activo',)
+    list_filter = ('usa_formulario_ampliado','activo',)
     ordering = ('nombre',)
     
     def has_module_permission(self, request):
-        return es_admin(request.user) or es_directivo(request.user)
+        return request.user.rol in ["administrador", "coordinador"]
 
-@admin.register(Subprograma)
-class SubprogramaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre', 'programa')
-    list_filter = ('programa',)
+    def has_change_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_add_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.rol == "administrador"
+
+admin.site.register(Subprograma)
+class SubprogramaAdmin(BaseAdmin):
+    list_display = ('id', 'nombre', 'usa_formulario_ampliado', 'programa')
+    list_filter = ('programa', 'usa_formulario_ampliado')
     search_fields = ('nombre',)
     ordering = ('programa__nombre', 'nombre')
     
     def has_module_permission(self, request):
-        return es_admin(request.user) or es_directivo(request.user)
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_add_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.rol == "administrador"
 
 
-@admin.register(Jardin)
-class JardinAdmin(admin.ModelAdmin):
+admin.site.register(Jardin)
+class EspacioAdmin(BaseAdmin):
     form = JardinAdminForm
     list_display = (
         'id',
@@ -50,12 +84,21 @@ class JardinAdmin(admin.ModelAdmin):
     )
     
     def has_module_permission(self, request):
-        return es_admin(request.user) or es_directivo(request.user)
-    class Media:
-        js = ("jardines/js/jardin_admin.js",)
+        return request.user.rol in ["administrador", "coordinador"]
 
-@admin.register(Sala)
-class SalaAdmin(admin.ModelAdmin):
+    def has_change_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_add_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.rol == "administrador"
+    class Media:
+        js = ("jardines/subprogramas_admin.js",)
+
+admin.site.register(Sala)
+class SalaAdmin(BaseAdmin):
     form = SalaAdminForm
     list_display = (
         'id',

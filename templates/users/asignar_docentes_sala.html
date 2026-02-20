@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load form_filters %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item">
+          <a href="{% url 'users:dashboard_coordinador' %}"
+            class="text-decoration-none text-muted small text-uppercase uppercase">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'users:lista_salas' %}"
+            class="text-decoration-none text-muted small text-uppercase uppercase">Salas</a>
+        </li>
+        <li class="breadcrumb-item active small text-uppercase fw-bold text-primary uppercase" aria-current="page">
+          Asignar Docentes
+        </li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold"><i class="fas fa-user-tag me-2 text-primary"></i>Asignar Docentes a Sala</h2>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 border-bottom border-light">
+        <h5 class="mb-0 fw-bold text-dark">Sala: <span class="text-primary">
+            {{ sala.nombre }}</span></h5>
+        <p class="text-muted small mb-0">
+          {{ sala.jardin.nombre }} - {{ sala.get_turno_display }}</p>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-muted text-uppercase mb-2 uppercase">
+              {{ form.docentes.label }}
+            </label>
+            <div class="bg-light p-3 rounded border border-light-subtle" style="max-height: 300px; overflow-y: auto;">
+              {% for checkbox in form.docentes %}
+              <div class="form-check mb-2">
+                {{ checkbox.tag }}
+                <label class="form-check-label ms-2" for="{{ checkbox.id_for_label }}">
+                  {{ checkbox.choice_label }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            {% if form.docentes.errors %}
+            <div class="text-danger small mt-2">
+              {{ form.docentes.errors }}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mt-4 pt-3 border-top d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+              <i class="fas fa-check me-1"></i>Actualizar Asignaciones
+            </button>
+            <a href="{% url 'users:lista_salas' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+              Volver
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 bg-primary bg-opacity-10 border-start border-4 border-primary">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-primary text-uppercase mb-3 small"><i class="fas fa-users me-1"></i> Multi-Docente</h6>
+        <p class="text-muted small mb-0">Podés asignar uno o más docentes a una misma sala. Todos los docentes asignados
+          podrán gestionar la asistencia y los alumnos de esta sala.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .border-light-subtle {
+    border-color: #e2e8f0 !important;
+  }
+
+  .uppercase {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .form-check-input:checked {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+  }
+</style>
+{% endblock %}

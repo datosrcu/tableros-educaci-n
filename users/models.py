@@ -1,21 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
-from typing import TYPE_CHECKING
+from django.core.exceptions import ValidationError
 
-if TYPE_CHECKING:
-    from jardines.models import Sala
-
-dni_validator = RegexValidator(
-    regex=r'^\d{2}\.\d{3}\.\d{3}$',
-    message='El DNI debe tener el formato XX.XXX.XXX'
-)
 
 class Usuario(AbstractUser):
 
     ROLES = (
-        ("admin", "Administrador"),
-        ("directivo", "Directivo"),
+        ("administrador", "Administrador"),
+        ("coordinador", "Coordinador"),
         ("docente", "Docente"),
     )
 
@@ -25,14 +17,69 @@ class Usuario(AbstractUser):
         default="docente",
     )
 
-    def es_admin(self):
-        return self.rol == "admin" or self.is_superuser
+    # 🆔 Datos personales
+    dni = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="DNI / Pasaporte"
+    )
+    telefono = models.CharField(max_length=50, blank=True)
 
-    def es_directivo(self):
-        return self.rol == "directivo"
+    # =====================================================
+    # MÉTODOS DE CONSULTA
+    # =====================================================
+
+    def es_admin(self):
+        return self.rol == "administrador" or self.is_superuser
+
+    def es_coordinador(self):
+        return self.rol == "coordinador"
 
     def es_docente(self):
         return self.rol == "docente"
+
+    # =====================================================
+    # VALIDACIONES
+    # =====================================================
+
+    def clean(self):
+        super().clean()
+
+        # 🔒 Coordinador no puede tener salas asignadas
+        if self.rol == "coordinador" and self.pk:
+            if self.salas_asignadas.exists():
+                raise ValidationError(
+                    "Un coordinador no puede tener salas asignadas."
+                )
+
+        # 🔒 Administrador no puede tener salas asignadas
+        if self.rol == "administrador" and self.pk:
+            if self.salas_asignadas.exists():
+                raise ValidationError(
+                    "Un administrador no puede tener salas asignadas."
+                )
+
+    # =====================================================
+    # SINCRONIZACIÓN DE PERMISOS
+    # =====================================================
+
+    def save(self, *args, **kwargs):
+
+        # 🔐 Sincronizar permisos con rol
+        if self.rol == "administrador":
+            self.is_staff = True
+
+        elif self.rol == "coordinador":
+            self.is_staff = False
+            self.is_superuser = False
+
+        elif self.rol == "docente":
+            self.is_staff = False
+            self.is_superuser = False
+
+        super().save(*args, **kwargs)
 
 
 # Create your models here.

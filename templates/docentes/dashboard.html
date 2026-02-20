@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-{% if user.is_authenticated %}
+{% if request.user.rol == "docente" %}
     <h2 class="text-center"><strong>Dashboard de:</strong> {{ user.first_name }} {{ user.last_name }}</h2>
 {% endif %}    
 <div class="row">

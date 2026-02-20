@@ -1,7 +1,11 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Subprograma, Jardin, Sala
+from users.decorators import rol_requerido
+from django.contrib.auth.decorators import login_required
 
+@login_required
+@rol_requerido("coordinador", "administrador")
 def cargar_subprogramas(request):
     programa_id = request.GET.get("programa_id")
     subprogramas = Subprograma.objects.filter(programa_id=programa_id)
@@ -11,6 +15,8 @@ def cargar_subprogramas(request):
         safe=False
     )
 
+@login_required
+@rol_requerido("coordinador", "administrador")
 def cargar_jardines(request):
     programa_id = request.GET.get("programa_id")
     jardines = Jardin.objects.filter(programa_id=programa_id)

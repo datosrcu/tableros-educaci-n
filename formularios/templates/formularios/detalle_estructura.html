@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:dashboard_coordinador' %}"
+                        class="text-decoration-none text-muted small text-uppercase">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'formularios:lista_estructuras' %}"
+                        class="text-decoration-none text-muted small text-uppercase">Formularios</a>
+                </li>
+                <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">
+                    Configuración de Campos
+                </li>
+            </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold mb-0">Campos del Formulario: <span class="text-primary">
+                        {{ estructura.programa.nombre }}</span></h2>
+                <p class="text-muted small mb-0">Defina los campos que los docentes deberán completar para este
+                    programa.</p>
+            </div>
+            <a href="{% url 'formularios:crear_campo' estructura.id %}"
+                class="btn btn-primary rounded-pill px-4 shadow-sm">
+                <i class="fas fa-plus me-1"></i>Agregar Campo
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-dark">Campos Registrados</h5>
+                    <span class="badge bg-primary rounded-pill">
+                        {{ campos.count }} campos definidos</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4" style="width: 60px;">Orden</th>
+                                <th>Etiqueta / Nombre Interno</th>
+                                <th>Tipo de Campo</th>
+                                <th>Atributos</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campo in campos %}
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-muted">
+                                        {{ campo.orden }}</span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        {{ campo.etiqueta }}</div>
+                                    <div class="text-muted micro-text text-monospace">
+                                        {{ campo.nombre_interno }}</div>
+                                </td>
+                                <td>
+                                    <span
+                                        class="badge border border-primary-subtle text-primary bg-light rounded-pill px-3">
+                                        {% if campo.tipo == 'texto' %}
+                                        <i class="fas fa-font me-1 small"></i>
+                                        {% elif campo.tipo == 'textarea' %}
+                                        <i class="fas fa-align-left me-1 small"></i>
+                                        {% elif campo.tipo == 'numero' %}
+                                        <i class="fas fa-hashtag me-1 small"></i>
+                                        {% elif campo.tipo == 'fecha' %}
+                                        <i class="fas fa-calendar me-1 small"></i>
+                                        {% elif campo.tipo == 'booleano' %}
+                                        <i class="fas fa-check-square me-1 small"></i>
+                                        {% elif campo.tipo == 'select' %}
+                                        <i class="fas fa-list me-1 small"></i>
+                                        {% endif %}
+                                        {{ campo.get_tipo_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if campo.obligatorio %}
+                                    <span
+                                        class="badge bg-danger-subtle text-danger rounded-pill px-2 small">Obligatorio</span>
+                                    {% else %}
+                                    <span
+                                        class="badge bg-light text-muted border rounded-pill px-2 small">Opcional</span>
+                                    {% endif %}
+                                    {% if campo.opciones %}
+                                    <span class="badge bg-info-subtle text-info rounded-pill px-2 small"
+                                        title="{{ campo.opciones }}">Con Opciones</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group shadow-none">
+                                        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 opacity-50"
+                                            disabled>
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <div class="text-muted mb-2"><i class="fas fa-layer-group fa-3x"></i></div>
+                                    <p class="mb-3">Aún no ha definido ningún campo para este formulario.</p>
+                                    <a href="{% url 'formularios:crear_campo' estructura.id %}"
+                                        class="btn btn-primary rounded-pill px-4">Comenzar a Agregar</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top border-light py-3">
+                <a href="{% url 'formularios:lista_estructuras' %}"
+                    class="btn btn-link text-decoration-none text-muted">
+                    <i class="fas fa-arrow-left me-1"></i>Volver al listado
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-danger-subtle {
+        background-color: #fee2e2 !important;
+    }
+
+    .bg-info-subtle {
+        background-color: #e0f2fe !important;
+    }
+
+    .text-danger {
+        color: #b91c1c !important;
+    }
+
+    .text-info {
+        color: #0369a1 !important;
+    }
+
+    .micro-text {
+        font-size: 0.7rem;
+    }
+
+    .text-monospace {
+        font-family: 'Courier New', Courier, monospace;
+    }
+</style>
+{% endblock %}

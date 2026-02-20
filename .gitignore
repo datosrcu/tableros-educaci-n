@@ -1,26 +1,30 @@
 # Entorno virtual
 env/
 venv/
+.env
+.venv/
+
+# Python
 *.pyc
 __pycache__/
 *.pyo
 *.pyd
-*.swp
-*.swo
-
-# Archivos de configuración
-*.sqlite3
-db.sqlite3
-.env
+*.db
 *.log
 
-# Archivos de compilación / IDE
+# Django
+db.sqlite3
+staticfiles/
+media/
+
+# IDEs & OS
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# Distribución
 *.egg-info/
 dist/
 build/
-
-# Archivos de migraciones que pueden regenerarse (opcional, si querés versionarlos, quitá esta línea)
-#migrations/

@@ -1,49 +1,83 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
 {% block content %}
-{% load filters %}
-<h2>Asistencias - {{ alumno.apellido }}, {{alumno.nombre}}</h2>
+<h2>Detalle del Alumno</h2>
+
+<hr>
+
+<h3>{{ alumno.apellido }}, {{ alumno.nombre }}</h3>
+
+<p><strong>DNI:</strong> {{ alumno.dni }}</p>
+<p><strong>Fecha de nacimiento:</strong> {{ alumno.fecha_nacimiento }}</p>
+
+<hr>
+
+<h4>Información académica</h4>
+<p><strong>Sala:</strong> {{ alumno.sala.nombre }}</p>
+<p><strong>Espacio:</strong> {{ alumno.sala.jardin.nombre }}</p>
+
+{% if alumno.sala.jardin.programa %}
+<p><strong>Programa:</strong> {{ alumno.sala.jardin.programa.nombre }}</p>
+{% endif %}
+
+{% if alumno.sala.jardin.subprograma %}
+<p><strong>Subprograma:</strong> {{ alumno.sala.jardin.subprograma.nombre }}</p>
+{% endif %}
+
+<hr>
+
+<h4>Filtrar asistencias</h4>
 
 <form method="get">
-    <label for="mes">Mes:</label>
-{% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre".split(',') %}
-<select name="mes" id="mes" required>
-    <option value="">--</option>
-    {% for i in 1|to_int:12 %}
-    <option value="{{ i }}" {% if mes|default:'' == i|stringformat:"s" %}selected{% endif %}>
-        {{ meses|index:i|default:"" }}
-    </option>
-    {% endfor %}
-</select>
-{% endwith %}
-
-    <label for="anio">Año:</label>
-    <input type="number" name="anio" id="anio" value="{{ anio|default:2025 }}" min="2020" max="2100" required>
-
+    <label>Mes:</label>
+    <input type="number" name="mes" min="1" max="12" value="{{ mes }}">
+    <label>Año:</label>
+    <input type="number" name="anio" min="2020" value="{{ anio }}">
     <button type="submit">Filtrar</button>
 </form>
 
-{% if resumen %}
-<h3>Resumen</h3>
+<hr>
+
+<h4>Resumen</h4>
 <ul>
-    {% for item in resumen %}
-    <li>{{ item.estado|capfirst }}: {{ item.total }}</li>
+    {% for r in resumen %}
+        <li>{{ r.estado }}: {{ r.total }}</li>
+    {% empty %}
+        <li>Sin asistencias registradas</li>
     {% endfor %}
 </ul>
-{% endif %}
 
-<table border="1">
-    <tr><th>Fecha</th><th>Estado</th><th>Docente</th></tr>
+<hr>
+
+<h4>Historial de asistencias</h4>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Fecha</th>
+        <th>Estado</th>
+        <th>Motivo</th>
+        <th>Docente</th>
+    </tr>
     {% for a in asistencias %}
     <tr>
         <td>{{ a.fecha }}</td>
         <td>{{ a.get_estado_display }}</td>
-        <td>{{ a.docente.get_full_name }}</td>
+        <td>{{ a.motivo|default:"—" }}</td>
+        <td>{{ a.docente }}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="3">No hay registros para este filtro.</td></tr>
+    <tr>
+        <td colspan="4">No hay asistencias</td>
+    </tr>
     {% endfor %}
 </table>
 
-<a href="{% url 'alumnos:dashboard' %}">Volver</a>
+<hr>
+
+<a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}">
+    ← Volver a la sala
+</a>
+
 {% endblock %}
+
 

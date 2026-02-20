@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load form_filters %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:dashboard_coordinador' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:lista_espacios' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Espacios</a>
+                </li>
+                <li class="breadcrumb-item active small text-uppercase fw-bold text-primary uppercase"
+                    aria-current="page">Editar Espacio</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold"><i class="fas fa-edit me-2 text-primary"></i>Editar Espacio</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark">Espacio: <span class="text-primary">
+                        {{ jardin.nombre }}</span></h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check form-switch mt-4">
+                                {{ field|add_class:"form-check-input shadow-none" }}
+                                <label for="{{ field.id_for_label }}"
+                                    class="form-check-label small fw-bold text-muted text-uppercase ms-2 uppercase">
+                                    {{ field.label }}
+                                </label>
+                            </div>
+                            {% else %}
+                            <label for="{{ field.id_for_label }}"
+                                class="form-label small fw-bold text-muted text-uppercase mb-1 uppercase">
+                                {{ field.label }}
+                            </label>
+                            {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="text-danger micro-text mt-1">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4 pt-3 border-top d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                            <i class="fas fa-save me-1"></i>Actualizar Espacio
+                        </button>
+                        <a href="{% url 'users:lista_espacios' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-light-subtle {
+        border-color: #e2e8f0 !important;
+    }
+
+    .uppercase {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .micro-text {
+        font-size: 0.75rem;
+        color: #dc3545;
+    }
+</style>
+{% endblock %}

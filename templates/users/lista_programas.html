@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-project-diagram me-2 text-primary"></i>Gestión de Programas</h2>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'users:crear_programa' %}" class="btn btn-primary shadow-sm rounded-pill">
+            <i class="fas fa-plus me-1"></i>Nuevo Programa
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4">Programa</th>
+                    <th>Descripción</th>
+                    <th>Configuración</th>
+                    <th>Estado</th>
+                    <th class="text-end pe-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in programas %}
+                <tr>
+                    <td class="ps-4 font-weight-bold fw-bold text-dark">
+                        {{ p.nombre }}
+                    </td>
+                    <td>
+                        <small class="text-muted">
+                            {{ p.descripcion|truncatewords:10|default:"—" }}
+                        </small>
+                    </td>
+                    <td>
+                        {% if p.usa_formulario_ampliado %}
+                        <span class="badge bg-warning text-dark fw-normal border small"><i
+                                class="fas fa-file-alt me-1"></i>Form. Ampliado</span>
+                        {% else %}
+                        <span class="text-muted small">Estándar</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.activo %}
+                        <span
+                            class="badge bg-success-subtle text-success px-3 rounded-pill border border-success border-opacity-25">Activo</span>
+                        {% else %}
+                        <span
+                            class="badge bg-danger-subtle text-danger px-3 rounded-pill border border-danger border-opacity-25">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'users:editar_programa' p.id %}"
+                            class="btn btn-sm btn-outline-warning rounded-pill px-3">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fas fa-info-circle me-1"></i>No hay programas registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'users:dashboard_coordinador' %}" class="btn btn-link text-decoration-none">
+        <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+    </a>
+</div>
+{% endblock %}

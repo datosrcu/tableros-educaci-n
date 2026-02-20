@@ -1,12 +1,32 @@
 from django.contrib import admin
 from .models import Alumno, Asistencia, Tutor, MotivoJustificacion
 
+class AdminSoloStaffPorRol(admin.ModelAdmin):
+    ROLES_PERMITIDOS = ["administrador", "coordinador"]
+
+    def _permitido(self, request):
+        return request.user.is_authenticated and request.user.rol in self.ROLES_PERMITIDOS
+
+    def has_module_permission(self, request):
+        return self._permitido(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._permitido(request)
+
+    def has_add_permission(self, request):
+        return self._permitido(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._permitido(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._permitido(request)
+
 @admin.register(Alumno)
 class AlumnoAdmin(admin.ModelAdmin):
-    list_display = ('apellido', 'nombre', 'dni_formateado', 'sala', 'activo', 'fecha_alta', 'fecha_baja')
+    list_display = ('apellido', 'nombre', 'sala', 'activo', 'fecha_baja')
     list_filter = ('sala', 'activo')
-    search_fields = ('apellido','nombre', 'dni_formateado')
-    filter_horizontal = ('tutores',)
+    search_fields = ('apellido','nombre')
 
 @admin.register(Asistencia)
 class AsistenciaAdmin(admin.ModelAdmin):

@@ -1,51 +1,130 @@
 {% extends 'base.html' %}
 {% load dict_filters %}
+
 {% block content %}
-<h2 class= "text-center">Asistencias registradas - Sala {{ sala.nombre }}</h2>
+<div class="row mb-4 align-items-center">
+  <div class="col-sm-8">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:dashboard_docente' %}"
+            class="text-decoration-none text-muted small text-uppercase fw-semibold">Mi Panel</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+            class="text-decoration-none text-muted small text-uppercase">{{ sala.nombre }}</a>
+        </li>
+        <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">Historial de
+          Asistencias</li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold mb-0"><i class="fas fa-clipboard-check me-2 text-primary"></i>Historial de Asistencias</h2>
+    <p class="text-muted small mb-0">{{ sala.nombre }} / {{ sala.jardin.nombre }}</p>
+  </div>
+  <div class="col-sm-4 text-sm-end mt-3 mt-sm-0">
+    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"
+      class="btn btn-warning shadow-sm rounded-pill fw-bold px-4">
+      <i class="fas fa-edit me-1"></i>Editar Asistencia del Día
+    </a>
+  </div>
+</div>
 
-<form method="get" id="form-fecha">
-    <label for="fecha">Fecha:</label>
-    <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}" onchange="document.getElementById('form-fecha').submit();">
-</form>
+<div class="card shadow-sm border-0 mb-4 px-3 py-3 bg-light bg-opacity-50">
+  <form method="get" id="form-fecha" class="row align-items-center g-2">
+    <div class="col-auto">
+      <label for="fecha" class="form-label small fw-bold text-muted text-uppercase mb-0">Consultar Fecha:</label>
+    </div>
+    <div class="col-auto">
+      <input type="date" name="fecha" id="fecha"
+        class="form-control form-control-sm border-light-subtle rounded-pill shadow-none px-3"
+        value="{{ fecha|date:'Y-m-d' }}" onchange="document.getElementById('form-fecha').submit();">
+    </div>
+  </form>
+</div>
 
-
-<hr>
-    <div class="container mt-4">
-    <table class="table table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Alumno</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        {% for alumno in alumnos %}
+<div class="card shadow-sm border-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light text-muted small text-uppercase fw-bold">
         <tr>
-            <td>{{ alumno.apellido }}, {{ alumno.nombre }}</td>
-            {% if alumno.id in asistencias_dict %}
-                {% with asistencia=asistencias_dict|dict_get:alumno.id %}
-                    <td>
-                        {% if asistencia.estado == "J" and asistencia.motivo %}
-                            J ({{ asistencia.motivo.nombre }})
-                        {% else %}
-                            {{ asistencia.get_estado_display }}
-                        {% endif %}
-                {% endwith %}
-            {% else %}
-                <td colspan="2"><em>Sin registro</em></td>
+          <th class="ps-4">Alumno</th>
+          <th>DNI</th>
+          <th class="text-center">Estado</th>
+          <th>Motivo</th>
+          <th>Docente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alumno in alumnos %}
+        {% with asistencia=asistencias_dict|dict_get:alumno.id %}
+        <tr>
+          <td class="ps-4">
+            <div class="fw-bold text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</div>
+          </td>
+          <td class="text-muted small">{{ alumno.dni|default:"—" }}</td>
+          <td class="text-center">
+            {% if asistencia %}
+            {% if asistencia.estado == 'P' %}
+            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 uppercase small"><i
+                class="fas fa-check me-1"></i>Presente</span>
+            {% elif asistencia.estado == 'A' %}
+            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2 uppercase small"><i
+                class="fas fa-times me-1"></i>Ausente</span>
+            {% elif asistencia.estado == 'J' %}
+            <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 uppercase small"><i
+                class="fas fa-info-circle me-1"></i>Justificado</span>
+            {% elif asistencia.estado == 'T' %}
+            <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2 uppercase small"><i
+                class="fas fa-clock me-1"></i>Tarde</span>
             {% endif %}
+            {% else %}
+            <span class="text-muted small fst-italic">Sin registro</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if asistencia and asistencia.motivo %}
+            {{ asistencia.motivo.nombre }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if asistencia and asistencia.docente %}
+            {{ asistencia.docente.first_name|default:asistencia.docente.username }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-5 text-muted">No hay alumnos en esta sala.</td>
         </tr>
         {% endfor %}
+      </tbody>
     </table>
-<hr>
-<div class="d-flex justify-content-between mt-4">
-  <a href="{% url 'alumnos:dashboard' %}" class="btn btn-secondary">
-    Volver
-  </a>
-
-  <div>
-    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-success me-2">
-      Editar Asistencia
-    </a>
-  </div>  
+  </div>
 </div>
+
+<div class="mt-4">
+  <a href="{% url 'alumnos:dashboard_docente' %}" class="btn btn-link text-decoration-none text-muted">
+    <i class="fas fa-arrow-left me-1"></i>Volver al Panel
+  </a>
+</div>
+
+<style>
+  .border-light-subtle {
+    border-color: #e2e8f0 !important;
+  }
+
+  .uppercase {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .micro-text {
+    font-size: 0.7rem;
+  }
+</style>
 {% endblock %}

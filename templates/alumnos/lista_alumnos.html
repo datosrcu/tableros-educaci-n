@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-0 text-dark"><i class="fas fa-user-graduate me-2 text-primary"></i>Listado General de
+            Alumnos</h2>
+        <p class="text-muted small mb-0">Gestión centralizada de alumnos de todos los espacios y programas.</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4">Alumno</th>
+                    <th>DNI</th>
+                    <th>Espacio / Sala</th>
+                    <th>Estado</th>
+                    <th class="text-end pe-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alumno in alumnos %}
+                <tr class="{% if not alumno.activo %}opacity-50 grayscale{% endif %}">
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</div>
+                        <div class="text-muted micro-text">Inscripción: {{ alumno.fecha_alta|date:"d/m/Y" }}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark fw-normal border">{{ alumno.dni|default:"—" }}</span></td>
+                    <td>
+                        <div class="small fw-semibold">{{ alumno.sala.jardin.nombre }}</div>
+                        <div class="text-muted micro-text">{{ alumno.sala.nombre }} ({{ alumno.sala.get_turno_display
+                            }})</div>
+                    </td>
+                    <td>
+                        {% if alumno.activo %}
+                        <span class="badge bg-success-subtle text-success rounded-pill px-2">Activo</span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger rounded-pill px-2">Baja</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+                            <a href="{% url 'alumnos:detalle_alumno' alumno.id %}"
+                                class="btn btn-sm btn-white border-light text-primary px-3" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'alumnos:editar_alumno' alumno.id %}"
+                                class="btn btn-sm btn-white border-light text-warning px-3" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fas fa-info-circle me-1"></i>No hay alumnos registrados en el sistema.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .grayscale {
+        filter: grayscale(1);
+    }
+
+    .micro-text {
+        font-size: 0.7rem;
+    }
+
+    .uppercase {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+{% endblock %}

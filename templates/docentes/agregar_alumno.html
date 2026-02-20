@@ -1,29 +1,385 @@
 {% extends 'base.html' %}
+{% load form_filters %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="m-0 text-center flex-grow-1">Agregar nuevo alumno a {{ sala.nombre }}</h2>
+<div class="row mb-4 align-items-center">
+  <div class="col-md-10">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:dashboard_docente' %}"
+            class="text-decoration-none text-muted small text-uppercase fw-semibold">
+            Mi Panel
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+            class="text-decoration-none text-muted small text-uppercase">
+            {{ sala.nombre }}
+          </a>
+        </li>
+        <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">
+          Nuevo Alumno
+        </li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-user-plus me-2 text-primary"></i>Alta de Alumno
+    </h2>
+    <p class="text-muted small mb-0">
+      Registrando en: <span class="fw-bold text-dark">{{ sala.nombre }}</span> /
+      <span class="text-primary fw-semibold">{{ sala.jardin.nombre }}</span>
+    </p>
   </div>
-
-  <form method="post" class="mx-auto" style="max-width: 600px;">
-    {% csrf_token %}
-
-    {% for field in form %}
-      <div class="mb-3">
-        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-        {{ field }}
-        {% if field.errors %}
-          <div class="text-danger small">{{ field.errors }}</div>
-        {% endif %}
-      </div>
-    {% endfor %}
-
-    <div class="d-flex justify-content-between">
-      <button type="submit" class="btn btn-success">Guardar alumno</button>
-      <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class="btn btn-outline-secondary">Cancelar</a>
-    </div>
-  </form>
 </div>
-{% endblock %}
 
+<form method="post" id="alumnoForm" class="needs-validation" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <!-- Datos Personales -->
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom border-light">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-id-card me-2 text-primary"></i>Datos Personales
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            {% for field in alumno_form %}
+            {% if field.name != 'tutores' %}
+            <div class="col-md-6 mb-3">
+              {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check form-switch mt-4">
+                {{ field|add_class:"form-check-input shadow-none" }}
+                <label for="{{ field.id_for_label }}"
+                  class="form-check-label small fw-bold text-muted text-uppercase ms-2">
+                  {{ field.label }}
+                </label>
+              </div>
+              {% else %}
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+              {% endif %}
+
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Tutores -->
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div
+          class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-users me-2 text-primary"></i>Tutores
+          </h6>
+          <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm hover-lift"
+            data-bs-toggle="modal" data-bs-target="#modalTutor">
+            <i class="fas fa-plus me-1"></i>Nuevo Tutor
+          </button>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3 position-relative">
+            <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted">
+              <i class="fas fa-search small"></i>
+            </span>
+            <input type="text" id="tutorSearch" class="form-control ps-5 shadow-none border-light-subtle rounded-pill"
+              placeholder="Buscar tutor por nombre o DNI...">
+          </div>
+          <div class="tutor-list-wrapper border rounded-4 p-2 bg-light bg-opacity-25"
+            style="max-height: 280px; overflow-y: auto;">
+            {% with field=alumno_form.tutores %}
+            <div id="tutorCheckboxes" class="list-group list-group-flush bg-transparent">
+              {% for ch_id, ch_lbl in field.field.choices %}
+              <label
+                class="list-group-item list-group-item-action border-0 rounded-3 mb-1 tutor-item d-flex align-items-center cursor-pointer">
+                <input class="form-check-input me-3 mt-0 shadow-none" type="checkbox" name="tutores" value="{{ ch_id }}"
+                  id="tutor_{{ ch_id }}" {% if ch_id in field.value %}checked{% endif %}>
+                <span class="small text-dark">{{ ch_lbl }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% endwith %}
+          </div>
+          {% if alumno_form.tutores.errors %}
+          <div class="text-danger micro-text mt-2 ps-2">
+            {% for error in alumno_form.tutores.errors %}
+            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if dynamic_form or ficha_form %}
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom border-light">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-clipboard-list me-2 text-primary"></i>Ficha Operativa: {{ sala.jardin.programa.nombre }}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          {% if ficha_form %}
+          <div class="row g-3">
+            {% for field in ficha_form %}
+            <div class="col-md-6 mb-3">
+              {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check form-switch mt-4">
+                {{ field|add_class:"form-check-input shadow-none" }}
+                <label for="{{ field.id_for_label }}"
+                  class="form-check-label small fw-bold text-muted text-uppercase ms-2">
+                  {{ field.label }}
+                </label>
+              </div>
+              {% else %}
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+              {% endif %}
+
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if dynamic_form %}
+          {% if ficha_form %}
+          <hr class="my-4 border-light">
+          {% endif %}
+          <div class="row g-3">
+            {% for field in dynamic_form %}
+            <div class="col-md-6 mb-3">
+              {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check form-switch mt-4">
+                {{ field|add_class:"form-check-input shadow-none" }}
+                <label for="{{ field.id_for_label }}"
+                  class="form-check-label small fw-bold text-muted text-uppercase ms-2">
+                  {{ field.label }}
+                </label>
+              </div>
+              {% else %}
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle bg-light-subtle" }}
+              {% endif %}
+
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="mt-4 pt-3 d-flex gap-3 mb-5">
+        <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm fw-bold hover-lift py-2">
+          <i class="fas fa-check-circle me-2"></i>Finalizar Registro
+        </button>
+        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+          class="btn btn-light border px-4 rounded-pill d-flex align-items-center fw-semibold text-muted">
+          Cancelar
+        </a>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="sticky-top" style="top: 1.5rem;">
+        <div class="card shadow-sm border-0 p-4 bg-info bg-opacity-10 border-start border-4 border-info mb-4">
+          <h6 class="fw-bold text-info text-uppercase mb-3 micro-text">
+            <i class="fas fa-lightbulb me-1"></i> Recomendación
+          </h6>
+          <p class="text-muted small mb-0">
+            Aseguráte de completar todos los datos obligatorios. Si el programa tiene una ficha dinámica activa,
+            aparecerá resaltada en azul.
+          </p>
+        </div>
+        <div class="card shadow-sm border-0 p-4 bg-primary bg-opacity-10 border-start border-4 border-primary">
+          <h6 class="fw-bold text-primary text-uppercase mb-3 micro-text">
+            <i class="fas fa-info-circle me-1"></i> Tutores
+          </h6>
+          <p class="text-muted small mb-0">
+            Podés asociar múltiples tutores. Si no encontrás uno, crealo rápidamente usando el botón "Nuevo Tutor".
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="modal fade" id="modalTutor" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-primary text-white py-3 border-0">
+        <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Nuevo Tutor</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 bg-white">
+        <form id="tutorFormAjax">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Nombre</label>
+              <input type="text" name="nombre" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: María" required>
+            </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Apellido</label>
+              <input type="text" name="apellido" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: Perez" required>
+            </div>
+            <div class="col-md-12 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">DNI</label>
+              <input type="text" name="dni" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: 12.345.678" required>
+            </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Teléfono</label>
+              <input type="text" name="telefono" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: 11 2233-4455">
+            </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Email</label>
+              <input type="email" name="email" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="maria@ejemplo.com">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border" data-bs-dismiss="modal">
+              Cerrar
+            </button>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+              Guardar Tutor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('tutorSearch');
+    const items = document.querySelectorAll('.tutor-item');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        const term = this.value.toLowerCase();
+        items.forEach(item => {
+          item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        });
+      });
+    }
+    const tutorForm = document.getElementById('tutorFormAjax');
+    const tutorList = document.getElementById('tutorCheckboxes');
+    const modalEle = document.getElementById('modalTutor');
+    if (tutorForm && modalEle) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEle);
+      tutorForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+        fetch("{% url 'alumnos:crear_tutor_ajax' %}", {
+          method: 'POST',
+          body: new FormData(this),
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(r => r.json())
+          .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            if (data.success) {
+              const lbl = document.createElement('label');
+              lbl.className = 'list-group-item list-group-item-action border-0 rounded-3 mb-1 tutor-item d-flex align-items-center cursor-pointer bg-primary bg-opacity-10';
+              lbl.innerHTML = `<input class="form-check-input me-3 mt-0 shadow-none" type="checkbox" name="tutores" value="${data.id}" id="tutor_${data.id}" checked><span class="small text-dark fw-bold">${data.nombre} <span class="badge bg-primary ms-2 micro-text">NUEVO</span></span>`;
+              tutorList.prepend(lbl);
+              tutorForm.reset();
+              modal.hide();
+              setTimeout(() => {
+                if (lbl) lbl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => lbl.classList.remove('bg-primary', 'bg-opacity-10'), 2000);
+              }, 300);
+            } else {
+              alert('No se pudo guardar el tutor:\n' + data.errors);
+            }
+          })
+          .catch(e => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            alert('Ocurrió un error.');
+          });
+      });
+    }
+  });
+</script>
+
+<style>
+  .bg-light-subtle {
+    background-color: #f8fafc !important;
+  }
+
+  .border-light-subtle {
+    border-color: #e2e8f0 !important;
+  }
+
+  .micro-text {
+    font-size: 0.7rem;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .tutor-list-wrapper::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .tutor-list-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .list-group-item-action:hover {
+    background-color: #f1f5f9;
+  }
+</style>
+{% endblock %}

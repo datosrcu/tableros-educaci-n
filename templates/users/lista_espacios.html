@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-building me-2 text-primary"></i>Gestión de Espacios (Jardines)</h2>
+        <p class="text-muted small">Administración de sedes, sectores y datos de contacto.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'users:crear_espacio' %}" class="btn btn-primary shadow-sm rounded-pill">
+            <i class="fas fa-plus me-1"></i>Nuevo Espacio
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4">Nombre</th>
+                    <th>Programa</th>
+                    <th>Subprograma</th>
+                    <th>Sector</th>
+                    <th>Teléfono</th>
+                    <th class="text-end pe-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in espacios %}
+                <tr>
+                    <td class="ps-4 fw-bold text-dark">
+                        {{ e.nombre }}
+                    </td>
+                    <td>
+                        <span class="badge bg-info-subtle text-info border border-info border-opacity-25 px-2">
+                            {{ e.programa.nombre }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="text-muted small">
+                            {{ e.subprograma.nombre|default:"—" }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="small text-muted">
+                            {{ e.sector|default:"—" }}
+                        </span>
+                    </td>
+                    <td>
+                        <small class="text-muted"><i class="fas fa-phone-alt me-1 micro-text"></i>
+                            {{ e.telefono|default:"—" }}
+                        </small>
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'users:editar_jardin' e.id %}"
+                            class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="fas fa-info-circle me-1"></i>No hay espacios registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'users:dashboard_coordinador' %}" class="btn btn-link text-decoration-none text-muted">
+        <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+    </a>
+</div>
+
+<style>
+    .micro-text {
+        font-size: 0.75rem;
+        opacity: 0.6;
+    }
+</style>
+{% endblock %}

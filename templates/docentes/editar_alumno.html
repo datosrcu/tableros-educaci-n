@@ -1,27 +1,225 @@
 {% extends 'base.html' %}
+{% load form_filters %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="text-center mb-4">Editar alumno: {{ alumno.apellido }}, {{ alumno.nombre }}</h2>
-
-  <form method="post" class="mx-auto" style="max-width: 600px;">
-    {% csrf_token %}
-
-    {% for field in form %}
-      <div class="mb-3">
-        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-        {{ field }}
-        {% if field.errors %}
-          <div class="text-danger small">{{ field.errors }}</div>
-        {% endif %}
-      </div>
-    {% endfor %}
-
-    <div class="d-flex justify-content-between">
-      <button type="submit" class="btn btn-success">Guardar cambios</button>
-      <a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}" class="btn btn-secondary">Cancelar</a>
-    </div>
-  </form>
+<div class="row mb-4 align-items-center">
+  <div class="col-md-10">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:dashboard_docente' %}" class="text-decoration-none text-muted small text-uppercase">
+            Mi Panel
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+            class="text-decoration-none text-muted small text-uppercase">
+            {{ sala.nombre }}
+          </a>
+        </li>
+        <li class="breadcrumb-item active small text-uppercase fw-bold text-warning" aria-current="page">
+          Editar Alumno
+        </li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-user-edit me-2 text-warning"></i>Editar Alumno
+    </h2>
+    <p class="text-muted small mb-0">
+      Actualizando a: <span class="fw-bold text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</span>
+    </p>
+  </div>
 </div>
-{% endblock %}
 
+<form method="post" class="needs-validation" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+
+      <!-- Datos Personales -->
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom border-light">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-id-card me-2 text-warning"></i>Datos Personales
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            {% for field in alumno_form %}
+            {% if field.name != 'tutores' %}
+            <div class="col-md-6 mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Tutores -->
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div
+          class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-users me-2 text-warning"></i>Tutores Asignados
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="tutor-list-wrapper border rounded-4 p-2 bg-light bg-opacity-25"
+            style="max-height: 280px; overflow-y: auto;">
+            {% with field=alumno_form.tutores %}
+            <div class="list-group list-group-flush bg-transparent">
+              {% for ch_id, ch_lbl in field.field.choices %}
+              <label
+                class="list-group-item list-group-item-action border-0 rounded-3 mb-1 tutor-item d-flex align-items-center cursor-pointer">
+                <input class="form-check-input me-3 mt-0 shadow-none" type="checkbox" name="tutores" value="{{ ch_id }}"
+                  id="tutor_{{ ch_id }}" {% if ch_id in field.value %}checked{% endif %}>
+                <span class="small text-dark">{{ ch_lbl }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% endwith %}
+          </div>
+          {% if alumno_form.tutores.errors %}
+          <div class="text-danger micro-text mt-2 ps-2">
+            {% for error in alumno_form.tutores.errors %}
+            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Ficha Operativa -->
+      {% if dynamic_form or ficha_form %}
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom border-light">
+          <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
+            <i class="fas fa-clipboard-list me-2 text-warning"></i>Ficha Operativa
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          {% if ficha_form %}
+          <div class="row g-3">
+            {% for field in ficha_form %}
+            <div class="col-md-6 mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if dynamic_form %}
+          {% if ficha_form %}
+          <hr class="my-4 border-light">
+          {% endif %}
+          <div class="row g-3">
+            {% for field in dynamic_form %}
+            <div class="col-md-6 mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                {{ field.label }}
+              </label>
+              {{ field|add_class:"form-control shadow-none border-light-subtle bg-light-subtle" }}
+              {% if field.errors %}
+              <div class="text-danger micro-text mt-1">
+                {% for error in field.errors %}
+                {{ error }}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="mt-4 pt-3 d-flex gap-3 mb-5">
+        <button type="submit" class="btn btn-warning px-5 rounded-pill shadow-sm fw-bold text-dark hover-lift py-2">
+          <i class="fas fa-save me-2"></i>Guardar Cambios
+        </button>
+        <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+          class="btn btn-light border px-4 rounded-pill d-flex align-items-center fw-semibold text-muted">
+          Cancelar
+        </a>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="sticky-top" style="top: 1.5rem;">
+        <div class="card shadow-sm border-0 p-4 bg-warning bg-opacity-10 border-start border-4 border-warning mb-4">
+          <h6 class="fw-bold text-dark text-uppercase mb-3 micro-text">
+            <i class="fas fa-info-circle me-1"></i> Edición
+          </h6>
+          <p class="text-muted small mb-0">
+            Estás editando la ficha de <strong>{{ alumno.nombre }}</strong>. Los cambios se aplicarán inmediatamente
+            tras guardar.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<style>
+  .micro-text {
+    font-size: 0.7rem;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .tutor-list-wrapper::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .tutor-list-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .list-group-item-action:hover {
+    background-color: #f1f5f9;
+  }
+
+  .border-light-subtle {
+    border-color: #e2e8f0 !important;
+  }
+
+  .bg-light-subtle {
+    background-color: #f8fafc !important;
+  }
+</style>
+{% endblock %}

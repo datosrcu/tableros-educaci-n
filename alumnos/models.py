@@ -3,44 +3,47 @@ from jardines.models import Sala
 from users.models import Usuario
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from datetime import date
 
 class Alumno(models.Model):
-    dni_validator = RegexValidator(
-    regex=r'^\d{2}\.\d{3}\.\d{3}$',
-    message='El DNI debe tener el formato XX.XXX.XXX'
-)
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
-    dni = models.CharField(
-    max_length=10,
-    unique=True,
-    validators=[dni_validator]
-)
-    sala = models.ForeignKey(Sala, on_delete=models.PROTECT, related_name="alumnos")
+    dni = models.CharField(max_length=20, unique=True)
+    fecha_nacimiento = models.DateField(null=True, blank=True)
+    sala = models.ForeignKey("jardines.Sala", on_delete=models.PROTECT)
+    tutores = models.ManyToManyField("Tutor", related_name="alumnos", blank=True)
     activo = models.BooleanField(default=True)
-    fecha_alta = models.DateTimeField(auto_now_add=True)
-    fecha_baja = models.DateTimeField(null=True, blank=True)
-    tutores = models.ManyToManyField('Tutor', related_name='alumnos', blank=True)
+    fecha_baja = models.DateField(null=True, blank=True)
 
     def clean(self):
-        if not self.sala:
-            raise ValidationError("El alumno debe estar asignado a una sala.")
+        # 🔹 DNI solo números
+        if not self.dni.isdigit():
+            raise ValidationError({"dni": "El DNI debe contener solo números."})
 
-        if not self.nombre.strip():
-            raise ValidationError("El nombre del alumno no puede estar vacío.")
+        # 🔹 Edad razonable (ejemplo: 0.5 a 18 años para incluir maternales)
+        dias_vividos = (date.today() - self.fecha_nacimiento).days
+        edad_anios = dias_vividos / 365.25
+        if edad_anios < 0.5 or edad_anios > 18:
+            raise ValidationError({
+                "fecha_nacimiento": "La edad del alumno no es válida para este sistema (debe tener entre 6 meses y 18 años)."
+            })
+
+        # 🔹 Si no está activo → debe tener fecha_baja
+        if not self.activo and not self.fecha_baja:
+            raise ValidationError({
+                "fecha_baja": "Debe indicar la fecha de baja."
+            })
+
+        # 🔹 Si está activo → no puede tener fecha_baja
+        if self.activo and self.fecha_baja:
+            raise ValidationError({
+                "fecha_baja": "Un alumno activo no puede tener fecha de baja."
+            })
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.full_clean()  # 🔥 fuerza validaciones siempre
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"{self.apellido}, {self.nombre}"
-    
-    def dni_formateado(self):
-        dni = self.dni.replace(".", "")
-        return f"{dni[:2]}.{dni[2:5]}.{dni[5:]}"
-    
-    dni_formateado.short_description = 'DNI'
 
 class MotivoJustificacion(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
@@ -53,6 +56,7 @@ class Asistencia(models.Model):
         ('P', 'Presente'),
         ('A', 'Ausente'),
         ('J', 'Justificado'),
+        ('T', 'Tarde'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asistencias")
     fecha = models.DateField(max_length=50)
@@ -91,10 +95,10 @@ class Tutor(models.Model):
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     dni = models.CharField(
-        max_length=10,
+        max_length=20,
         validators=[RegexValidator(
-            regex=r'^\d{2}\.\d{3}\.\d{3}$',
-            message='El DNI debe tener el formato XX.XXX.XXX'
+            regex=r'^[\d\.-]+$',
+            message='El DNI solo puede contener números, puntos o guiones.'
         )],
         unique=True
     )
@@ -103,6 +107,84 @@ class Tutor(models.Model):
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre} ({self.dni})"
+
+class Inscripcion(models.Model):
+    # Relaciones
+    programa = models.ForeignKey(
+        "jardines.Programa",
+        on_delete=models.PROTECT
+    )
+    subprograma = models.ForeignKey(
+        "jardines.Subprograma",
+        on_delete=models.PROTECT
+    )
+    espacio = models.ForeignKey(
+        "jardines.Jardin",
+        on_delete=models.PROTECT
+    )
+    sala = models.ForeignKey(
+        "jardines.Sala",
+        on_delete=models.PROTECT
+    )
+
+    # Datos personales (comunes a TODOS)
+    apellido = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=100)
+    dni = models.CharField(max_length=20)
+    fecha_nacimiento = models.DateField()
+    telefono = models.CharField(max_length=50, blank=True)
+    direccion = models.CharField(max_length=200, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Inscripción"
+        verbose_name_plural = "Inscripciones"
+        
+    def clean(self):
+        pass
+
+    def __str__(self):
+        return f"{self.apellido}, {self.nombre} ({self.programa})"
+    
+class FichaProgramaAlumno(models.Model):
+    alumno = models.OneToOneField(
+        "Alumno",
+        on_delete=models.CASCADE,
+        related_name="ficha_programa"
+    )
+
+    # Campos genéricos reutilizables
+    sabe_leer = models.BooleanField(null=True, blank=True)
+    sabe_escribir = models.BooleanField(null=True, blank=True)
+
+    nivel_educativo = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    situacion_laboral = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    asistencia_social = models.BooleanField(null=True, blank=True)
+
+    observaciones_programa = models.TextField(blank=True)
+    
+    telefono = models.CharField(max_length=20, blank=True)
+    escolaridad = models.CharField(max_length=100, blank=True)
+    obra_social = models.CharField(max_length=100, blank=True)
+
+    def clean(self):
+        pass
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Ficha programa - {self.alumno}"
 
 
 # Create your models here.

@@ -17,16 +17,36 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
-from django.contrib.auth import views as auth_views
-from users.views import registrar_docente
+from django.contrib.auth import views as auth_views, logout as django_logout
+from users.views import crear_docente
+
+def logout_view(request):
+    django_logout(request)
+    return redirect("login")
+
+def home_redirect(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+
+    if request.user.rol == "coordinador":
+        return redirect("users:dashboard_coordinador")
+    if request.user.rol == "docente":
+        return redirect("alumnos:dashboard_docente")
+
+    return redirect("/admin/")
+
 
 urlpatterns = [
-    path('', lambda request: redirect('alumnos:dashboard')),
-    path('admin/', admin.site.urls),
+    path('', home_redirect),
+    path('admin-panel/', admin.site.urls),
+    path('admin/', lambda r: redirect('/admin-panel/')),
+    path('login/', lambda r: redirect('login')),
+    path('logout/', logout_view, name='logout_alias'),
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/accounts/login/'), name='logout'),
     path('', include('alumnos.urls')),
-    path('registro/docente/', registrar_docente, name='registrar_docente'),
+    path('registro/docente/', crear_docente, name='registrar_docente'),
     path("jardines/", include("jardines.urls")),
-
+    path("usuarios/", include("users.urls")),
+    path("formularios/", include("formularios.urls")),
 ]

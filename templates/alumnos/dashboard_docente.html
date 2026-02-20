@@ -1,20 +1,77 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Dashboard del Docente</h1>
+<div class="row mb-5">
+  <div class="col-md-8">
+    <h1 class="fw-bold mb-1">Mi Panel de Trabajo</h1>
+    <p class="text-muted">Gestión de salas asignadas, asistencia y alumnos.</p>
+  </div>
+  <div class="col-md-4 text-md-end">
+    <div class="p-2 bg-white rounded shadow-sm d-inline-block border">
+      <i class="fas fa-calendar-alt text-primary me-2"></i>
+      <span class="fw-bold text-dark">{% now "d \d\e F, Y" %}</span>
+    </div>
+  </div>
+</div>
+
+<h3 class="fw-bold mb-4"><i class="fas fa-door-open me-2 text-primary"></i>Mis Salas Asignadas</h3>
 
 {% if salas %}
-    <ul>
-        {% for sala in salas %}
-            <li>
-                {{ sala.nombre }}
-                <a href="{% url 'alumnos:cargar_asistencia' sala.id %}">
-                    Cargar asistencia
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
+<div class="row g-4">
+  {% for sala in salas %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100 shadow-sm border-0 border-top border-4 border-primary">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h5 class="card-title fw-bold mb-0">{{ sala.nombre }}</h5>
+            <small class="text-primary fw-semibold">{{ sala.get_turno_display|default:sala.turno|capfirst }}</small>
+          </div>
+          <span class="badge bg-light text-dark border">{{ sala.espacio.nombre }}</span>
+        </div>
+
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-1">
+            <i class="fas fa-project-diagram fa-fw text-muted me-2 small"></i>
+            <span class="small"><strong>Prog:</strong> {{ sala.jardin.programa.nombre|default:"—" }}</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <i class="fas fa-sitemap fa-fw text-muted me-2 small"></i>
+            <span class="small"><strong>Sub:</strong> {{ sala.jardin.subprograma.nombre|default:"—" }}</span>
+          </div>
+        </div>
+
+        <div class="row g-2 mt-auto">
+          <div class="col-6">
+            <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+              class="btn btn-outline-primary w-100 btn-sm fw-bold py-2">
+              <i class="fas fa-users me-1"></i> Alumnos
+            </a>
+          </div>
+          <div class="col-6">
+            <a href="{% url 'alumnos:cargar_asistencia' sala.id %}" class="btn btn-primary w-100 btn-sm fw-bold py-2">
+              <i class="fas fa-check-circle me-1"></i> Asistencia
+            </a>
+          </div>
+          <div class="col-12">
+            <a href="{% url 'alumnos:ver_asistencias' sala.id %}"
+              class="btn btn-outline-secondary w-100 btn-sm fw-bold py-2">
+              <i class="fas fa-history me-1"></i> Ver Historial
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 {% else %}
-    <p>No tenés salas asignadas.</p>
+<div class="card p-5 text-center border-0 shadow-sm">
+  <div class="mb-4 text-muted opacity-25">
+    <i class="fas fa-folder-open fa-5x"></i>
+  </div>
+  <h4 class="text-muted">No tenés salas asignadas actualmente.</h4>
+  <p class="text-muted small">Contactáte con tu coordinador si crees que esto es un error.</p>
+</div>
 {% endif %}
 {% endblock %}

@@ -1,5 +1,5 @@
 from django import forms
-from .models import Alumno, Tutor
+from .models import Alumno, Tutor, Inscripcion, FichaProgramaAlumno
 from django.forms import inlineformset_factory
 import re
 
@@ -8,8 +8,8 @@ class AlumnoForm(forms.ModelForm):
 
     class Meta:
         model = Alumno
-        fields = ['nombre', 'apellido', 'dni', 'sala', 'tutores']
-        exclude = ['sala']
+        fields = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'sala', 'tutores']
+        exclude = ['sala', 'fecha_baja']
         widgets = {
             'tutores': forms.CheckboxSelectMultiple
         }
@@ -27,10 +27,9 @@ class AlumnoForm(forms.ModelForm):
         return apellido
 
     def clean_dni(self):
-        dni = self.cleaned_data.get('dni', '').strip()
-        pattern = r'^\d{2}\.\d{3}\.\d{3}$'
-        if not re.match(pattern, dni):
-            raise forms.ValidationError("El DNI debe tener el formato XX.XXX.XXX")
+        dni = self.cleaned_data["dni"]
+        if len(dni) < 7:
+            raise forms.ValidationError("El DNI es demasiado corto.")
         return dni
 class EditarAlumnoForm(forms.ModelForm):
     tutores = forms.ModelMultipleChoiceField(
@@ -48,3 +47,18 @@ class TutorForm(forms.ModelForm):
     class Meta:
         model = Tutor
         fields = ['nombre', 'apellido', 'dni', 'telefono', 'email']
+
+class InscripcionForm(forms.ModelForm):
+    class Meta:
+        model = Inscripcion
+        fields = "__all__"
+
+class FichaProgramaAlumnoForm(forms.ModelForm):
+    class Meta:
+        model = FichaProgramaAlumno
+        exclude = ("alumno",)
+    def clean_telefono(self):
+        tel = self.cleaned_data.get("telefono", "")
+        if tel and not tel.replace("+", "").replace(" ", "").isdigit():
+            raise forms.ValidationError("El teléfono solo puede contener números.")
+        return tel    
