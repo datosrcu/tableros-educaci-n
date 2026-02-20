@@ -22,10 +22,21 @@
     <p class="text-muted small mb-0">{{ sala.nombre }} / {{ sala.jardin.nombre }}</p>
   </div>
   <div class="col-sm-4 text-sm-end mt-3 mt-sm-0">
-    <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"
-      class="btn btn-warning shadow-sm rounded-pill fw-bold px-4">
-      <i class="fas fa-edit me-1"></i>Editar Asistencia del Día
-    </a>
+    <div class="d-inline-flex gap-2">
+      <div class="dropdown">
+        <button class="btn btn-outline-primary shadow-sm rounded-pill fw-bold px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          <i class="fas fa-file-export me-1"></i>Exportar
+        </button>
+        <ul class="dropdown-menu shadow-sm">
+          <li><a class="dropdown-item" href="{% url 'alumnos:exportar_asistencias_csv' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"><i class="fas fa-file-csv me-2 text-success"></i>Descargar CSV</a></li>
+          <li><a class="dropdown-item" href="{% url 'alumnos:imprimir_asistencias_sala' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
+        </ul>
+      </div>
+      <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"
+        class="btn btn-warning shadow-sm rounded-pill fw-bold px-4">
+        <i class="fas fa-edit me-1"></i>Editar Asistencia del Día
+      </a>
+    </div>
   </div>
 </div>
 

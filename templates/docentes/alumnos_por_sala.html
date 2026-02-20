@@ -35,6 +35,15 @@
                     <h5 class="mb-0 fw-bold text-dark">Alumnos Registrados</h5>
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-primary rounded-pill">{{ alumnos.count }} alumnos</span>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary btn-sm rounded-pill dropdown-toggle px-3" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-file-export me-1"></i>Exportar
+                            </button>
+                            <ul class="dropdown-menu shadow-sm">
+                                <li><a class="dropdown-item" href="{% url 'alumnos:exportar_alumnos_csv' sala.id %}"><i class="fas fa-file-csv me-2 text-success"></i>Descargar CSV</a></li>
+                                <li><a class="dropdown-item" href="{% url 'alumnos:imprimir_alumnos_sala' sala.id %}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
+                            </ul>
+                        </div>
                         <a href="{% url 'alumnos:agregar_alumno' sala.id %}"
                             class="btn btn-success btn-sm rounded-pill px-3">
                             <i class="fas fa-plus me-1"></i>Nuevo Alumno

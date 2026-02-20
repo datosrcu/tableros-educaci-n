@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-history text-success"></i> Actividad Reciente de la Sala</h1>
+        <a href="{% url 'alumnos:dashboard_docente' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="px-4">Fecha y Hora</th>
+                            <th>Docente</th>
+                            <th>Acción</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="px-4 text-muted">{{ log.fecha|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <strong>{{ log.usuario.get_full_name|default:log.usuario.username }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge {% if log.accion == 'creacion' %}bg-success{% elif log.accion == 'eliminacion' %}bg-danger{% elif log.accion == 'modificacion' %}bg-warning text-dark{% else %}bg-info{% endif %} text-uppercase">
+                                    {{ log.get_accion_display }}
+                                </span>
+                            </td>
+                            <td><span class="text-muted">{{ log.modelo }}</span></td>
+                            <td>{{ log.descripcion }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                <p>No hay actividad reciente registrada en tus salas.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+    <!-- Reutilizar paginación similar al de coordinador si es necesario -->
+    {% endif %}
+</div>
+
+<style>
+    .card { border-radius: 12px; overflow: hidden; }
+    .table thead th { border-top: 0; text-transform: uppercase; font-size: 0.7rem; font-weight: 700; color: #6c757d; }
+    .badge { font-weight: 600; font-size: 0.65rem; padding: 0.4em 0.7em; border-radius: 4px; }
+</style>
+{% endblock %}

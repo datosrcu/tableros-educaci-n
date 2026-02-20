@@ -82,4 +82,31 @@ class Usuario(AbstractUser):
         super().save(*args, **kwargs)
 
 
-# Create your models here.
+class AccionAuditoria(models.Model):
+    ACCIONES = (
+        ("creacion", "Creación"),
+        ("modificacion", "Modificación"),
+        ("eliminacion", "Eliminación"),
+        ("asignacion", "Asignación"),
+    )
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="acciones_realizadas",
+        verbose_name="Usuario responsable"
+    )
+    accion = models.CharField(max_length=20, choices=ACCIONES)
+    modelo = models.CharField(max_length=100)  # Nombre del modelo afectado
+    objeto_id = models.PositiveIntegerField(null=True, blank=True)
+    descripcion = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Acción de Auditoría"
+        verbose_name_plural = "Log de Auditoría"
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return f"{self.usuario} - {self.accion} {self.modelo} - {self.fecha.strftime('%d/%m/%Y %H:%M')}"

@@ -1,7 +1,8 @@
+import csv
 from datetime import date, datetime
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
@@ -449,3 +450,106 @@ def crear_tutor_ajax(request):
                 error_msg += f"{field.capitalize()}: {', '.join(errors)}\n"
             return JsonResponse({"success": False, "errors": error_msg}, status=400)
     return JsonResponse({"success": False, "message": "Método no permitido"}, status=405)
+
+
+# =========================================================
+# 📊 EXPORTACIÓN DE DATOS
+# =========================================================
+
+@login_required
+@rol_requerido("docente")
+def exportar_alumnos_csv(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if not docente_tiene_sala(request.user, sala.id):
+        raise PermissionDenied
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="alumnos_{sala.nombre}.csv"'
+    
+    # UTF-8 with BOM for Excel compatibility
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Apellido', 'Nombre', 'DNI', 'Fecha Nacimiento', 'Estado'])
+
+    alumnos = Alumno.objects.filter(sala=sala)
+    for a in alumnos:
+        writer.writerow([a.apellido, a.nombre, a.dni, a.fecha_nacimiento.strftime('%d/%m/%Y') if a.fecha_nacimiento else '-', 'Activo' if a.activo else 'Baja'])
+
+    return response
+
+
+@login_required
+@rol_requerido("docente")
+def imprimir_alumnos_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if not docente_tiene_sala(request.user, sala.id):
+        raise PermissionDenied
+
+    alumnos = Alumno.objects.filter(sala=sala, activo=True).order_by('apellido')
+    return render(request, "docentes/imprimir_alumnos.html", {
+        "sala": sala,
+        "alumnos": alumnos,
+        "fecha": date.today()
+    })
+
+
+@login_required
+@rol_requerido("docente")
+def exportar_asistencias_csv(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if not docente_tiene_sala(request.user, sala.id):
+        raise PermissionDenied
+
+    fecha_str = request.GET.get("fecha")
+    try:
+        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    except Exception:
+        fecha = date.today()
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="asistencias_{sala.nombre}_{fecha}.csv"'
+    
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Fecha', 'Alumno', 'DNI', 'Estado', 'Justificación'])
+
+    asistencias = Asistencia.objects.filter(
+        alumno__sala=sala,
+        fecha=fecha
+    ).select_related('alumno', 'motivo')
+
+    for a in asistencias:
+        writer.writerow([
+            a.fecha.strftime('%d/%m/%Y'),
+            f"{a.alumno.apellido}, {a.alumno.nombre}",
+            a.alumno.dni,
+            a.get_estado_display(),
+            a.motivo.nombre if a.motivo else '-'
+        ])
+
+    return response
+
+
+@login_required
+@rol_requerido("docente")
+def imprimir_asistencias_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if not docente_tiene_sala(request.user, sala.id):
+        raise PermissionDenied
+
+    fecha_str = request.GET.get("fecha")
+    try:
+        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    except Exception:
+        fecha = date.today()
+
+    alumnos = Alumno.objects.filter(sala=sala, activo=True).order_by('apellido')
+    asistencias = Asistencia.objects.filter(alumno__in=alumnos, fecha=fecha).select_related('motivo')
+    asistencias_dict = {a.alumno_id: a for a in asistencias}
+
+    return render(request, "docentes/imprimir_asistencias.html", {
+        "sala": sala,
+        "alumnos": alumnos,
+        "asistencias_dict": asistencias_dict,
+        "fecha": fecha,
+    })

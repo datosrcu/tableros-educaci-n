@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Alumnos - {{ sala.nombre }}</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { bg-color: #f2f2f2; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .no-print { margin-bottom: 20px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+        <button onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="header">
+        <h1>Sistema de Gestión de Jardines</h1>
+        <h2>Lista de Alumnos - {{ sala.nombre }}</h2>
+        <p><strong>Jardín:</strong> {{ sala.jardin.nombre }} | <strong>Fecha:</strong> {{ fecha|date:"d/m/Y" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Apellido</th>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Fecha de Nacimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alumnos %}
+            <tr>
+                <td>{{ a.apellido }}</td>
+                <td>{{ a.nombre }}</td>
+                <td>{{ a.dni }}</td>
+                <td>{{ a.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

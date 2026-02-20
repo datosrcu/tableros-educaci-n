@@ -101,6 +101,16 @@ urlpatterns = [
         views.asignar_docentes_sala,
         name="asignar_docentes_sala",
     ),
+    path(
+        "coordinador/log-sistema/",
+        views.AuditLogListView.as_view(),
+        name="log_sistema"
+    ),
+    path(
+        "docente/log-sistema/",
+        views.TeacherAuditLogListView.as_view(),
+        name="log_docente_sistema"
+    ),
 ]
 
 

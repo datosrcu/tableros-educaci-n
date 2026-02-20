@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-history text-primary"></i> Log de Auditoría del Sistema</h1>
+        <a href="{% url 'users:dashboard_coordinador' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="px-4">Fecha y Hora</th>
+                            <th>Usuario</th>
+                            <th>Acción</th>
+                            <th>Modelo</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="px-4 text-muted">{{ log.fecha|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <strong>{{ log.usuario.get_full_name|default:log.usuario.username }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge {% if log.accion == 'creacion' %}bg-success{% elif log.accion == 'eliminacion' %}bg-danger{% elif log.accion == 'modificacion' %}bg-warning text-dark{% else %}bg-info{% endif %} text-uppercase">
+                                    {{ log.get_accion_display }}
+                                </span>
+                            </td>
+                            <td><code class="text-primary">{{ log.modelo }}</code></td>
+                            <td>{{ log.descripcion }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                <p>No hay registros de actividad en el sistema.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<style>
+    .card { border-radius: 15px; overflow: hidden; }
+    .table thead th { border-top: 0; text-transform: uppercase; font-size: 0.75rem; font-weight: 700; color: #6c757d; }
+    .badge { font-weight: 600; font-size: 0.7rem; padding: 0.5em 0.8em; border-radius: 6px; }
+</style>
+{% endblock %}

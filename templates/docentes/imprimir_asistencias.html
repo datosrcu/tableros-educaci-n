@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Asistencia - {{ sala.nombre }}</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { bg-color: #f2f2f2; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .no-print { margin-bottom: 20px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge-presente { bg-color: #d1fae5; color: #065f46; }
+        .badge-ausente { bg-color: #fee2e2; color: #991b1b; }
+        .badge-justificado { bg-color: #fef3c7; color: #92400e; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+        <button onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="header">
+        <h1>Sistema de Gestión de Jardines</h1>
+        <h2>Reporte de Asistencia - {{ sala.nombre }}</h2>
+        <p><strong>Jardín:</strong> {{ sala.jardin.nombre }} | <strong>Fecha Reporte:</strong> {{ fecha|date:"d/m/Y" }}</p>
+    {% load dict_filters %}
+    <table>
+        <thead>
+            <tr>
+                <th>Alumno</th>
+                <th>DNI</th>
+                <th>Estado</th>
+                <th>Justificación / Observación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alumnos %}
+            {% with asistencia=asistencias_dict|dict_get:a.id %}
+            <tr>
+                <td>{{ a.apellido }}, {{ a.nombre }}</td>
+                <td>{{ a.dni }}</td>
+                <td>
+                    {% if asistencia %}
+                        {{ asistencia.get_estado_display }}
+                    {% else %}
+                        - Sin Registro -
+                    {% endif %}
+                </td>
+                <td>{{ asistencia.motivo.nombre|default:"-" }}</td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

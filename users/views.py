@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import ListView
 from django.core.exceptions import PermissionDenied
 
 from .decorators import solo_coordinador
@@ -14,7 +16,8 @@ from .forms import (
 )
 
 from jardines.models import Jardin, Programa, Subprograma, Sala
-from users.models import Usuario
+from alumnos.models import Alumno, Asistencia
+from users.models import Usuario, AccionAuditoria
 
 
 # =====================================================
@@ -286,3 +289,38 @@ def admin_redirect(request):
         return redirect("alumnos:dashboard_docente")
 
     return redirect("/admin/")
+
+class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = AccionAuditoria
+    template_name = "users/audit_log.html"
+    context_object_name = "logs"
+    paginate_by = 50
+
+    def test_func(self):
+        return self.request.user.es_coordinador() or self.request.user.es_admin()
+
+class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = AccionAuditoria
+    template_name = "docentes/audit_log.html"
+    context_object_name = "logs"
+    paginate_by = 50
+
+    def test_func(self):
+        return self.request.user.es_docente()
+
+    def get_queryset(self):
+        # 1. Obtener las salas del docente
+        salas = self.request.user.salas_asignadas.all()
+        
+        # 2. Obtener los IDs de alumnos de esas salas
+        alumnos_ids = Alumno.objects.filter(sala__in=salas).values_list('id', flat=True)
+        
+        # 3. Obtener los IDs de asistencias de esos alumnos
+        asistencias_ids = Asistencia.objects.filter(alumno__id__in=alumnos_ids).values_list('id', flat=True)
+
+        # 4. Filtrar el log
+        from django.db.models import Q
+        return AccionAuditoria.objects.filter(
+            (Q(modelo="Alumno") & Q(objeto_id__in=list(alumnos_ids))) |
+            (Q(modelo="Asistencia") & Q(objeto_id__in=list(asistencias_ids)))
+        ).select_related('usuario')
