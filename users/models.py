@@ -1,10 +1,17 @@
+"""
+Modelos de usuario y auditoría.
+Implementa un modelo de usuario personalizado con roles y un sistema de logs.
+"""
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 
 
 class Usuario(AbstractUser):
-
+    """
+    Modelo de usuario extendido con roles específicos para el Sistema Jardines.
+    Roles disponibles: administrador, coordinador, docente.
+    """
     ROLES = (
         ("administrador", "Administrador"),
         ("coordinador", "Coordinador"),
@@ -17,7 +24,7 @@ class Usuario(AbstractUser):
         default="docente",
     )
 
-    # 🆔 Datos personales
+    # 🆔 Datos personales complementarios
     dni = models.CharField(
         max_length=20,
         unique=True,
@@ -28,45 +35,54 @@ class Usuario(AbstractUser):
     telefono = models.CharField(max_length=50, blank=True)
 
     # =====================================================
-    # MÉTODOS DE CONSULTA
+    # MÉTODOS DE CONSULTA (Helpers de permisos)
     # =====================================================
 
     def es_admin(self):
+        """Verifica si el usuario tiene privilegios administrativos."""
         return self.rol == "administrador" or self.is_superuser
 
     def es_coordinador(self):
+        """Verifica si el usuario es coordinador."""
         return self.rol == "coordinador"
 
     def es_docente(self):
+        """Verifica si el usuario es docente."""
         return self.rol == "docente"
 
     # =====================================================
-    # VALIDACIONES
+    # VALIDACIONES DE NEGOCIO
     # =====================================================
 
     def clean(self):
+        """
+        Garantiza la separación de responsabilidades:
+        Admin/Coordinador no deben estar asignados a salas directamente (soft-check).
+        """
         super().clean()
 
-        # 🔒 Coordinador no puede tener salas asignadas
+        # 🔒 Coordinador no puede tener salas asignadas (regla de negocio v1)
         if self.rol == "coordinador" and self.pk:
             if self.salas_asignadas.exists():
                 raise ValidationError(
-                    "Un coordinador no puede tener salas asignadas."
+                    "Un coordinador no puede tener salas asignadas directamente."
                 )
 
         # 🔒 Administrador no puede tener salas asignadas
         if self.rol == "administrador" and self.pk:
             if self.salas_asignadas.exists():
                 raise ValidationError(
-                    "Un administrador no puede tener salas asignadas."
+                    "Un administrador no puede tener salas asignadas directamente."
                 )
 
     # =====================================================
-    # SINCRONIZACIÓN DE PERMISOS
+    # SINCRONIZACIÓN DE PERMISOS DJANGO
     # =====================================================
 
     def save(self, *args, **kwargs):
-
+        """
+        Sincroniza flags de Django (is_staff) basado en el rol de negocio.
+        """
         # 🔐 Sincronizar permisos con rol
         if self.rol == "administrador":
             self.is_staff = True
@@ -83,6 +99,10 @@ class Usuario(AbstractUser):
 
 
 class AccionAuditoria(models.Model):
+    """
+    Log de auditoría para rastrear acciones críticas en el sistema.
+    Almacena quién hizo qué, en qué modelo y cuándo.
+    """
     ACCIONES = (
         ("creacion", "Creación"),
         ("modificacion", "Modificación"),

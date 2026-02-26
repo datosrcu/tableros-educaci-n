@@ -1,9 +1,16 @@
+"""
+Modelos para la gestión jerárquica de la estructura educativa.
+Define los Programas, Subprogramas, Espacios (Jardines) y Salas.
+"""
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models.functions import Lower
 
 class Programa(models.Model):
+    """
+    Nivel superior de la organización (ej: Jardines Maternales, Apoyo Escolar).
+    """
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
     usa_formulario_ampliado = models.BooleanField(
@@ -20,6 +27,9 @@ class Programa(models.Model):
         return self.nombre
 
 class Subprograma(models.Model):
+    """
+    Subdivisión de un Programa para mayor granularidad administrativa.
+    """
     programa = models.ForeignKey(
         Programa,
         on_delete=models.CASCADE,
@@ -41,27 +51,30 @@ class Subprograma(models.Model):
 
 
 class Jardin(models.Model):
+    """
+    Representa un edificio físico o sede (Espacio) donde se dictan las clases.
+    """
     programa = models.ForeignKey(
-    Programa,
-    on_delete=models.PROTECT,
-    related_name="jardines",
-    null=True,
-    blank=True
+        Programa,
+        on_delete=models.PROTECT,
+        related_name="jardines",
+        null=True,
+        blank=True
     )
     
     subprograma = models.ForeignKey(
-    Subprograma,
-    on_delete=models.PROTECT,
-    null=True,
-    blank=True
+        Subprograma,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
     )
     
-    SECTORES_CHOICES =   [
-        ('Norte', 'norte'),
-        ('Sur', 'sur'),
-        ('Este', 'este'),
-        ('Oeste', 'oeste'),
-        ('Centro', 'centro'),
+    SECTORES_CHOICES = [
+        ('Norte', 'Norte'),
+        ('Sur', 'Sur'),
+        ('Este', 'Este'),
+        ('Oeste', 'Oeste'),
+        ('Centro', 'Centro'),
     ] 
     nombre = models.CharField(max_length=100)
     direccion = models.TextField(max_length=150)
@@ -73,13 +86,14 @@ class Jardin(models.Model):
         verbose_name = "Espacio"
         verbose_name_plural = "Espacios"
     
-    
     def clean(self):
+        """Valida la integridad de la jerarquía programa-subprograma."""
         if not self.programa:
-            raise ValidationError("el jardín debe pertenecer a algún programa")
+            raise ValidationError("El espacio debe pertenecer a algún programa.")
         
         if self.subprograma and self.subprograma.programa != self.programa:
-            raise ValidationError("El subprograma no pertenece al programa seleccionado.")
+            raise ValidationError("El subprograma seleccionado no pertenece al programa del espacio.")
+        
         if not self.direccion.strip():
             raise ValidationError("La dirección no puede estar vacía.")
 
@@ -91,10 +105,13 @@ class Jardin(models.Model):
         return self.nombre
 
 class Sala(models.Model):
-
+    """
+    Unidad educativa mínima dentro de un Jardín. 
+    Vincula a los docentes con los alumnos y el horario.
+    """
     jardin = models.ForeignKey(
         Jardin,
-        on_delete=models.PROTECT,  # 🔒 más seguro
+        on_delete=models.PROTECT,
         related_name="salas"
     )
 
@@ -136,6 +153,7 @@ class Sala(models.Model):
         ]
 
     def clean(self):
+        """Valida coherencia horaria y roles de los responsables."""
         super().clean()
 
         errors = {}
@@ -146,13 +164,13 @@ class Sala(models.Model):
         if self.horario_inicio and self.horario_fin:
             if self.horario_fin <= self.horario_inicio:
                 errors["horario_fin"] = (
-                    "El horario de fin debe ser posterior al inicio."
+                    "El horario de fin debe ser posterior al horario de inicio."
                 )
 
         if self.responsable:
             if self.responsable.rol not in ["docente", "coordinador"]:
                 errors["responsable"] = (
-                    "El responsable debe ser docente o coordinador."
+                    "El responsable de la sala debe tener rol 'docente' o 'coordinador'."
                 )
 
         if errors:
