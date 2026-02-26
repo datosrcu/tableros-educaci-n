@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Docentes</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .no-print { margin-bottom: 20px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+        <button onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="header">
+        <h1>Sistema de Gestión de Jardines</h1>
+        <h2>Lista de Docentes</h2>
+        <p><strong>Fecha Reporte:</strong> {{ fecha|date:"d/m/Y" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Apellido y Nombre</th>
+                <th>DNI</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in docentes %}
+            <tr>
+                <td>{{ doc.last_name }}, {{ doc.first_name }}</td>
+                <td>{{ doc.dni|default:"-" }}</td>
+                <td>{{ doc.email }}</td>
+                <td>{{ doc.telefono|default:"-" }}</td>
+                <td>{% if doc.is_active %}Activo{% else %}Inactivo{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No hay docentes registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Salas</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .no-print { margin-bottom: 20px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+        <button onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="header">
+        <h1>Sistema de Gestión de Jardines</h1>
+        <h2>Lista de Salas</h2>
+        <p><strong>Fecha Reporte:</strong> {{ fecha|date:"d/m/Y" }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Jardín / Espacio</th>
+                <th>Nombre Sala</th>
+                <th>Turno</th>
+                <th>Horario</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sala in salas %}
+            <tr>
+                <td>{{ sala.jardin.nombre }}</td>
+                <td>{{ sala.nombre }}</td>
+                <td>{{ sala.get_turno_display }}</td>
+                <td>{{ sala.horario|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center;">No hay salas registradas.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

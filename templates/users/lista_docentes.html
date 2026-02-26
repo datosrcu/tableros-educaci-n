@@ -5,9 +5,20 @@
         <h2 class="fw-bold"><i class="fas fa-user-graduate me-2 text-primary"></i>Gestión de Docentes</h2>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="{% url 'users:crear_docente' %}" class="btn btn-primary shadow-sm rounded-pill">
-            <i class="fas fa-plus me-1"></i>Nuevo Docente
-        </a>
+        <div class="d-inline-flex gap-2">
+            <div class="dropdown">
+                <button class="btn btn-outline-primary shadow-sm rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-file-export me-1"></i>Exportar
+                </button>
+                <ul class="dropdown-menu shadow-sm">
+                    <li><a class="dropdown-item" href="{% url 'users:exportar_docentes_csv' %}"><i class="fas fa-file-csv me-2 text-success"></i>Descargar CSV</a></li>
+                    <li><a class="dropdown-item" href="{% url 'users:imprimir_docentes' %}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
+                </ul>
+            </div>
+            <a href="{% url 'users:crear_docente' %}" class="btn btn-primary shadow-sm rounded-pill">
+                <i class="fas fa-plus me-1"></i>Nuevo Docente
+            </a>
+        </div>
     </div>
 </div>
 
@@ -50,10 +61,16 @@
 </code>
                     </td>
                     <td class="text-end pe-4">
-                        <a href="{% url 'users:editar_docente' d.id %}"
-                            class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                            <i class="fas fa-edit me-1"></i>Editar
-                        </a>
+                        <div class="d-inline-flex gap-2">
+                            <a href="{% url 'users:restablecer_password_docente' d.id %}"
+                                class="btn btn-sm btn-outline-secondary rounded-pill px-3" title="Restablecer Contraseña">
+                                <i class="fas fa-key me-1"></i>Contraseña
+                            </a>
+                            <a href="{% url 'users:editar_docente' d.id %}"
+                                class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                <i class="fas fa-edit me-1"></i>Editar
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

@@ -19,10 +19,10 @@ def rol_requerido(*roles):
 
 
 def solo_coordinador(view_func):
+    @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        if request.user.rol != "coordinador":
-            from django.core.exceptions import PermissionDenied
-            raise PermissionDenied
-        return view_func(request, *args, **kwargs)
+        if request.user.is_superuser or request.user.rol == "coordinador":
+            return view_func(request, *args, **kwargs)
+        raise PermissionDenied
     return _wrapped_view
 

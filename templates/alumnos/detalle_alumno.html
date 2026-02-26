@@ -130,23 +130,35 @@
         <h6 class="mb-0 fw-bold text-dark uppercase micro-text">Resumen de Asistencias</h6>
       </div>
       <div class="card-body p-4 text-center">
-        <div class="row">
-          <div class="col-4">
-            <div class="p-3 bg-success bg-opacity-10 rounded-3">
-              <div class="h3 fw-bold text-success mb-0">{{ resumen.P|default:0 }}</div>
-              <div class="text-success small uppercase fw-bold" style="font-size: 0.6rem;">Presentes</div>
+        <div class="row g-2">
+          <div class="col-6 col-md">
+            <div class="p-2 bg-success bg-opacity-10 rounded-3 text-center h-100">
+              <div class="h4 fw-bold text-success mb-0">{{ resumen.P|default:0 }}</div>
+              <div class="text-success small uppercase fw-bold" style="font-size: 0.55rem;">Presentes</div>
             </div>
           </div>
-          <div class="col-4">
-            <div class="p-3 bg-danger bg-opacity-10 rounded-3">
-              <div class="h3 fw-bold text-danger mb-0">{{ resumen.A|default:0 }}</div>
-              <div class="text-danger small uppercase fw-bold" style="font-size: 0.6rem;">Ausentes</div>
+          <div class="col-6 col-md">
+            <div class="p-2 bg-danger bg-opacity-10 rounded-3 text-center h-100">
+              <div class="h4 fw-bold text-danger mb-0">{{ resumen.A|default:0 }}</div>
+              <div class="text-danger small uppercase fw-bold" style="font-size: 0.55rem;">Ausentes</div>
             </div>
           </div>
-          <div class="col-4">
-            <div class="p-3 bg-warning bg-opacity-10 rounded-3">
-              <div class="h3 fw-bold text-warning mb-0">{{ resumen.J|default:0 }}</div>
-              <div class="text-warning small uppercase fw-bold" style="font-size: 0.6rem;">Justific.</div>
+          <div class="col-6 col-md">
+            <div class="p-2 bg-warning bg-opacity-10 rounded-3 text-center h-100">
+              <div class="h4 fw-bold text-warning mb-0">{{ resumen.J|default:0 }}</div>
+              <div class="text-warning small uppercase fw-bold" style="font-size: 0.55rem;">Justific.</div>
+            </div>
+          </div>
+          <div class="col-6 col-md">
+            <div class="p-2 bg-info bg-opacity-10 rounded-3 text-center h-100">
+              <div class="h4 fw-bold text-info mb-0">{{ resumen.T|default:0 }}</div>
+              <div class="text-info small uppercase fw-bold" style="font-size: 0.55rem;">Tarde</div>
+            </div>
+          </div>
+          <div class="col-12 col-md">
+            <div class="p-2 bg-secondary bg-opacity-10 rounded-3 text-center h-100">
+              <div class="h4 fw-bold text-secondary mb-0">{{ resumen.R|default:0 }}</div>
+              <div class="text-secondary small uppercase fw-bold" style="font-size: 0.55rem;">Retiros</div>
             </div>
           </div>
         </div>
@@ -181,11 +193,15 @@
               <td class="ps-4 text-muted">{{ a.fecha|date:"d/m/y" }}</td>
               <td>
                 {% if a.estado == 'P' %}
-                <span class="text-success"><i class="fas fa-circle me-1 small"></i>P</span>
+                <span class="text-success fw-bold"><i class="fas fa-circle me-1 small"></i>P</span>
                 {% elif a.estado == 'A' %}
-                <span class="text-danger"><i class="fas fa-circle me-1 small"></i>A</span>
+                <span class="text-danger fw-bold"><i class="fas fa-circle me-1 small"></i>A</span>
+                {% elif a.estado == 'T' %}
+                <span class="text-info fw-bold" title="{{ a.motivo }}"><i class="fas fa-circle me-1 small"></i>T</span>
+                {% elif a.estado == 'R' %}
+                <span class="text-secondary fw-bold" title="{{ a.motivo }}"><i class="fas fa-circle me-1 small"></i>R</span>
                 {% else %}
-                <span class="text-warning" title="{{ a.motivo }}"><i class="fas fa-circle me-1 small"></i>J</span>
+                <span class="text-warning fw-bold" title="{{ a.motivo }}"><i class="fas fa-circle me-1 small"></i>J</span>
                 {% endif %}
               </td>
               <td class="text-muted">{{ a.docente.first_name|default:a.docente.username }}</td>

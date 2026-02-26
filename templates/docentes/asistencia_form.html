@@ -44,12 +44,13 @@
                     <select name="estado_{{ item.alumno.id }}" id="estado_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill estado-select" data-alumno="{{ item.alumno.id }}">
                       <option value="P" {% if item.asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
                       <option value="A" {% if item.asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
-                      <option value="T" {% if item.asistencia.estado == 'T' %}selected{% endif %}>Tarde</option>
+                      <option value="T" {% if item.asistencia.estado == 'T' %}selected{% endif %}>Llegada Tarde</option>
+                      <option value="R" {% if item.asistencia.estado == 'R' %}selected{% endif %}>Retiro Temprano</option>
                       <option value="J" {% if item.asistencia.estado == 'J' %}selected{% endif %}>Justificado</option>
                     </select>
                   </td>
                   <td>
-                    <div id="motivo_wrapper_{{ item.alumno.id }}" {% if item.asistencia.estado == 'J' %}style="display:block"{% else %}style="display:none"{% endif %}>
+                    <div id="motivo_wrapper_{{ item.alumno.id }}" {% if item.asistencia.estado in 'J,T,R' %}style="display:block"{% else %}style="display:none"{% endif %}>
                       <select name="motivo_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill">
                         <option value="">-- Sin motivo --</option>
                         {% for motivo in motivos %}
@@ -57,7 +58,7 @@
                         {% endfor %}
                       </select>
                     </div>
-                    <span id="motivo_placeholder_{{ item.alumno.id }}" {% if item.asistencia.estado == 'J' %}style="display:none"{% else %}style="display:block"{% endif %} class="text-muted small fst-italic">
+                    <span id="motivo_placeholder_{{ item.alumno.id }}" {% if item.asistencia.estado in 'J,T,R' %}style="display:none"{% else %}style="display:block"{% endif %} class="text-muted small fst-italic">
                       &mdash;
                     </span>
                   </td>
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var alumnoId = this.dataset.alumno;
       var wrapper = document.getElementById('motivo_wrapper_' + alumnoId);
       var placeholder = document.getElementById('motivo_placeholder_' + alumnoId);
-      if (this.value === 'J') {
+      if (['J', 'T', 'R'].includes(this.value)) {
         wrapper.style.display = 'block';
         placeholder.style.display = 'none';
       } else {

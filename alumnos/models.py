@@ -56,7 +56,8 @@ class Asistencia(models.Model):
         ('P', 'Presente'),
         ('A', 'Ausente'),
         ('J', 'Justificado'),
-        ('T', 'Tarde'),
+        ('T', 'Llegada Tarde'),
+        ('R', 'Retiro Temprano'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asistencias")
     fecha = models.DateField(max_length=50)

@@ -1,3 +1,7 @@
+import csv
+from datetime import date
+
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -6,13 +10,9 @@ from django.core.exceptions import PermissionDenied
 
 from .decorators import solo_coordinador
 from .forms import (
-    CrearDocenteForm,
-    EditarDocenteForm,
-    AsignarDocentesSalaForm,
-    JardinForm,
-    ProgramaForm,
     SubprogramaForm,
     SalaForm,
+    RestablecerPasswordForm,
 )
 
 from jardines.models import Jardin, Programa, Subprograma, Sala
@@ -324,3 +324,150 @@ class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
             (Q(modelo="Alumno") & Q(objeto_id__in=list(alumnos_ids))) |
             (Q(modelo="Asistencia") & Q(objeto_id__in=list(asistencias_ids)))
         ).select_related('usuario')
+
+
+# =========================================================
+# 📊 EXPORTACIÓN DE DATOS - COORDINADOR
+# =========================================================
+
+@login_required
+@solo_coordinador
+def exportar_docentes_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="docentes.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Apellido', 'Nombre', 'DNI', 'Email', 'Teléfono', 'Estado'])
+
+    docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    for doc in docentes:
+        writer.writerow([doc.last_name, doc.first_name, doc.dni, doc.email, doc.telefono, 'Activo' if doc.is_active else 'Inactivo'])
+    return response
+
+@login_required
+@solo_coordinador
+def imprimir_docentes(request):
+    docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    return render(request, "users/imprimir_docentes.html", {
+        "docentes": docentes,
+        "fecha": date.today()
+    })
+
+@login_required
+@solo_coordinador
+def exportar_salas_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="salas.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Nombre', 'Turno', 'Horario', 'Jardín'])
+
+    salas = Sala.objects.all().select_related('jardin').order_by('jardin__nombre', 'nombre')
+    for sala in salas:
+        writer.writerow([sala.nombre, sala.get_turno_display(), sala.horario, sala.jardin.nombre])
+    return response
+
+@login_required
+@solo_coordinador
+def imprimir_salas(request):
+    salas = Sala.objects.all().select_related('jardin').order_by('jardin__nombre', 'nombre')
+    return render(request, "users/imprimir_salas.html", {
+        "salas": salas,
+        "fecha": date.today()
+    })
+
+@login_required
+@solo_coordinador
+def exportar_espacios_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="espacios.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Nombre', 'Dirección', 'Barrio', 'Sector', 'Programa', 'Subprograma'])
+
+    jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    for j in jardines:
+        writer.writerow([j.nombre, j.direccion, j.barrio, j.sector, j.programa.nombre if j.programa else '-', j.subprograma.nombre if j.subprograma else '-'])
+    return response
+
+@login_required
+@solo_coordinador
+def imprimir_espacios(request):
+    jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    return render(request, "users/imprimir_espacios.html", {
+        "jardines": jardines,
+        "fecha": date.today()
+    })
+
+@login_required
+@solo_coordinador
+def exportar_programas_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="programas.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['ID', 'Nombre'])
+
+    programas = Programa.objects.all().order_by('nombre')
+    for p in programas:
+        writer.writerow([p.id, p.nombre])
+    return response
+
+@login_required
+@solo_coordinador
+def imprimir_programas(request):
+    programas = Programa.objects.all().order_by('nombre')
+    return render(request, "users/imprimir_programas.html", {
+        "programas": programas,
+        "fecha": date.today()
+    })
+
+@login_required
+@solo_coordinador
+def exportar_subprogramas_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="subprogramas.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['ID', 'Nombre', 'Programa'])
+
+    subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    for s in subprogramas:
+        writer.writerow([s.id, s.nombre, s.programa.nombre])
+    return response
+
+@login_required
+@solo_coordinador
+def imprimir_subprogramas(request):
+    subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    return render(request, "users/imprimir_subprogramas.html", {
+        "subprogramas": subprogramas,
+        "fecha": date.today()
+    })
+
+@login_required
+@solo_coordinador
+def restablecer_password_docente(request, docente_id):
+    docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+    
+    if request.method == "POST":
+        form = RestablecerPasswordForm(request.POST)
+        if form.is_valid():
+            nueva_password = form.cleaned_data["password"]
+            docente.set_password(nueva_password)
+            docente.save()
+            
+            # Registrar en auditoría
+            AccionAuditoria.objects.create(
+                usuario=request.user,
+                accion="modificacion",
+                modelo="Usuario",
+                objeto_id=docente.id,
+                descripcion=f"Restablecimiento de contraseña para el docente {docente.username}"
+            )
+            
+            return redirect("users:lista_docentes")
+    else:
+        form = RestablecerPasswordForm()
+        
+    return render(request, "users/restablecer_password.html", {"form": form, "docente": docente})

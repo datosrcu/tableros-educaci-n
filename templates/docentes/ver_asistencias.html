@@ -86,7 +86,10 @@
                 class="fas fa-info-circle me-1"></i>Justificado</span>
             {% elif asistencia.estado == 'T' %}
             <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2 uppercase small"><i
-                class="fas fa-clock me-1"></i>Tarde</span>
+                class="fas fa-clock me-1"></i>Llegada Tarde</span>
+            {% elif asistencia.estado == 'R' %}
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2 uppercase small"><i
+                class="fas fa-sign-out-alt me-1"></i>Retiro Temprano</span>
             {% endif %}
             {% else %}
             <span class="text-muted small fst-italic">Sin registro</span>

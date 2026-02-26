@@ -287,3 +287,27 @@ class SalaForm(forms.ModelForm):
             )
 
         return responsable
+
+# =====================================================
+# RESTABLECER PASSWORD
+# =====================================================
+
+class RestablecerPasswordForm(forms.Form):
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": "form-control rounded-pill"}),
+        label="Nueva Contraseña"
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": "form-control rounded-pill"}),
+        label="Confirmar Contraseña"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            raise ValidationError("Las contraseñas no coinciden.")
+
+        return cleaned_data
