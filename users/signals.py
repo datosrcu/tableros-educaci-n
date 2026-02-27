@@ -65,3 +65,29 @@ def log_asistencia_save(sender, instance, created, **kwargs):
     action = "creacion" if created else "modificacion"
     desc = f"{'Cargada' if created else 'Modificada'} asistencia para {instance.alumno.apellido}, {instance.alumno.nombre} el día {instance.fecha.strftime('%d/%m/%Y')} como '{instance.get_estado_display()}'"
     log_action(instance, action, desc)
+
+# --- Señales de Sesión ---
+from django.contrib.auth.signals import user_logged_in, user_logged_out
+
+@receiver(user_logged_in)
+def log_user_login(sender, request, user, **kwargs):
+    # Usamos dummy instance (el mismo usuario) para log_action
+    if user.rol in ["coordinador", "administrador", "docente"]:
+        AccionAuditoria.objects.create(
+            usuario=user,
+            accion="creacion", # Representa "inicio"
+            modelo="Sesión",
+            objeto_id=user.pk,
+            descripcion=f"Inicio de sesión exitoso desde IP: {request.META.get('REMOTE_ADDR')}"
+        )
+
+@receiver(user_logged_out)
+def log_user_logout(sender, request, user, **kwargs):
+    if user and user.rol in ["coordinador", "administrador", "docente"]:
+        AccionAuditoria.objects.create(
+            usuario=user,
+            accion="eliminacion", # Representa "cierre"
+            modelo="Sesión",
+            objeto_id=user.pk,
+            descripcion=f"Cierre de sesión"
+        )

@@ -10,8 +10,13 @@ from django.core.exceptions import PermissionDenied
 
 from .decorators import solo_coordinador
 from .forms import (
+    JardinForm,
+    ProgramaForm,
     SubprogramaForm,
     SalaForm,
+    CrearDocenteForm,
+    EditarDocenteForm,
+    AsignarDocentesSalaForm,
     RestablecerPasswordForm,
 )
 
@@ -298,6 +303,11 @@ class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
     def test_func(self):
         return self.request.user.es_coordinador() or self.request.user.es_admin()
+
+    def get_queryset(self):
+        # Coordinadores y administradores ven todo el log.
+        # Ordenamos descendente para ver lo más reciente primero.
+        return AccionAuditoria.objects.select_related('usuario').order_by('-fecha')
 
 class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = AccionAuditoria
