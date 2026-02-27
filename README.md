@@ -32,21 +32,34 @@ Sistema integral para la gestión de jardines de infantes, diseñado para simpli
 
 ---
 
-## 🛠️ Tecnologías y Arquitectura
+## 🏗️ Despliegue con Docker (Recomendado)
 
-- **Backend**: Django 5.2 (Python 3.12+)
-- **Base de Datos**: Configuración agnóstica mediante `dj-database-url`. Soporte nativo para PostgreSQL, MySQL y SQLite.
-- **Seguridad**: Gestión de variables de entorno con `python-decouple`.
-- **Frontend**: Diseño responsive basado en Bootstrap 5 con estética premium y micro-animaciones.
-- **Servidor de Producción**: Preparado para WhiteNoise (estáticos) y Gunicorn/Daphne.
+El sistema está completamente contenedorizado para facilitar su despliegue en cualquier entorno.
+
+### 1. Iniciar el Sistema
+Asegúrate de tener Docker instalado y luego ejecuta:
+```bash
+docker compose up -d --build
+```
+
+### 2. Inicialización de Datos
+Para crear las cuentas base y cargar los datos iniciales dentro del contenedor:
+```bash
+docker exec jardines_web python crear_cuentas_base.py
+```
+
+### 3. Acceso
+La aplicación estará disponible en `http://localhost:8000`.
 
 ---
 
-## 🚀 Guía de Instalación Profesional
+## 🛠️ Instalación Local (Desarrollo)
+
+Si prefieres ejecutar el sistema sin Docker, sigue estos pasos:
 
 ### 1. Requisitos
 - Python 3.12+
-- PostgreSQL / MySQL (Opcionales, SQLite por defecto)
+- MySQL 8.0 o SQLite
 
 ### 2. Configuración del Entorno
 ```bash
@@ -62,41 +75,31 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Variables de Entorno
-El sistema utiliza un archivo `.env` para la configuración sensible. Existe una plantilla disponible:
+### 3. Variables de Envorno
+Copia la plantilla y configura tu `DATABASE_URL`:
 ```bash
 cp .env.example .env
 ```
-> [!IMPORTANT]
-> Asegúrate de generar una `SECRET_KEY` única y configurar la `DATABASE_URL` según tu entorno.
+Para SQLite (local): `DATABASE_URL=sqlite:///db.sqlite3`
+Para MySQL (local): `DATABASE_URL=mysql://user:pass@localhost:3306/db_name`
 
-### 4. Preparación de Base de Datos
+### 4. Preparación y Cuentas Base
 ```bash
-python manage.py makemigrations
 python manage.py migrate
-```
-
-### 5. Utilidades de Configuración Inicial
-Existen scripts para facilitar el primer despliegue:
-```bash
-# Crear cuentas base (admin, coordinador_test, docente_test)
-python manage.py shell < crear_cuentas_base.py
-
-# (Opcional) Cargar motivos de justificación estandarizados
-python manage.py shell < cargar_motivos.py
+python crear_cuentas_base.py
 ```
 
 ---
 
-## 🏗️ Despliegue en Producción
+## 🚀 Despliegue en Producción
 
-Para entornos de producción, se recomienda utilizar un servidor WSGI como **Gunicorn**:
+Para entornos de producción sin Docker, se recomienda utilizar un servidor WSGI como **Gunicorn**:
 
 ```bash
 gunicorn config.wsgi:application --bind 0.0.0.0:8000
 ```
 
-El proyecto ya incluye la configuración de **WhiteNoise** para servir archivos estáticos de forma eficiente sin necesidad de un servidor separado para los mismos.
+El proyecto utiliza **WhiteNoise** para servir archivos estáticos y está configurado para conectarse a bases de datos de producción mediante la variable de entorno `DATABASE_URL`.
 
 ---
 
