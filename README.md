@@ -51,6 +51,12 @@ docker exec jardines_web python crear_cuentas_base.py
 ### 3. Acceso
 La aplicación estará disponible en `http://localhost:8000`.
 
+### 🛠️ Comandos de Mantenimiento
+- **Detener el sistema**: `docker compose stop` (los contenedores se pausan pero no se eliminan).
+- **Reiniciar el sistema**: `docker compose start`.
+- **Apagar y limpiar**: `docker compose down` (detiene y elimina los contenedores y redes virtuales).
+- **Ver logs en tiempo real**: `docker compose logs -f`.
+
 ---
 
 ## 🛠️ Instalación Local (Desarrollo)
