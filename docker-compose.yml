@@ -1,22 +1,6 @@
 # version: '3.8' (obsolete)
 
 services:
-  db:
-    image: mysql:8.0
-    container_name: jardines_db
-    restart: always
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    ports:
-      - "3307:3306" # Mapeo externo para herramientas de DB (3307 local -> 3306 contenedor)
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - jardines_network
-
   web:
     build: .
     container_name: jardines_web
@@ -28,25 +12,9 @@ services:
       - media_volume:/app/media
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=True
-      - DATABASE_URL=mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=db
-      - DB_PORT=3306
     env_file:
       - .env
-    depends_on:
-      - db
-    networks:
-      - jardines_network
 
 volumes:
-  mysql_data:
   static_volume:
   media_volume:
-
-networks:
-  jardines_network:
