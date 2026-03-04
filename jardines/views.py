@@ -26,6 +26,8 @@ def cargar_jardines(request):
         safe=False
     )
 
+@login_required
+@rol_requerido("coordinador", "administrador")
 def validar_docente_turno(request):
     docente_id = request.GET.get("docente_id")
     turno = request.GET.get("turno")
@@ -39,6 +41,7 @@ def validar_docente_turno(request):
     return JsonResponse({"conflicto": qs.exists()})
 
 
+@login_required
 def subprogramas_por_programa(request):
     programa_id = request.GET.get("programa_id")
 

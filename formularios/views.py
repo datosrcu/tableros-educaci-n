@@ -77,6 +77,11 @@ def responder_formulario(request, inscripcion_id):
     Detecta automáticamente qué campos corresponden según el programa.
     """
     inscripcion = get_object_or_404(Inscripcion, id=inscripcion_id)
+    
+    # 🔐 Validación de permiso por Sala
+    if request.user.rol == "docente" and not request.user.salas_asignadas.filter(id=inscripcion.sala_id).exists():
+        raise PermissionDenied
+
     programa = inscripcion.programa
     
     # 🔍 Verificar disponibilidad del formulario

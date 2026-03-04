@@ -91,7 +91,7 @@ class Asistencia(models.Model):
         ('R', 'Retiro Temprano'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asistencias")
-    fecha = models.DateField(max_length=50)
+    fecha = models.DateField()
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
     docente = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, help_text="Docente que registró la asistencia.")
     motivo = models.ForeignKey(
@@ -117,6 +117,11 @@ class Asistencia(models.Model):
         if self.estado == 'J' and not self.motivo:
             raise ValidationError(
                 "Una asistencia justificada requiere un motivo obligatorio."
+            )
+
+        if self.fecha > date.today():
+            raise ValidationError(
+                "No se puede registrar asistencia en fechas futuras."
             )
 
     def save(self, *args, **kwargs):
