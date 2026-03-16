@@ -7,12 +7,22 @@
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-2">
         <li class="breadcrumb-item">
-          <a href="{% url 'alumnos:dashboard_docente' %}"
-            class="text-decoration-none text-muted small text-uppercase fw-semibold">Mi Panel</a>
+          {% if request.user.rol == 'docente' %}
+            <a href="{% url 'alumnos:dashboard_docente' %}"
+              class="text-decoration-none text-muted small text-uppercase fw-semibold">Mi Panel</a>
+          {% else %}
+            <a href="{% url 'users:dashboard_coordinador' %}"
+              class="text-decoration-none text-muted small text-uppercase fw-semibold">Panel Coordinador</a>
+          {% endif %}
         </li>
         <li class="breadcrumb-item">
-          <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
-            class="text-decoration-none text-muted small text-uppercase">{{ sala.nombre }}</a>
+          {% if request.user.rol == 'docente' %}
+            <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}"
+              class="text-decoration-none text-muted small text-uppercase">{{ sala.nombre }}</a>
+          {% else %}
+            <a href="{% url 'users:lista_salas' %}"
+              class="text-decoration-none text-muted small text-uppercase">Salas</a>
+          {% endif %}
         </li>
         <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">Historial de
           Asistencias</li>
@@ -32,10 +42,12 @@
           <li><a class="dropdown-item" href="{% url 'alumnos:imprimir_asistencias_sala' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
         </ul>
       </div>
+      {% if request.user.rol == 'docente' %}
       <a href="{% url 'alumnos:cargar_asistencia' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"
         class="btn btn-warning shadow-sm rounded-pill fw-bold px-4">
         <i class="fas fa-edit me-1"></i>Editar Asistencia del Día
       </a>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -122,9 +134,18 @@
 </div>
 
 <div class="mt-4">
-  <a href="{% url 'alumnos:dashboard_docente' %}" class="btn btn-link text-decoration-none text-muted">
-    <i class="fas fa-arrow-left me-1"></i>Volver al Panel
+  {% if request.user.rol == 'docente' %}
+  <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class="btn btn-link text-decoration-none text-muted">
+    <i class="fas fa-arrow-left me-1"></i>Volver a la Sala
   </a>
+  <a href="{% url 'alumnos:dashboard_docente' %}" class="btn btn-link text-decoration-none text-muted ms-3">
+    <i class="fas fa-home me-1"></i>Volver al Panel
+  </a>
+  {% else %}
+  <a href="{% url 'users:lista_salas' %}" class="btn btn-link text-decoration-none text-muted">
+    <i class="fas fa-arrow-left me-1"></i>Volver a Salas
+  </a>
+  {% endif %}
 </div>
 
 <style>

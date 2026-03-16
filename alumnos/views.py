@@ -426,12 +426,12 @@ def cargar_asistencia(request, sala_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador", "administrador")
 def ver_asistencias(request, sala_id):
     """Vista de solo lectura para revisar las asistencias de un día específico."""
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
@@ -548,11 +548,11 @@ def imprimir_alumnos_sala(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador", "administrador")
 def exportar_asistencias_csv(request, sala_id):
     """Exporta el registro de asistencia del día a formato CSV."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
@@ -586,11 +586,11 @@ def exportar_asistencias_csv(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador", "administrador")
 def imprimir_asistencias_sala(request, sala_id):
     """Genera una página HTML optimizada para imprimir el parte diario de asistencia."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
