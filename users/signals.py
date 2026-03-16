@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
-from jardines.models import Sala, Jardin
+from jardines.models import Sala, Jardin, Programa
 from alumnos.models import Alumno, Asistencia
 from .models import AccionAuditoria, Usuario
 from .middleware_audit import get_current_user
@@ -9,13 +9,19 @@ def log_action(instance, action, description):
     user = get_current_user()
     # Logueamos si el usuario es coordinador, admin o docente (para sus propias acciones)
     if user and (user.es_coordinador() or user.es_admin() or user.es_docente()):
-        AccionAuditoria.objects.create(
-            usuario=user,
-            accion=action,
-            modelo=instance.__class__.__name__,
-            objeto_id=instance.pk,
-            descripcion=description
-        )
+        try:
+            # Verificamos que el usuario aún exista en la DB (evita IntegrityError en tests)
+            if Usuario.objects.filter(pk=user.pk).exists():
+                AccionAuditoria.objects.create(
+                    usuario=user,
+                    accion=action,
+                    modelo=instance.__class__.__name__,
+                    objeto_id=instance.pk,
+                    descripcion=description
+                )
+        except Exception:
+            # En caso de error (ej: DB no accesible), fallamos silenciosamente para no romper la app
+            pass
 
 @receiver(post_save, sender=Sala)
 def log_sala_save(sender, instance, created, **kwargs):
@@ -34,18 +40,41 @@ def log_jardin_save(sender, instance, created, **kwargs):
     desc = f"{'Creado' if created else 'Modificado'} el espacio '{instance.nombre}' ({instance.sector})"
     log_action(instance, action, desc)
 
+@receiver(post_delete, sender=Jardin)
+def log_jardin_delete(sender, instance, **kwargs):
+    desc = f"Eliminado el espacio '{instance.nombre}'"
+    log_action(instance, "eliminacion", desc)
+
+@receiver(post_save, sender=Programa)
+def log_programa_save(sender, instance, created, **kwargs):
+    action = "creacion" if created else "modificacion"
+    desc = f"{'Creado' if created else 'Modificado'} el programa '{instance.nombre}'"
+    log_action(instance, action, desc)
+
+@receiver(post_delete, sender=Programa)
+def log_programa_delete(sender, instance, **kwargs):
+    desc = f"Eliminado el programa '{instance.nombre}'"
+    log_action(instance, "eliminacion", desc)
+
 @receiver(m2m_changed, sender=Sala.docentes.through)
-def log_docente_asignacion(sender, instance, action, pk_set, **kwargs):
-    if action == "post_add":
-        docentes = Usuario.objects.filter(pk__in=pk_set)
-        nombres = ", ".join([f"{u.first_name} {u.last_name}" for u in docentes])
-        desc = f"Asignados docentes [{nombres}] a la sala '{instance.nombre}'"
-        log_action(instance, "asignacion", desc)
-    elif action == "post_remove":
-        docentes = Usuario.objects.filter(pk__in=pk_set)
-        nombres = ", ".join([f"{u.first_name} {u.last_name}" for u in docentes])
-        desc = f"Retirados docentes [{nombres}] de la sala '{instance.nombre}'"
-        log_action(instance, "asignacion", desc)
+def log_docente_asignacion(sender, instance, action, pk_set, reverse, **kwargs):
+    if action in ["post_add", "post_remove"]:
+        is_add = action == "post_add"
+        
+        if reverse:
+            # La acción se originó desde Usuario.salas_asignadas.add(sala)
+            usuario = instance
+            salas = Sala.objects.filter(pk__in=pk_set)
+            for sala in salas:
+                desc = f"{'Asignado' if is_add else 'Retirado'} docente {usuario.first_name} {usuario.last_name} {'a' if is_add else 'de'} la sala '{sala.nombre}'"
+                log_action(sala, "asignacion", desc)
+        else:
+            # La acción se originó desde Sala.docentes.add(usuario)
+            sala = instance
+            docentes = Usuario.objects.filter(pk__in=pk_set)
+            nombres = ", ".join([f"{u.first_name} {u.last_name}" for u in docentes])
+            desc = f"{'Asignados' if is_add else 'Retirados'} docentes [{nombres}] {'a' if is_add else 'de'} la sala '{sala.nombre}'"
+            log_action(sala, "asignacion", desc)
 
 # --- Señales para Docentes ---
 

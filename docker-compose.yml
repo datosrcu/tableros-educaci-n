@@ -1,19 +1,25 @@
-# version: '3.8' (obsolete)
-
 services:
   web:
     build: .
     container_name: jardines_web
-    restart: always
-    command: python manage.py runserver 0.0.0.0:8000
+    restart: unless-stopped
+
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+
     ports:
       - "8000:8000"
+
     env_file:
       - .env
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/accounts/login/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   static_volume:

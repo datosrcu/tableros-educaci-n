@@ -6,8 +6,9 @@ from django.contrib.auth.decorators import login_required
 
 def rol_requerido(*roles):
     def decorator(view_func):
+        @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
-            if request.user.is_superuser:
+            if request.user.is_superuser or request.user.rol == "administrador":
                 return view_func(request, *args, **kwargs)
 
             if request.user.rol not in roles:
@@ -21,7 +22,7 @@ def rol_requerido(*roles):
 def solo_coordinador(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        if request.user.is_superuser or request.user.rol == "coordinador":
+        if request.user.is_superuser or request.user.rol in ["coordinador", "administrador"]:
             return view_func(request, *args, **kwargs)
         raise PermissionDenied
     return _wrapped_view

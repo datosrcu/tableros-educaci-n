@@ -376,28 +376,31 @@ def cargar_asistencia(request, sala_id):
     motivos = MotivoJustificacion.objects.all()
 
     if request.method == "POST":
-
-        for alumno in alumnos:
-            estado = request.POST.get(f"estado_{alumno.id}", "P")
-            motivo_id = request.POST.get(f"motivo_{alumno.id}")
-            
-            motivo = None
-            if estado == "J" and motivo_id:
-                motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
-            elif estado != "J":
+        from django.contrib import messages
+        try:
+            for alumno in alumnos:
+                estado = request.POST.get(f"estado_{alumno.id}", "P")
+                motivo_id = request.POST.get(f"motivo_{alumno.id}")
+                
                 motivo = None
+                if estado == "J" and motivo_id:
+                    motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
+                elif estado != "J":
+                    motivo = None
 
-            Asistencia.objects.update_or_create(
-                alumno=alumno,
-                fecha=fecha,
-                defaults={
-                    "estado": estado,
-                    "motivo": motivo,
-                    "docente": request.user
-                }
-            )
-
-        return redirect("alumnos:cargar_asistencia", sala_id=sala.id)
+                Asistencia.objects.update_or_create(
+                    alumno=alumno,
+                    fecha=fecha,
+                    defaults={
+                        "estado": estado,
+                        "motivo": motivo,
+                        "docente": request.user
+                    }
+                )
+            messages.success(request, f"Asistencia del {fecha} guardada correctamente.")
+            return redirect("alumnos:cargar_asistencia", sala_id=sala.id)
+        except ValidationError as e:
+            messages.error(request, f"Error al guardar: {e.message if hasattr(e, 'message') else e.messages[0]}")
 
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos,
@@ -481,6 +484,7 @@ def inscripcion_participante(request):
 
 
 @login_required
+@rol_requerido("docente", "coordinador", "administrador")
 def crear_tutor_ajax(request):
     """
     Punto de entrada AJAX para crear tutores sobre la marcha 

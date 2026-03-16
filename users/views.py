@@ -292,6 +292,9 @@ def asignar_docentes_sala(request, sala_id):
 def admin_redirect(request):
     if request.user.rol == "docente":
         return redirect("alumnos:dashboard_docente")
+    
+    if request.user.rol == "coordinator" or request.user.rol == "coordinador":
+        return redirect("users:dashboard_coordinador")
 
     return redirect("/admin/")
 

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <h1 class="display-1 fw-bold text-danger">403</h1>
+        <h2 class="mb-4">Acceso Denegado</h2>
+        <p class="text-muted mb-4">
+            No tienes los permisos necesarios para acceder a este recurso. 
+            Si crees que esto es un error, contacta al administrador del sistema.
+        </p>
+        <a href="/" class="btn btn-outline-danger btn-lg px-5 rounded-pill shadow">
+            <i class="fas fa-arrow-left me-2"></i>Regresar
+        </a>
+    </div>
+</div>
+{% endblock %}
