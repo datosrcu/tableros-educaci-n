@@ -24,6 +24,7 @@ from formularios.forms import FormularioDinamico
 
 from jardines.models import Sala
 from users.decorators import rol_requerido
+from users.models import AccionAuditoria
 
 
 # =========================================================
@@ -115,15 +116,16 @@ def lista_alumnos(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador", "administrador")
 def alumnos_por_sala(request, sala_id):
     """
     Lista los alumnos de una sala específica para que el docente
     pueda ver el listado o gestionar bajas (soft-delete).
+    Los coordinadores solo visualizarán el listado base.
     """
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     alumnos = Alumno.objects.filter(
@@ -132,7 +134,7 @@ def alumnos_por_sala(request, sala_id):
     )
 
     # 🔹 Acciones masivas de baja/activación
-    if request.method == "POST":
+    if request.method == "POST" and request.user.rol == "docente":
         for alumno in alumnos:
             activo = request.POST.get(f'activo_{alumno.id}') == "on"
 
@@ -140,6 +142,16 @@ def alumnos_por_sala(request, sala_id):
                 alumno.activo = activo
                 alumno.fecha_baja = None if activo else date.today()
                 alumno.save()
+                
+                # Registrar en auditoría la baja
+                if not activo:
+                    AccionAuditoria.objects.create(
+                        usuario=request.user,
+                        accion="modificacion",
+                        modelo="Alumno",
+                        objeto_id=alumno.id,
+                        descripcion=f"El docente {request.user.username} dio de baja al alumno {alumno.nombre} {alumno.apellido}."
+                    )
 
         return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
 
