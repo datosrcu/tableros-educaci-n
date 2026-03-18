@@ -71,6 +71,38 @@ def crear_campo(request, estructura_id):
 
 
 @login_required
+@solo_coordinador
+def editar_campo(request, campo_id):
+    """Permite editar un campo (pregunta) existente de un formulario."""
+    campo = get_object_or_404(CampoFormulario, id=campo_id)
+    estructura_id = campo.estructura.id
+    
+    if request.method == "POST":
+        form = CampoFormularioForm(request.POST, instance=campo)
+        if form.is_valid():
+            form.save()
+            return redirect("formularios:detalle_estructura", estructura_id=estructura_id)
+    else:
+        form = CampoFormularioForm(instance=campo)
+    
+    return render(request, "formularios/editar_campo.html", {
+        "form": form,
+        "campo": campo,
+        "estructura": campo.estructura
+    })
+
+@login_required
+@solo_coordinador
+def eliminar_campo(request, campo_id):
+    """Elimina definitivamente un campo de un formulario."""
+    campo = get_object_or_404(CampoFormulario, id=campo_id)
+    estructura_id = campo.estructura.id
+    
+    if request.method == "POST":
+        campo.delete()
+        
+    return redirect("formularios:detalle_estructura", estructura_id=estructura_id)
+@login_required
 def responder_formulario(request, inscripcion_id):
     """
     Rendición de un formulario dinámico para una pre-inscripción.

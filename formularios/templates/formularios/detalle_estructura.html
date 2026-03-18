@@ -102,10 +102,19 @@
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group shadow-none">
-                                        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 opacity-50"
-                                            disabled>
+                                        <a href="{% url 'formularios:editar_campo' campo.id %}"
+                                            class="btn btn-outline-primary btn-sm rounded-start-pill px-3"
+                                            title="Editar Campo">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </a>
+                                        <form method="post" action="{% url 'formularios:eliminar_campo' campo.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-end-pill px-3"
+                                                onclick="return confirm('¿Está seguro de eliminar de forma permanente este campo? Esta acción no se puede deshacer y puede afectar inscripciones pasadas.');"
+                                                title="Eliminar Campo">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

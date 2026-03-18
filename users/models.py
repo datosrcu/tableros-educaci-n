@@ -33,6 +33,14 @@ class Usuario(AbstractUser):
         verbose_name="DNI / Pasaporte"
     )
     telefono = models.CharField(max_length=50, blank=True)
+    
+    # 🏫 Relaciones
+    programas_asignados = models.ManyToManyField(
+        "jardines.Programa",
+        blank=True,
+        related_name="coordinadores",
+        help_text="Programas sobre los cuales un Coordinador tiene gestión."
+    )
 
     # =====================================================
     # MÉTODOS DE CONSULTA (Helpers de permisos)

@@ -9,16 +9,17 @@ class UsuarioAdmin(UserAdmin):
     list_display = ("username", "email", "rol", "is_staff")
     list_filter = ("rol",)
     search_fields = ("username", "email")
+    filter_horizontal = ("groups", "user_permissions", "programas_asignados")
     
     fieldsets = (
         ("Credenciales", {
             "fields": ("username", "password")
         }),
         ("Información personal", {
-            "fields": ("first_name", "last_name", "email")
+            "fields": ("first_name", "last_name", "email", "dni", "telefono")
         }),
         ("Rol y permisos", {
-            "fields": ("rol", "is_active", "is_staff", "is_superuser")
+            "fields": ("rol", "programas_asignados", "is_active", "is_staff", "is_superuser")
         }),
     )
 

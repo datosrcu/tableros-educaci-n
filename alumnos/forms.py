@@ -57,6 +57,12 @@ class FichaProgramaAlumnoForm(forms.ModelForm):
     class Meta:
         model = FichaProgramaAlumno
         exclude = ("alumno",)
+        widgets = {
+            'sabe_leer': forms.Select(choices=[('', '---------'), (True, 'Sí'), (False, 'No')]),
+            'sabe_escribir': forms.Select(choices=[('', '---------'), (True, 'Sí'), (False, 'No')]),
+            'asistencia_social': forms.Select(choices=[('', '---------'), (True, 'Sí'), (False, 'No')]),
+        }
+        
     def clean_telefono(self):
         tel = self.cleaned_data.get("telefono", "")
         if tel and not tel.replace("+", "").replace(" ", "").isdigit():
