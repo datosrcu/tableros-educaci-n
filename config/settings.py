@@ -97,19 +97,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME', default=''),
-        'USER': config('DB_USER', default=''),
-        'PASSWORD': config('DB_PASSWORD', default=''),
-        'HOST': config('DB_HOST', default=''),
-        'PORT': config('DB_PORT', default=3306, cast=int),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
 # Support DATABASE_URL if provided
-db_from_env = dj_database_url.config(conn_max_age=600, ssl_require=False)
-if db_from_env:
-    DATABASES['default'].update(db_from_env)
+db_url = config('DATABASE_URL', default='')
+if db_url:
+    DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=600, ssl_require=False))
 
 # Fix for MySQL/MariaDB charset if needed
 if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
