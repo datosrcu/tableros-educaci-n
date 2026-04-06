@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y \
 # Instalar dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Usuario no root
+RUN useradd -m django-user
 
 COPY . .
 
@@ -29,9 +31,6 @@ RUN chmod +x docker-entrypoint.sh
 # Directorios necesarios
 RUN mkdir -p /app/staticfiles /app/media && \
     chown -R django-user:django-user /app
-
-# Collectstatic (no rompe build si falla)
-RUN python manage.py collectstatic --noinput || true
 
 USER django-user
 
