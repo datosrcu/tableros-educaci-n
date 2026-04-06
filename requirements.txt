@@ -8,8 +8,8 @@ djangorestframework==3.16.1
 django-filter==25.1
 
 # Database Drivers
-# mysqlclient==2.2.7
-# psycopg2-binary==2.9.10
+mysqlclient==2.2.7
+psycopg2-binary==2.9.10
 
 # Configuration
 python-decouple==3.8
