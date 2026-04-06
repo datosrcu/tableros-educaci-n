@@ -21,8 +21,6 @@ RUN apt-get update && apt-get install -y \
 # Instalar dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Usuario no root
-RUN useradd -m django-user
 
 COPY . .
 
