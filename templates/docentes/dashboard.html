@@ -15,7 +15,7 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">{{ sala.nombre }} ({{ sala.turno }})</h5>
-                    <p class="card-text">{{ sala.jardin.nombre }}</p>
+                    <p class="card-text text-muted mb-3"><i class="fas fa-building me-1 text-primary"></i> Espacio: <strong>{{ sala.jardin.nombre }}</strong></p>
                     <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class="btn btn-primary">Ver alumnos</a>
                     <a href="{% url 'alumnos:ver_asistencias' sala.id %}" class= "btn btn-secondary">Ver asistencias</a>
                     <a href="{% url 'alumnos:cargar_asistencia' sala.id %}" class= "btn btn-secondary">Cargar asistencia</a>
