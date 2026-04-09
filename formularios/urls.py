@@ -7,6 +7,7 @@ urlpatterns = [
     path("", views.lista_estructuras, name="lista_estructuras"),
     path("crear/", views.crear_estructura, name="crear_estructura"),
     path("<int:estructura_id>/", views.detalle_estructura, name="detalle_estructura"),
+    path("<int:estructura_id>/eliminar/", views.eliminar_estructura, name="eliminar_estructura"),
     path("<int:estructura_id>/campo/nuevo/", views.crear_campo, name="crear_campo"),
     path("campo/<int:campo_id>/editar/", views.editar_campo, name="editar_campo"),
     path("campo/<int:campo_id>/eliminar/", views.eliminar_campo, name="eliminar_campo"),

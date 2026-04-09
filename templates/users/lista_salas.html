@@ -78,9 +78,15 @@
                                 <i class="fas fa-calendar-check me-1"></i>Asistencias
                             </a>
                             <a href="{% url 'users:asignar_docentes_sala' s.id %}"
-                                class="btn btn-sm btn-outline-primary rounded-end-pill px-3">
+                                class="btn btn-sm btn-outline-primary px-3">
                                 <i class="fas fa-users me-1"></i>Docentes
                             </a>
+                            <form action="{% url 'users:eliminar_sala' s.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar esta sala?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-end-pill px-3" title="Eliminar Sala">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
                         </div>
                     </td>
                 </tr>

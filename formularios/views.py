@@ -4,6 +4,8 @@ Permite a los coordinadores definir qué preguntas hacer por cada programa.
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import ProtectedError
 from users.decorators import solo_coordinador
 
 from jardines.models import Programa
@@ -102,6 +104,21 @@ def eliminar_campo(request, campo_id):
         campo.delete()
         
     return redirect("formularios:detalle_estructura", estructura_id=estructura_id)
+
+@login_required
+@solo_coordinador
+def eliminar_estructura(request, estructura_id):
+    """Elimina definitivamente una estructura de formulario y todos sus campos."""
+    estructura = get_object_or_404(EstructuraFormulario, id=estructura_id)
+    
+    if request.method == "POST":
+        try:
+            estructura.delete()
+            messages.success(request, f"El formulario del programa '{estructura.programa.nombre}' fue eliminado correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar el formulario porque ya tiene respuestas recolectadas o dependencias.")
+            
+    return redirect("formularios:lista_estructuras")
 @login_required
 def responder_formulario(request, inscripcion_id):
     """

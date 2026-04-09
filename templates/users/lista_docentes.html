@@ -66,10 +66,18 @@
                                 class="btn btn-sm btn-outline-secondary rounded-pill px-3" title="Restablecer Contraseña">
                                 <i class="fas fa-key me-1"></i>Contraseña
                             </a>
-                            <a href="{% url 'users:editar_docente' d.id %}"
-                                class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                <i class="fas fa-edit me-1"></i>Editar
-                            </a>
+                            <div class="btn-group shadow-sm">
+                                <a href="{% url 'users:editar_docente' d.id %}"
+                                    class="btn btn-sm btn-outline-primary rounded-start-pill px-3">
+                                    <i class="fas fa-edit me-1"></i>Editar
+                                </a>
+                                <form action="{% url 'users:eliminar_docente' d.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar este docente?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-end-pill px-3" title="Eliminar Docente">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </td>
                 </tr>

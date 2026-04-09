@@ -56,10 +56,18 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="{% url 'formularios:detalle_estructura' estructura.id %}"
-                                        class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-none">
-                                        <i class="fas fa-cog me-1"></i>Configurar Campos
-                                    </a>
+                                    <div class="btn-group shadow-sm">
+                                        <a href="{% url 'formularios:detalle_estructura' estructura.id %}"
+                                            class="btn btn-outline-primary btn-sm rounded-start-pill px-3 shadow-none">
+                                            <i class="fas fa-cog me-1"></i>Configurar Campos
+                                        </a>
+                                        <form action="{% url 'formularios:eliminar_estructura' estructura.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar este formulario dinámico? Todas sus configuraciones se perderán.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-end-pill px-3 shadow-none" title="Eliminar Formulario">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                             {% empty %}

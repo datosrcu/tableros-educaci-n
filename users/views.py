@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView
 from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.db.models import ProtectedError
 
 from .decorators import solo_coordinador
 from .forms import (
@@ -484,3 +486,55 @@ def restablecer_password_docente(request, docente_id):
         form = RestablecerPasswordForm()
         
     return render(request, "users/restablecer_password.html", {"form": form, "docente": docente})
+
+# =====================================================
+# ELIMINACIÓN DE ENTIDADES
+# =====================================================
+
+@login_required
+@solo_coordinador
+def eliminar_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if request.method == "POST":
+        try:
+            sala.delete()
+            messages.success(request, f"La sala '{sala.nombre}' fue eliminada correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar la sala porque tiene alumnos o datos vinculados.")
+    return redirect("users:lista_salas")
+
+@login_required
+@solo_coordinador
+def eliminar_jardin(request, jardin_id):
+    jardin = get_object_or_404(Jardin, id=jardin_id)
+    if request.method == "POST":
+        try:
+            jardin.delete()
+            messages.success(request, f"El espacio '{jardin.nombre}' fue eliminado correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar el espacio porque tiene salas asignadas.")
+    return redirect("users:lista_espacios")
+
+@login_required
+@solo_coordinador
+def eliminar_subprograma(request, subprograma_id):
+    subprograma = get_object_or_404(Subprograma, id=subprograma_id)
+    if request.method == "POST":
+        try:
+            subprograma.delete()
+            messages.success(request, f"El subprograma '{subprograma.nombre}' fue eliminado correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar el subprograma porque tiene espacios asignados.")
+    return redirect("users:lista_subprogramas")
+
+@login_required
+@solo_coordinador
+def eliminar_docente(request, docente_id):
+    docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+    if request.method == "POST":
+        try:
+            docente.delete()
+            messages.success(request, f"El docente {docente.username} fue eliminado correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar este docente porque tiene datos operativos vinculados.")
+    return redirect("users:lista_docentes")
