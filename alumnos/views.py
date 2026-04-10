@@ -191,8 +191,27 @@ def agregar_alumno(request, sala_id):
     # -------------------------------------
 
     if request.method == "POST":
-        alumno_form = AlumnoForm(request.POST)
-        ficha_form = FichaProgramaAlumnoForm(request.POST)
+        dni = request.POST.get('dni')
+        if dni:
+            dni = dni.strip()
+        alumno_existente = Alumno.objects.filter(dni=dni).first() if dni else None
+
+        if alumno_existente:
+            alumno_form = AlumnoForm(request.POST, instance=alumno_existente)
+            ficha = FichaProgramaAlumno.objects.filter(alumno=alumno_existente).first()
+            if ficha:
+                ficha_form = FichaProgramaAlumnoForm(request.POST, instance=ficha)
+            else:
+                ficha_form = FichaProgramaAlumnoForm(request.POST)
+            
+            if dynamic_form and estructura:
+                respuesta_obj = RespuestaFormulario.objects.filter(alumno=alumno_existente, formulario=estructura).first()
+                if respuesta_obj:
+                    # just so we update the existing object instead of creating duplicate
+                    pass
+        else:
+            alumno_form = AlumnoForm(request.POST)
+            ficha_form = FichaProgramaAlumnoForm(request.POST)
 
         # Validamos la tríada de formularios
         forms_valid = alumno_form.is_valid() and ficha_form.is_valid()
@@ -202,7 +221,16 @@ def agregar_alumno(request, sala_id):
         if forms_valid:
             # 💾 1. Guardar Alumno
             alumno = alumno_form.save()
-            AsignacionSala.objects.create(alumno=alumno, sala=sala)
+            asignacion, created = AsignacionSala.objects.get_or_create(
+                alumno=alumno, 
+                sala=sala,
+                defaults={'activo': True, 'fecha_baja': None}
+            )
+            # if they were already assigned but inactive, re-activate them:
+            if not created and not asignacion.activo:
+                asignacion.activo = True
+                asignacion.fecha_baja = None
+                asignacion.save()
 
             # 💾 2. Guardar Ficha (datos extra)
             ficha = ficha_form.save(commit=False)
@@ -211,11 +239,29 @@ def agregar_alumno(request, sala_id):
 
             # 💾 3. Guardar respuesta dinámica si aplica
             if dynamic_form:
-                RespuestaFormulario.objects.create(
-                    alumno=alumno,
-                    formulario=estructura,
-                    datos=dynamic_form.cleaned_data
-                )
+                if alumno_existente:
+                    respuesta_obj = RespuestaFormulario.objects.filter(alumno=alumno, formulario=estructura).first()
+                    if respuesta_obj:
+                        respuesta_obj.datos = dynamic_form.cleaned_data
+                        respuesta_obj.save()
+                    else:
+                        RespuestaFormulario.objects.create(
+                            alumno=alumno,
+                            formulario=estructura,
+                            datos=dynamic_form.cleaned_data
+                        )
+                else:
+                    RespuestaFormulario.objects.create(
+                        alumno=alumno,
+                        formulario=estructura,
+                        datos=dynamic_form.cleaned_data
+                    )
+
+            from django.contrib import messages
+            if alumno_existente:
+                messages.success(request, f"El alumno {alumno.nombre} {alumno.apellido} ya existía y fue asignado a la sala correctamente.")
+            else:
+                messages.success(request, f"Alumno {alumno.nombre} {alumno.apellido} registrado correctamente.")
 
             return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
 
