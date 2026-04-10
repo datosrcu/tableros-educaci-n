@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 
-from .models import Alumno, Asistencia, MotivoJustificacion, FichaProgramaAlumno
+from .models import Alumno, Asistencia, MotivoJustificacion, FichaProgramaAlumno, AsignacionSala
 from .forms import (
     AlumnoForm,
     FichaProgramaAlumnoForm,
@@ -41,7 +41,7 @@ def validar_alumno_para_docente(user, alumno):
     Lanza PermissionDenied si el docente intenta acceder a un alumno
     que no pertenece a ninguna de sus salas asignadas.
     """
-    if not docente_tiene_sala(user, alumno.sala_id):
+    if not AsignacionSala.objects.filter(alumno=alumno, sala__in=user.salas_asignadas.all()).exists():
         raise PermissionDenied
 
 
@@ -87,19 +87,19 @@ def lista_alumnos(request):
 
     # 🏢 Administradores y coordinadores ven todo el padrón
     if user.is_superuser or user.rol in ["administrador", "coordinador"]:
-        alumnos = Alumno.objects.select_related(
-            "sala",
-            "sala__jardin"
-        )
+        alumnos = Alumno.objects.prefetch_related(
+            "asignaciones",
+            "asignaciones__sala__jardin"
+        ).distinct()
 
     # 👨‍🏫 Docentes ven solo su jurisdicción
     elif user.rol == "docente":
         alumnos = Alumno.objects.filter(
-            sala__in=user.salas_asignadas.all()
-        ).select_related(
-            "sala",
-            "sala__jardin"
-        )
+            asignaciones__sala__in=user.salas_asignadas.all()
+        ).prefetch_related(
+            "asignaciones",
+            "asignaciones__sala__jardin"
+        ).distinct()
 
     else:
         raise PermissionDenied
@@ -128,20 +128,17 @@ def alumnos_por_sala(request, sala_id):
     if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
-    alumnos = Alumno.objects.filter(
-        sala=sala,
-        activo=True
-    )
+    asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
 
     # 🔹 Acciones masivas de baja/activación
     if request.method == "POST" and request.user.rol == "docente":
-        for alumno in alumnos:
-            activo = request.POST.get(f'activo_{alumno.id}') == "on"
+        for asignacion in asignaciones:
+            activo = request.POST.get(f'activo_{asignacion.alumno.id}') == "on"
 
-            if alumno.activo != activo:
-                alumno.activo = activo
-                alumno.fecha_baja = None if activo else date.today()
-                alumno.save()
+            if asignacion.activo != activo:
+                asignacion.activo = activo
+                asignacion.fecha_baja = None if activo else date.today()
+                asignacion.save()
                 
                 # Registrar en auditoría la baja
                 if not activo:
@@ -157,7 +154,7 @@ def alumnos_por_sala(request, sala_id):
 
     return render(request, "docentes/alumnos_por_sala.html", {
         "sala": sala,
-        "alumnos": alumnos
+        "asignaciones": asignaciones
     })
 
 
@@ -204,10 +201,8 @@ def agregar_alumno(request, sala_id):
 
         if forms_valid:
             # 💾 1. Guardar Alumno
-            alumno = alumno_form.save(commit=False)
-            alumno.sala = sala
-            alumno.save()
-            alumno_form.save_m2m()
+            alumno = alumno_form.save()
+            AsignacionSala.objects.create(alumno=alumno, sala=sala)
 
             # 💾 2. Guardar Ficha (datos extra)
             ficha = ficha_form.save(commit=False)
@@ -254,8 +249,10 @@ def editar_alumno(request, alumno_id):
     ficha, _ = FichaProgramaAlumno.objects.get_or_create(alumno=alumno)
 
     # --- Lógica de Formulario Dinámico ---
-    programa = alumno.sala.jardin.programa
-    estructura = getattr(programa, 'estructura_formulario', None)
+    # Tomamos la primera sala asignada para buscar los campos si corresponde
+    primera_asignacion = AsignacionSala.objects.filter(alumno=alumno).first()
+    programa = primera_asignacion.sala.jardin.programa if primera_asignacion else None
+    estructura = getattr(programa, 'estructura_formulario', None) if programa else None
     dynamic_form = None
     respuesta_obj = None
 
@@ -300,10 +297,7 @@ def editar_alumno(request, alumno_id):
                         datos=dynamic_form.cleaned_data
                     )
 
-            return redirect(
-                "alumnos:alumnos_por_sala",
-                sala_id=alumno.sala.id
-            )
+            return redirect("alumnos:detalle_alumno", alumno_id=alumno.id)
 
     else:
         alumno_form = AlumnoForm(instance=alumno)
@@ -311,7 +305,7 @@ def editar_alumno(request, alumno_id):
 
     return render(request, "docentes/editar_alumno.html", {
         "alumno": alumno,
-        "sala": alumno.sala,
+        "sala": primera_asignacion.sala if primera_asignacion else None,
         "alumno_form": alumno_form,
         "ficha_form": ficha_form,
         "dynamic_form": dynamic_form,
@@ -384,7 +378,7 @@ def cargar_asistencia(request, sala_id):
     except Exception:
         fecha = date.today()
 
-    alumnos = Alumno.objects.filter(sala=sala, activo=True)
+    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
     motivos = MotivoJustificacion.objects.all()
 
     if request.method == "POST":
@@ -403,6 +397,7 @@ def cargar_asistencia(request, sala_id):
                 Asistencia.objects.update_or_create(
                     alumno=alumno,
                     fecha=fecha,
+                    sala=sala,
                     defaults={
                         "estado": estado,
                         "motivo": motivo,
@@ -416,7 +411,8 @@ def cargar_asistencia(request, sala_id):
 
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos,
-        fecha=fecha
+        fecha=fecha,
+        sala=sala
     ).select_related("motivo")
 
     asistencias_dict = {a.alumno_id: a for a in asistencias_existentes}
@@ -455,11 +451,12 @@ def ver_asistencias(request, sala_id):
     except Exception:
         fecha = date.today()
 
-    alumnos = Alumno.objects.filter(sala=sala, activo=True)
+    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
 
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos,
-        fecha=fecha
+        fecha=fecha,
+        sala=sala
     ).select_related("motivo")
 
     asistencias_dict = {a.alumno_id: a for a in asistencias_existentes}
@@ -540,9 +537,9 @@ def exportar_alumnos_csv(request, sala_id):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['Apellido', 'Nombre', 'DNI', 'Fecha Nacimiento', 'Estado'])
 
-    alumnos = Alumno.objects.filter(sala=sala)
-    for a in alumnos:
-        writer.writerow([a.apellido, a.nombre, a.dni, a.fecha_nacimiento.strftime('%d/%m/%Y') if a.fecha_nacimiento else '-', 'Activo' if a.activo else 'Baja'])
+    asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+    for a in asignaciones:
+        writer.writerow([a.alumno.apellido, a.alumno.nombre, a.alumno.dni, a.alumno.fecha_nacimiento.strftime('%d/%m/%Y') if a.alumno.fecha_nacimiento else '-', 'Activo' if a.activo else 'Baja'])
 
     return response
 
@@ -555,7 +552,8 @@ def imprimir_alumnos_sala(request, sala_id):
     if not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
-    alumnos = Alumno.objects.filter(sala=sala, activo=True).order_by('apellido')
+    asignaciones = AsignacionSala.objects.filter(sala=sala, activo=True).select_related('alumno').order_by('alumno__apellido')
+    alumnos = [a.alumno for a in asignaciones]
     return render(request, "docentes/imprimir_alumnos.html", {
         "sala": sala,
         "alumnos": alumnos,
@@ -585,7 +583,7 @@ def exportar_asistencias_csv(request, sala_id):
     writer.writerow(['Fecha', 'Alumno', 'DNI', 'Estado', 'Justificación'])
 
     asistencias = Asistencia.objects.filter(
-        alumno__sala=sala,
+        sala=sala,
         fecha=fecha
     ).select_related('alumno', 'motivo')
 
@@ -615,8 +613,8 @@ def imprimir_asistencias_sala(request, sala_id):
     except Exception:
         fecha = date.today()
 
-    alumnos = Alumno.objects.filter(sala=sala, activo=True).order_by('apellido')
-    asistencias = Asistencia.objects.filter(alumno__in=alumnos, fecha=fecha).select_related('motivo')
+    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True).order_by('apellido')
+    asistencias = Asistencia.objects.filter(alumno__in=alumnos, fecha=fecha, sala=sala).select_related('motivo')
     asistencias_dict = {a.alumno_id: a for a in asistencias}
 
     return render(request, "docentes/imprimir_asistencias.html", {

@@ -33,7 +33,7 @@
             <div class="card-header bg-white py-3 border-bottom border-light">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold text-dark">Alumnos Registrados</h5>
-                    <span class="badge bg-primary rounded-pill">{{ alumnos.count }} alumnos</span>
+                    <span class="badge bg-primary rounded-pill">{{ asignaciones.count }} alumnos</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -50,28 +50,28 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for alumno in alumnos %}
-                                <tr class="{% if not alumno.activo %}opacity-50 grayscale{% endif %}">
+                                {% for asignacion in asignaciones %}
+                                <tr class="{% if not asignacion.activo %}opacity-50 grayscale{% endif %}">
                                     <td class="ps-4">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox"
-                                                name="activo_{{ alumno.id }}" {% if alumno.activo %} checked {% endif
+                                                name="activo_{{ asignacion.alumno.id }}" {% if asignacion.activo %} checked {% endif
                                                 %}>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="fw-bold text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</div>
-                                        <div class="text-muted small">ID: #{{ alumno.id }}</div>
+                                        <div class="fw-bold text-dark">{{ asignacion.alumno.apellido }}, {{ asignacion.alumno.nombre }}</div>
+                                        <div class="text-muted small">ID: #{{ asignacion.alumno.id }}</div>
                                     </td>
-                                    <td>{{ alumno.dni }}</td>
+                                    <td>{{ asignacion.alumno.dni }}</td>
                                     <td class="text-end pe-4">
                                         <div class="btn-group shadow-none">
-                                            <a href="{% url 'alumnos:detalle_alumno' alumno.id %}"
+                                            <a href="{% url 'alumnos:detalle_alumno' asignacion.alumno.id %}"
                                                 class="btn btn-outline-primary btn-sm rounded-start-pill px-3"
                                                 title="Ver Detalle">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{% url 'alumnos:editar_alumno' alumno.id %}"
+                                            <a href="{% url 'alumnos:editar_alumno' asignacion.alumno.id %}"
                                                 class="btn btn-outline-warning btn-sm rounded-end-pill px-3"
                                                 title="Editar">
                                                 <i class="fas fa-edit"></i>

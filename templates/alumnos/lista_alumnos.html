@@ -23,23 +23,30 @@
             </thead>
             <tbody>
                 {% for alumno in alumnos %}
-                <tr class="{% if not alumno.activo %}opacity-50 grayscale{% endif %}">
+                <tr class="{% if not alumno.asignaciones.all %}opacity-50 grayscale{% endif %}">
                     <td class="ps-4">
                         <div class="fw-bold text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</div>
-                        <div class="text-muted micro-text">Inscripción: {{ alumno.fecha_alta|date:"d/m/Y" }}</div>
+                        <div class="text-muted micro-text">Inscripción: {{ alumno.fecha_alta|date:"d/m/Y"|default:"-" }}</div>
                     </td>
                     <td><span class="badge bg-light text-dark fw-normal border">{{ alumno.dni|default:"—" }}</span></td>
                     <td>
-                        <div class="small fw-semibold">{{ alumno.sala.jardin.nombre }}</div>
-                        <div class="text-muted micro-text">{{ alumno.sala.nombre }} ({{ alumno.sala.get_turno_display
-                            }})</div>
+                        {% for a in alumno.asignaciones.all %}
+                        <div class="small fw-semibold">{{ a.sala.jardin.nombre }}</div>
+                        <div class="text-muted micro-text">{{ a.sala.nombre }} ({{ a.sala.get_turno_display }})</div>
+                        {% empty %}
+                        <span class="text-muted small">Sin asignar</span>
+                        {% endfor %}
                     </td>
                     <td>
-                        {% if alumno.activo %}
-                        <span class="badge bg-success-subtle text-success rounded-pill px-2">Activo</span>
-                        {% else %}
-                        <span class="badge bg-danger-subtle text-danger rounded-pill px-2">Baja</span>
-                        {% endif %}
+                        {% for a in alumno.asignaciones.all %}
+                            {% if a.activo %}
+                            <span class="badge bg-success-subtle text-success rounded-pill px-2 mb-1 d-inline-block" title="{{ a.sala.nombre }}">Activo en {{ a.sala.nombre }}</span><br>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-2 mb-1 d-inline-block" title="{{ a.sala.nombre }}">Baja en {{ a.sala.nombre }}</span><br>
+                            {% endif %}
+                        {% empty %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2">Sin salas</span>
+                        {% endfor %}
                     </td>
                     <td class="text-end pe-4">
                         <div class="btn-group shadow-sm rounded-pill overflow-hidden">

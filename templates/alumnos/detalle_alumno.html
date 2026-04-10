@@ -10,8 +10,11 @@
             class="text-decoration-none text-muted small text-uppercase fw-semibold">Mi Panel</a>
         </li>
         <li class="breadcrumb-item">
-          <a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}"
-            class="text-decoration-none text-muted small text-uppercase">{{ alumno.sala.nombre }}</a>
+          <span class="text-muted small text-uppercase">
+            {% for a in alumno.asignaciones.all %}
+                <a href="{% url 'alumnos:alumnos_por_sala' a.sala.id %}" class="text-decoration-none text-muted">{{ a.sala.nombre }}</a>{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+          </span>
         </li>
         <li class="breadcrumb-item active small text-uppercase fw-bold text-primary" aria-current="page">Ficha de Alumno
         </li>
@@ -19,11 +22,15 @@
     </nav>
     <h2 class="fw-bold mb-0 text-dark">{{ alumno.apellido }}, {{ alumno.nombre }}</h2>
     <div class="d-flex align-items-center mt-2">
+      {% for a in alumno.asignaciones.all %}
       <span
-        class="badge {% if alumno.activo %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill px-3 py-2 uppercase small fw-bold me-2">
-        <i class="fas {% if alumno.activo %}fa-check-circle{% else %}fa-times-circle{% endif %} me-1"></i>
-        {% if alumno.activo %}Activo{% else %}Baja: {{ alumno.fecha_baja|date:"d/m/Y" }}{% endif %}
+        class="badge {% if a.activo %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill px-3 py-2 uppercase small fw-bold me-2 mb-1" title="{{ a.sala.nombre }}">
+        <i class="fas {% if a.activo %}fa-check-circle{% else %}fa-times-circle{% endif %} me-1"></i>
+        {{ a.sala.nombre }}: {% if a.activo %}Activo{% else %}Baja: {{ a.fecha_baja|date:"d/m/Y" }}{% endif %}
       </span>
+      {% empty %}
+      <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2 uppercase small fw-bold me-2">Sin salas</span>
+      {% endfor %}
       <span class="text-muted small"><i class="far fa-id-card me-1"></i>DNI: {{ alumno.dni|default:"—" }}</span>
     </div>
   </div>
@@ -53,13 +60,15 @@
             <label class="text-muted small uppercase fw-bold d-block mb-1">DNI</label>
             <div class="text-dark fw-semibold">{{ alumno.dni|default:"—" }}</div>
           </div>
-          <div class="col-md-6">
-            <label class="text-muted small uppercase fw-bold d-block mb-1">Espacio / Jardín</label>
-            <div class="text-dark fw-semibold">{{ alumno.sala.jardin.nombre }}</div>
-          </div>
-          <div class="col-md-6">
-            <label class="text-muted small uppercase fw-bold d-block mb-1">Sala y Turno</label>
-            <div class="text-dark fw-semibold">{{ alumno.sala.nombre }} ({{ alumno.sala.get_turno_display }})</div>
+          <div class="col-md-12">
+            <label class="text-muted small uppercase fw-bold d-block mb-1">Espacios y Salas Asignadas</label>
+            {% for a in alumno.asignaciones.all %}
+            <div class="text-dark fw-semibold mb-1">
+              • {{ a.sala.jardin.nombre }} - {{ a.sala.nombre }} ({{ a.sala.get_turno_display }})
+            </div>
+            {% empty %}
+            <div class="text-muted">No asignado</div>
+            {% endfor %}
           </div>
         </div>
       </div>
@@ -219,9 +228,11 @@
 </div>
 
 <div class="mt-4">
-  <a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}" class="btn btn-link text-decoration-none text-muted">
-    <i class="fas fa-arrow-left me-1"></i>Volver a la Sala
+  {% for a in alumno.asignaciones.all %}
+  <a href="{% url 'alumnos:alumnos_por_sala' a.sala.id %}" class="btn btn-link text-decoration-none text-muted d-block text-start mb-2">
+    <i class="fas fa-arrow-left me-1"></i>Volver a {{ a.sala.nombre }}
   </a>
+  {% endfor %}
 </div>
 
 <style>

@@ -8,8 +8,7 @@ class AlumnoForm(forms.ModelForm):
 
     class Meta:
         model = Alumno
-        fields = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'sala', 'tutores']
-        exclude = ['sala', 'fecha_baja']
+        fields = ['nombre', 'apellido', 'dni', 'fecha_nacimiento', 'tutores']
         widgets = {
             'tutores': forms.CheckboxSelectMultiple
         }

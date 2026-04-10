@@ -13,15 +13,19 @@
 <hr>
 
 <h4>Información académica</h4>
-<p><strong>Sala:</strong> {{ alumno.sala.nombre }}</p>
-<p><strong>Espacio:</strong> {{ alumno.sala.jardin.nombre }}</p>
+<p><strong>Sala:</strong> 
+{% for a in alumno.asignaciones.all %}{{ a.sala.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}
+</p>
+<p><strong>Espacio:</strong> 
+{% for a in alumno.asignaciones.all %}{{ a.sala.jardin.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}
+</p>
 
-{% if alumno.sala.jardin.programa %}
-<p><strong>Programa:</strong> {{ alumno.sala.jardin.programa.nombre }}</p>
+{% if alumno.asignaciones.first.sala.jardin.programa %}
+<p><strong>Programa:</strong> {{ alumno.asignaciones.first.sala.jardin.programa.nombre }}</p>
 {% endif %}
 
-{% if alumno.sala.jardin.subprograma %}
-<p><strong>Subprograma:</strong> {{ alumno.sala.jardin.subprograma.nombre }}</p>
+{% if alumno.asignaciones.first.sala.jardin.subprograma %}
+<p><strong>Subprograma:</strong> {{ alumno.asignaciones.first.sala.jardin.subprograma.nombre }}</p>
 {% endif %}
 
 <hr>
@@ -74,8 +78,8 @@
 
 <hr>
 
-<a href="{% url 'alumnos:alumnos_por_sala' alumno.sala.id %}">
-    ← Volver a la sala
+<a href="{% url 'alumnos:dashboard_docente' %}">
+    ← Volver
 </a>
 
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Alumno, Asistencia, Tutor, MotivoJustificacion
+from .models import Alumno, Asistencia, Tutor, MotivoJustificacion, AsignacionSala
 
 class AdminSoloStaffPorRol(admin.ModelAdmin):
     ROLES_PERMITIDOS = ["administrador", "coordinador"]
@@ -24,9 +24,14 @@ class AdminSoloStaffPorRol(admin.ModelAdmin):
 
 @admin.register(Alumno)
 class AlumnoAdmin(admin.ModelAdmin):
-    list_display = ('apellido', 'nombre', 'sala', 'activo', 'fecha_baja')
+    list_display = ('apellido', 'nombre', 'dni')
+    search_fields = ('apellido','nombre', 'dni')
+
+@admin.register(AsignacionSala)
+class AsignacionSalaAdmin(admin.ModelAdmin):
+    list_display = ('alumno', 'sala', 'activo', 'fecha_ingreso', 'fecha_baja')
     list_filter = ('sala', 'activo')
-    search_fields = ('apellido','nombre')
+    search_fields = ('alumno__apellido', 'alumno__nombre')
 
 @admin.register(Asistencia)
 class AsistenciaAdmin(admin.ModelAdmin):
@@ -37,7 +42,7 @@ class AsistenciaAdmin(admin.ModelAdmin):
         'motivo_resumido',
     )
 
-    list_filter = ('estado', 'fecha', 'alumno__sala')
+    list_filter = ('estado', 'fecha', 'sala')
     search_fields = ('alumno__nombre',)
     ordering = ('-fecha',)
 

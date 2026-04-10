@@ -19,10 +19,7 @@ class Alumno(models.Model):
     apellido = models.CharField(max_length=100)
     dni = models.CharField(max_length=20, unique=True, help_text="DNI sin puntos ni espacios.")
     fecha_nacimiento = models.DateField(null=True, blank=True)
-    sala = models.ForeignKey("jardines.Sala", on_delete=models.PROTECT, help_text="Sala actual del alumno.")
     tutores = models.ManyToManyField("Tutor", related_name="alumnos", blank=True, help_text="Responsables legales o tutores.")
-    activo = models.BooleanField(default=True, help_text="Si está False, el alumno se considera dado de baja.")
-    fecha_baja = models.DateField(null=True, blank=True, help_text="Fecha en la que el alumno dejó de asistir.")
 
     def clean(self):
         """
@@ -43,18 +40,6 @@ class Alumno(models.Model):
                 "fecha_nacimiento": "La edad del alumno no es válida para este sistema (debe tener entre 45 días y 18 años)."
             })
 
-        # 🔹 Si no está activo → debe tener fecha_baja
-        if not self.activo and not self.fecha_baja:
-            raise ValidationError({
-                "fecha_baja": "Debe indicar la fecha de baja si el alumno no está activo."
-            })
-
-        # 🔹 Si está activo → no puede tener fecha_baja
-        if self.activo and self.fecha_baja:
-            raise ValidationError({
-                "fecha_baja": "Un alumno activo no puede tener fecha de baja."
-            })
-
     def save(self, *args, **kwargs):
         """Sobreescritura para forzar la limpieza de datos antes de guardar."""
         self.full_clean()  # 🔥 fuerza validaciones siempre
@@ -62,6 +47,35 @@ class Alumno(models.Model):
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre}"
+
+class AsignacionSala(models.Model):
+    """
+    Registra el vínculo entre un alumno y una sala particular.
+    Soporta múltiples inscripciones para un mismo alumno (ej: doble turno).
+    """
+    alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asignaciones")
+    sala = models.ForeignKey("jardines.Sala", on_delete=models.PROTECT, related_name="alumnos_asignados")
+    activo = models.BooleanField(default=True, help_text="Indica si el alumno sigue cursando en esta sala.")
+    fecha_ingreso = models.DateField(auto_now_add=True)
+    fecha_baja = models.DateField(null=True, blank=True, help_text="Fecha de egreso o abandono en esta sala particular.")
+
+    class Meta:
+        unique_together = ("alumno", "sala")
+        verbose_name = "Asignación a Sala"
+        verbose_name_plural = "Asignaciones a Salas"
+
+    def clean(self):
+        if not self.activo and not self.fecha_baja:
+            raise ValidationError({"fecha_baja": "Debe indicar la fecha de baja si la asignación no está activa."})
+        if self.activo and self.fecha_baja:
+            raise ValidationError({"fecha_baja": "Una asignación activa no puede tener fecha de baja."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.alumno} en {self.sala.nombre}"
 
 
 class MotivoJustificacion(models.Model):
@@ -91,6 +105,7 @@ class Asistencia(models.Model):
         ('R', 'Retiro Temprano'),
     ]
     alumno = models.ForeignKey(Alumno, on_delete=models.CASCADE, related_name="asistencias")
+    sala = models.ForeignKey("jardines.Sala", on_delete=models.CASCADE, related_name="asistencias", null=True, blank=True)
     fecha = models.DateField()
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
     docente = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, help_text="Docente que registró la asistencia.")
@@ -103,7 +118,7 @@ class Asistencia(models.Model):
     )
 
     class Meta:
-        unique_together = ("alumno", "fecha")
+        unique_together = ("alumno", "sala", "fecha")
         verbose_name = "Asistencia"
         verbose_name_plural = "Asistencias"
         

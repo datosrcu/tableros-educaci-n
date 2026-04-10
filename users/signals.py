@@ -81,7 +81,7 @@ def log_docente_asignacion(sender, instance, action, pk_set, reverse, **kwargs):
 @receiver(post_save, sender=Alumno)
 def log_alumno_save(sender, instance, created, **kwargs):
     action = "creacion" if created else "modificacion"
-    desc = f"{'Registrado' if created else 'Actualizado'} el alumno {instance.apellido}, {instance.nombre} (DNI: {instance.dni}) en sala '{instance.sala.nombre}'"
+    desc = f"{'Registrado' if created else 'Actualizado'} el alumno {instance.apellido}, {instance.nombre} (DNI: {instance.dni})"
     log_action(instance, action, desc)
 
 @receiver(post_delete, sender=Alumno)
