@@ -197,32 +197,10 @@ def agregar_alumno(request, sala_id):
         alumno_existente = Alumno.objects.filter(dni=dni).first() if dni else None
 
         if alumno_existente:
-            alumno_form = AlumnoForm(request.POST, instance=alumno_existente)
-            ficha = FichaProgramaAlumno.objects.filter(alumno=alumno_existente).first()
-            if ficha:
-                ficha_form = FichaProgramaAlumnoForm(request.POST, instance=ficha)
-            else:
-                ficha_form = FichaProgramaAlumnoForm(request.POST)
-            
-            if dynamic_form and estructura:
-                respuesta_obj = RespuestaFormulario.objects.filter(alumno=alumno_existente, formulario=estructura).first()
-                if respuesta_obj:
-                    # just so we update the existing object instead of creating duplicate
-                    pass
-        else:
-            alumno_form = AlumnoForm(request.POST)
-            ficha_form = FichaProgramaAlumnoForm(request.POST)
-
-        # Validamos la tríada de formularios
-        forms_valid = alumno_form.is_valid() and ficha_form.is_valid()
-        if dynamic_form:
-            forms_valid = forms_valid and dynamic_form.is_valid()
-
-        if forms_valid:
-            # 💾 1. Guardar Alumno
-            alumno = alumno_form.save()
+            # Solo vinculamos al alumno sin validar o sobreescribir los otros formularios
+            # para asegurarnos que sus datos no se "pisen".
             asignacion, created = AsignacionSala.objects.get_or_create(
-                alumno=alumno, 
+                alumno=alumno_existente, 
                 sala=sala,
                 defaults={'activo': True, 'fecha_baja': None}
             )
@@ -232,38 +210,45 @@ def agregar_alumno(request, sala_id):
                 asignacion.fecha_baja = None
                 asignacion.save()
 
-            # 💾 2. Guardar Ficha (datos extra)
-            ficha = ficha_form.save(commit=False)
-            ficha.alumno = alumno
-            ficha.save()
+            from django.contrib import messages
+            messages.success(request, f"El alumno {alumno_existente.nombre} {alumno_existente.apellido} ya existía y fue asignado a la sala sin sobreescribir sus datos originales.")
+            return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
 
-            # 💾 3. Guardar respuesta dinámica si aplica
+        else:
+            alumno_form = AlumnoForm(request.POST)
+            ficha_form = FichaProgramaAlumnoForm(request.POST)
+
+            # Validamos la tríada de formularios
+            forms_valid = alumno_form.is_valid() and ficha_form.is_valid()
             if dynamic_form:
-                if alumno_existente:
-                    respuesta_obj = RespuestaFormulario.objects.filter(alumno=alumno, formulario=estructura).first()
-                    if respuesta_obj:
-                        respuesta_obj.datos = dynamic_form.cleaned_data
-                        respuesta_obj.save()
-                    else:
-                        RespuestaFormulario.objects.create(
-                            alumno=alumno,
-                            formulario=estructura,
-                            datos=dynamic_form.cleaned_data
-                        )
-                else:
+                forms_valid = forms_valid and dynamic_form.is_valid()
+
+            if forms_valid:
+                # 💾 1. Guardar Alumno
+                alumno = alumno_form.save()
+                asignacion, created = AsignacionSala.objects.get_or_create(
+                    alumno=alumno, 
+                    sala=sala,
+                    defaults={'activo': True, 'fecha_baja': None}
+                )
+
+                # 💾 2. Guardar Ficha (datos extra)
+                ficha = ficha_form.save(commit=False)
+                ficha.alumno = alumno
+                ficha.save()
+
+                # 💾 3. Guardar respuesta dinámica si aplica
+                if dynamic_form:
                     RespuestaFormulario.objects.create(
                         alumno=alumno,
                         formulario=estructura,
                         datos=dynamic_form.cleaned_data
                     )
 
-            from django.contrib import messages
-            if alumno_existente:
-                messages.success(request, f"El alumno {alumno.nombre} {alumno.apellido} ya existía y fue asignado a la sala correctamente.")
-            else:
+                from django.contrib import messages
                 messages.success(request, f"Alumno {alumno.nombre} {alumno.apellido} registrado correctamente.")
 
-            return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
+                return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
 
     else:
         alumno_form = AlumnoForm()
