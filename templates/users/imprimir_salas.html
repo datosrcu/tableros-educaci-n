@@ -34,6 +34,7 @@
                 <th>Nombre Sala</th>
                 <th>Turno</th>
                 <th>Horario</th>
+                <th>Docentes</th>
             </tr>
         </thead>
         <tbody>
@@ -42,11 +43,18 @@
                 <td>{{ sala.jardin.nombre }}</td>
                 <td>{{ sala.nombre }}</td>
                 <td>{{ sala.get_turno_display }}</td>
-                <td>{{ sala.horario|default:"-" }}</td>
+                <td>{{ sala.horario_inicio|time:"H:i" }} a {{ sala.horario_fin|time:"H:i" }}</td>
+                <td>
+                    {% for d in sala.docentes.all %}
+                        {{ d.last_name }}, {{ d.first_name }}{% if not forloop.last %} - {% endif %}
+                    {% empty %}
+                        <em style="color:#777;">Sin asignar</em>
+                    {% endfor %}
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" style="text-align: center;">No hay salas registradas.</td>
+                <td colspan="5" style="text-align: center;">No hay salas registradas.</td>
             </tr>
             {% endfor %}
         </tbody>

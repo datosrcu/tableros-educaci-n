@@ -375,17 +375,19 @@ def exportar_salas_csv(request):
     response['Content-Disposition'] = 'attachment; filename="salas.csv"'
     response.write('\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
-    writer.writerow(['Nombre', 'Turno', 'Horario', 'Jardín'])
+    writer.writerow(['Nombre', 'Turno', 'Horario', 'Jardín', 'Docentes'])
 
-    salas = Sala.objects.all().select_related('jardin').order_by('jardin__nombre', 'nombre')
+    salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
     for sala in salas:
-        writer.writerow([sala.nombre, sala.get_turno_display(), sala.horario, sala.jardin.nombre])
+        horario = f"{sala.horario_inicio.strftime('%H:%M')} a {sala.horario_fin.strftime('%H:%M')}"
+        docentes = " - ".join([f"{d.last_name}, {d.first_name}" for d in sala.docentes.all()])
+        writer.writerow([sala.nombre, sala.get_turno_display(), horario, sala.jardin.nombre, docentes])
     return response
 
 @login_required
 @solo_coordinador
 def imprimir_salas(request):
-    salas = Sala.objects.all().select_related('jardin').order_by('jardin__nombre', 'nombre')
+    salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
     return render(request, "users/imprimir_salas.html", {
         "salas": salas,
         "fecha": date.today()
