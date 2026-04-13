@@ -400,11 +400,11 @@ def exportar_espacios_csv(request):
     response['Content-Disposition'] = 'attachment; filename="espacios.csv"'
     response.write('\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
-    writer.writerow(['Nombre', 'Dirección', 'Barrio', 'Sector', 'Programa', 'Subprograma'])
+    writer.writerow(['Nombre', 'Dirección', 'Coordenadas', 'Sector', 'Programa', 'Subprograma'])
 
     jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
     for j in jardines:
-        writer.writerow([j.nombre, j.direccion, j.barrio, j.sector, j.programa.nombre if j.programa else '-', j.subprograma.nombre if j.subprograma else '-'])
+        writer.writerow([j.nombre, j.direccion, j.coordenadas, j.sector, j.programa.nombre if j.programa else '-', j.subprograma.nombre if j.subprograma else '-'])
     return response
 
 @login_required

@@ -32,7 +32,7 @@
             <tr>
                 <th>Nombre</th>
                 <th>Dirección</th>
-                <th>Barrio</th>
+                <th>Coordenadas</th>
                 <th>Sector</th>
                 <th>Programa</th>
                 <th>Subprograma</th>
@@ -43,7 +43,7 @@
             <tr>
                 <td><strong>{{ j.nombre }}</strong></td>
                 <td>{{ j.direccion|default:"-" }}</td>
-                <td>{{ j.barrio|default:"-" }}</td>
+                <td>{{ j.coordenadas|default:"-" }}</td>
                 <td>{{ j.sector|default:"-" }}</td>
                 <td>{{ j.programa.nombre|default:"-" }}</td>
                 <td>{{ j.subprograma.nombre|default:"-" }}</td>
