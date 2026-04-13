@@ -161,7 +161,6 @@ class Tutor(models.Model):
         unique=True
     )
     telefono = models.CharField(max_length=30, blank=True)
-    email = models.EmailField(max_length=100, blank=True)
 
     class Meta:
         verbose_name = "Tutor"

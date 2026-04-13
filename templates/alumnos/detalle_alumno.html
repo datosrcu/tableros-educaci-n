@@ -87,8 +87,7 @@
               <tr>
                 <th class="ps-4">Nombre y Apellido</th>
                 <th>DNI</th>
-                <th>Teléfono</th>
-                <th class="pe-4">Email</th>
+                <th class="pe-4">Teléfono</th>
               </tr>
             </thead>
             <tbody class="small">
@@ -96,8 +95,7 @@
               <tr>
                 <td class="ps-4 fw-bold text-dark">{{ tutor.nombre }} {{ tutor.apellido }}</td>
                 <td class="text-muted">{{ tutor.dni|default:"—" }}</td>
-                <td class="text-muted">{{ tutor.telefono|default:"—" }}</td>
-                <td class="pe-4 text-muted">{{ tutor.email|default:"—" }}</td>
+                <td class="pe-4 text-muted">{{ tutor.telefono|default:"—" }}</td>
               </tr>
               {% empty %}
               <tr>

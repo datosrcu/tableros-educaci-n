@@ -55,7 +55,7 @@ class AsistenciaAdmin(admin.ModelAdmin):
 
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):
-    list_display = ('apellido', 'nombre', 'dni', 'telefono', 'email')
+    list_display = ('apellido', 'nombre', 'dni', 'telefono')
     search_fields = ('apellido', 'nombre', 'dni')
 
 @admin.register(MotivoJustificacion)

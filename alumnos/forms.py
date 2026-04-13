@@ -45,7 +45,7 @@ class EditarAlumnoForm(forms.ModelForm):
 class TutorForm(forms.ModelForm):
     class Meta:
         model = Tutor
-        fields = ['nombre', 'apellido', 'dni', 'telefono', 'email']
+        fields = ['nombre', 'apellido', 'dni', 'telefono']
 
 class InscripcionForm(forms.ModelForm):
     class Meta:
