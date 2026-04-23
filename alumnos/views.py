@@ -146,8 +146,8 @@ def alumnos_por_sala(request, sala_id):
                         usuario=request.user,
                         accion="modificacion",
                         modelo="Alumno",
-                        objeto_id=alumno.id,
-                        descripcion=f"El docente {request.user.username} dio de baja al alumno {alumno.nombre} {alumno.apellido}."
+                        objeto_id=asignacion.alumno.id,
+                        descripcion=f"El docente {request.user.username} dio de baja al alumno {asignacion.alumno.nombre} {asignacion.alumno.apellido} en la sala {sala.nombre}."
                     )
 
         return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)

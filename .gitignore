@@ -28,3 +28,4 @@ media/
 *.egg-info/
 dist/
 build/
+*.csv
