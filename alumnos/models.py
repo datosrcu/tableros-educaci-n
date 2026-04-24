@@ -58,6 +58,7 @@ class AsignacionSala(models.Model):
     activo = models.BooleanField(default=True, help_text="Indica si el alumno sigue cursando en esta sala.")
     fecha_ingreso = models.DateField(auto_now_add=True)
     fecha_baja = models.DateField(null=True, blank=True, help_text="Fecha de egreso o abandono en esta sala particular.")
+    motivo_baja = models.TextField(blank=True, help_text="Motivo por el que se dio de baja.")
 
     class Meta:
         unique_together = ("alumno", "sala")
@@ -115,6 +116,11 @@ class Asistencia(models.Model):
         null=True,
         blank=True,
         help_text="Motivo obligatorio si el estado es Justificado, opcional para Tarde o Retiro."
+    )
+    observaciones = models.CharField(
+        max_length=255, 
+        blank=True, 
+        help_text="Texto libre para especificar justificación si se selecciona 'Otro' o aclaraciones extra."
     )
 
     class Meta:

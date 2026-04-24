@@ -93,6 +93,12 @@
                                     <td {% if request.user.rol != 'docente' %}class="ps-4"{% endif %}>
                                         <div class="fw-bold text-dark">{{ a.alumno.apellido }}, {{ a.alumno.nombre }}</div>
                                         <div class="text-muted small">ID: #{{ a.alumno.id }}</div>
+                                        
+                                        {% if request.user.rol == 'docente' %}
+                                        <div id="motivo_container_{{ a.alumno.id }}" class="mt-2 {% if a.activo %}d-none{% endif %}">
+                                            <input type="text" name="motivo_baja_{{ a.alumno.id }}" class="form-control form-control-sm border-danger shadow-none" placeholder="Motivo de la baja..." value="{{ a.motivo_baja|default:'' }}">
+                                        </div>
+                                        {% endif %}
                                     </td>
                                     <td>{{ a.alumno.dni }}</td>
                                     <td class="text-end pe-4">
@@ -125,7 +131,7 @@
                     </div>
                     {% if request.user.rol == 'docente' %}
                     <div class="card-footer bg-white py-3 border-top border-light text-end">
-                        <button type="submit" class="btn btn-danger px-4 rounded-pill shadow-sm" onclick="return confirm('¿Está seguro de dar de baja los alumnos desmarcados?');">
+                        <button type="submit" class="btn btn-danger px-4 rounded-pill shadow-sm" onclick="return confirm('¿Está seguro de guardar los cambios en esta sala?');">
                             <i class="fas fa-save me-1"></i>Guardar Cambios
                         </button>
                     </div>
@@ -145,4 +151,26 @@
         transition: background-color 0.2s;
     }
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const switches = document.querySelectorAll('.form-check-input');
+    switches.forEach(switchEl => {
+        switchEl.addEventListener('change', function() {
+            if(this.name.startsWith('activo_')) {
+                const alumnoId = this.name.split('_')[1];
+                const container = document.getElementById('motivo_container_' + alumnoId);
+                if (container) {
+                    if (!this.checked) {
+                        container.classList.remove('d-none');
+                        container.querySelector('input').focus();
+                    } else {
+                        container.classList.add('d-none');
+                    }
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

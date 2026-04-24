@@ -138,6 +138,12 @@ def alumnos_por_sala(request, sala_id):
             if asignacion.activo != activo:
                 asignacion.activo = activo
                 asignacion.fecha_baja = None if activo else date.today()
+                
+                if not activo:
+                    asignacion.motivo_baja = request.POST.get(f'motivo_baja_{asignacion.alumno.id}', '').strip()
+                else:
+                    asignacion.motivo_baja = ''
+                    
                 asignacion.save()
                 
                 # Registrar en auditoría la baja
@@ -279,15 +285,23 @@ def editar_alumno(request, alumno_id):
     # Obtenemos o creamos la ficha de datos extra
     ficha, _ = FichaProgramaAlumno.objects.get_or_create(alumno=alumno)
 
-    # --- Lógica de Formulario Dinámico ---
-    # Tomamos la primera sala asignada para buscar los campos si corresponde
+    # Determinamos si usa formulario ampliado según el programa/subprograma
     primera_asignacion = AsignacionSala.objects.filter(alumno=alumno).first()
+    usa_ampliado = False
+    if primera_asignacion:
+        jardin = primera_asignacion.sala.jardin
+        if jardin.subprograma:
+            usa_ampliado = jardin.subprograma.usa_formulario_ampliado
+        elif jardin.programa:
+            usa_ampliado = jardin.programa.usa_formulario_ampliado
+
     programa = primera_asignacion.sala.jardin.programa if primera_asignacion else None
     estructura = getattr(programa, 'estructura_formulario', None) if programa else None
     dynamic_form = None
     respuesta_obj = None
 
-    if estructura and estructura.activo:
+    # Solo mostramos el formulario dinámico si usa ampliado
+    if estructura and estructura.activo and usa_ampliado:
         # Buscamos si ya tiene respuestas previas para cargar el formulario
         respuesta_obj = RespuestaFormulario.objects.filter(
             alumno=alumno, formulario=estructura
@@ -306,15 +320,19 @@ def editar_alumno(request, alumno_id):
 
     if request.method == "POST":
         alumno_form = AlumnoForm(request.POST, instance=alumno)
-        ficha_form = FichaProgramaAlumnoForm(request.POST, instance=ficha)
+        ficha_form = FichaProgramaAlumnoForm(request.POST, instance=ficha) if usa_ampliado else None
 
-        forms_valid = alumno_form.is_valid() and ficha_form.is_valid()
+        forms_valid = alumno_form.is_valid()
+        if ficha_form:
+            forms_valid = forms_valid and ficha_form.is_valid()
+            
         if dynamic_form:
             forms_valid = forms_valid and dynamic_form.is_valid()
 
         if forms_valid:
             alumno_form.save()
-            ficha_form.save()
+            if ficha_form:
+                ficha_form.save()
 
             # 💾 Actualizar/Crear respuesta dinámica
             if dynamic_form:
@@ -332,7 +350,7 @@ def editar_alumno(request, alumno_id):
 
     else:
         alumno_form = AlumnoForm(instance=alumno)
-        ficha_form = FichaProgramaAlumnoForm(instance=ficha)
+        ficha_form = FichaProgramaAlumnoForm(instance=ficha) if usa_ampliado else None
 
     return render(request, "docentes/editar_alumno.html", {
         "alumno": alumno,
@@ -418,11 +436,12 @@ def cargar_asistencia(request, sala_id):
             for alumno in alumnos:
                 estado = request.POST.get(f"estado_{alumno.id}", "P")
                 motivo_id = request.POST.get(f"motivo_{alumno.id}")
+                observaciones = request.POST.get(f"observaciones_{alumno.id}", "").strip()
                 
                 motivo = None
-                if estado == "J" and motivo_id:
+                if estado in ["J", "T", "R"] and motivo_id:
                     motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
-                elif estado != "J":
+                elif estado not in ["J", "T", "R"]:
                     motivo = None
 
                 Asistencia.objects.update_or_create(
@@ -432,6 +451,7 @@ def cargar_asistencia(request, sala_id):
                     defaults={
                         "estado": estado,
                         "motivo": motivo,
+                        "observaciones": observaciones,
                         "docente": request.user
                     }
                 )
