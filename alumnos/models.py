@@ -18,7 +18,7 @@ class Alumno(models.Model):
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     dni = models.CharField(max_length=20, unique=True, help_text="DNI sin puntos ni espacios.")
-    fecha_nacimiento = models.DateField(null=True, blank=True)
+    fecha_nacimiento = models.DateField()
     tutores = models.ManyToManyField("Tutor", related_name="alumnos", blank=True, help_text="Responsables legales o tutores.")
 
     def clean(self):

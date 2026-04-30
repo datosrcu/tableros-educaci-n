@@ -13,6 +13,14 @@ class AlumnoForm(forms.ModelForm):
             'tutores': forms.CheckboxSelectMultiple
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 🔹 Ordenar tutores alfabéticamente A-Z
+        self.fields['tutores'].queryset = Tutor.objects.all().order_by('apellido', 'nombre')
+        # 🔹 Asegurar que fecha_nacimiento sea obligatoria en el formulario
+        self.fields['fecha_nacimiento'].required = True
+        self.fields['fecha_nacimiento'].help_text = "Formato: DD/MM/AAAA"
+
     def clean_nombre(self):
         nombre = self.cleaned_data.get('nombre', '').strip()
         if not nombre:

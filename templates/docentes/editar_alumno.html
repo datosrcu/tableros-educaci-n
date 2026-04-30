@@ -50,13 +50,16 @@
             {% if field.name != 'tutores' %}
             <div class="col-md-6 mb-3">
               <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
-                {{ field.label }}
+                {{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
               </label>
               {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+              {% if field.help_text %}
+              <div class="text-muted micro-text mt-1">{{ field.help_text }}</div>
+              {% endif %}
               {% if field.errors %}
-              <div class="text-danger micro-text mt-1">
+              <div class="text-danger micro-text mt-1 fw-bold">
                 {% for error in field.errors %}
-                {{ error }}
+                <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
                 {% endfor %}
               </div>
               {% endif %}
@@ -74,8 +77,19 @@
           <h6 class="mb-0 fw-bold text-dark text-uppercase micro-text">
             <i class="fas fa-users me-2 text-warning"></i>Tutores Asignados
           </h6>
+          <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm hover-lift text-dark fw-bold"
+            data-bs-toggle="modal" data-bs-target="#modalTutor">
+            <i class="fas fa-plus me-1"></i>Nuevo Tutor
+          </button>
         </div>
         <div class="card-body p-4">
+          <div class="mb-3 position-relative">
+            <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted">
+              <i class="fas fa-search small"></i>
+            </span>
+            <input type="text" id="tutorSearch" class="form-control ps-5 shadow-none border-light-subtle rounded-pill"
+              placeholder="Buscar tutor por nombre o DNI...">
+          </div>
           <div class="tutor-list-wrapper border rounded-4 p-2 bg-light bg-opacity-25"
             style="max-height: 280px; overflow-y: auto;">
             {% with field=alumno_form.tutores %}
@@ -182,6 +196,110 @@
     </div>
   </div>
 </form>
+
+<div class="modal fade" id="modalTutor" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-warning text-dark py-3 border-0">
+        <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Nuevo Tutor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 bg-white">
+        <form id="tutorFormAjax">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Nombre</label>
+              <input type="text" name="nombre" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: María" required>
+            </div>
+            <div class="col-md-6 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Apellido</label>
+              <input type="text" name="apellido" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: Perez" required>
+            </div>
+            <div class="col-md-12 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">DNI <span class="text-danger">*</span></label>
+              <input type="text" name="dni" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: 12.345.678" required>
+            </div>
+            <div class="col-md-12 mb-2">
+              <label class="form-label small fw-bold text-muted text-uppercase mb-1">Teléfono</label>
+              <input type="text" name="telefono" class="form-control shadow-none border-light-subtle rounded-3"
+                placeholder="Ej: 11 2233-4455">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border" data-bs-dismiss="modal">
+              Cerrar
+            </button>
+            <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark">
+              Guardar Tutor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('tutorSearch');
+    const items = document.querySelectorAll('.tutor-item');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        const term = this.value.toLowerCase();
+        items.forEach(item => {
+          item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        });
+      });
+    }
+    const tutorForm = document.getElementById('tutorFormAjax');
+    const tutorList = document.getElementById('tutorCheckboxes');
+    const modalEle = document.getElementById('modalTutor');
+    if (tutorForm && modalEle) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEle);
+      tutorForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+        fetch("{% url 'alumnos:crear_tutor_ajax' %}", {
+          method: 'POST',
+          body: new FormData(this),
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(r => r.json())
+          .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            if (data.success) {
+              const lbl = document.createElement('label');
+              lbl.className = 'list-group-item list-group-item-action border-0 rounded-3 mb-1 tutor-item d-flex align-items-center cursor-pointer bg-warning bg-opacity-10';
+              lbl.innerHTML = `<input class="form-check-input me-3 mt-0 shadow-none" type="checkbox" name="tutores" value="${data.id}" id="tutor_${data.id}" checked><span class="small text-dark fw-bold">${data.nombre} <span class="badge bg-warning text-dark ms-2 micro-text">NUEVO</span></span>`;
+              const container = document.querySelector('.tutor-list-wrapper .list-group');
+              if(container) container.prepend(lbl);
+              tutorForm.reset();
+              modal.hide();
+              setTimeout(() => {
+                if (lbl) lbl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => lbl.classList.remove('bg-warning', 'bg-opacity-10'), 2000);
+              }, 300);
+            } else {
+              alert('No se pudo guardar el tutor:\n' + data.errors);
+            }
+          })
+          .catch(e => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            alert('Ocurrió un error.');
+          });
+      });
+    }
+  });
+</script>
 
 <style>
   .micro-text {

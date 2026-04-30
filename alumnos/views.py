@@ -394,12 +394,16 @@ def detalle_alumno(request, alumno_id):
 
     # Cargamos datos dinámicos si existen
     respuesta_dinamica = RespuestaFormulario.objects.filter(alumno=alumno).first()
+    
+    # Ficha operativa estática
+    ficha = getattr(alumno, 'ficha_programa', None)
 
     return render(request, "alumnos/detalle_alumno.html", {
         "alumno": alumno,
         "asistencias": asistencias,
         "resumen": resumen_dict,
         "respuesta_dinamica": respuesta_dinamica,
+        "ficha": ficha,
     })
 
 
