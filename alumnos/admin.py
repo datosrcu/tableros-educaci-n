@@ -48,7 +48,7 @@ class AsistenciaAdmin(admin.ModelAdmin):
 
     def motivo_resumido(self, obj):
         if obj.motivo:
-            return obj.motivo[:40]
+            return str(obj.motivo)[:40]
         return '-'
     motivo_resumido.short_description = 'Motivo'
 
