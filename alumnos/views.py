@@ -600,6 +600,70 @@ def exportar_alumnos_csv(request, sala_id):
 
 
 @login_required
+@rol_requerido("coordinador", "administrador")
+def exportar_alumnos_completo_csv(request):
+    """
+    Exporta el padrón completo de alumnos de la base de datos 
+    con información detallada (datos básicos + ficha programa).
+    """
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="padron_completo_alumnos_{date.today()}.csv"'
+    
+    # UTF-8 con BOM para compatibilidad con Excel
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    
+    # Cabecera
+    writer.writerow([
+        'Apellido', 'Nombre', 'DNI', 'Fecha Nacimiento', 
+        'Espacios/Salas', 'Estado General',
+        'Nivel Educativo', 'Situación Laboral', 'Obra Social', 'Escolaridad', 'Teléfono'
+    ])
+
+    alumnos = Alumno.objects.prefetch_related(
+        'asignaciones__sala__jardin',
+        'ficha_programa'
+    ).order_by('apellido', 'nombre')
+
+    for alumno in alumnos:
+        # Espacios y salas
+        salas_info = []
+        for asig in alumno.asignaciones.all():
+            estado = "Activo" if asig.activo else "Baja"
+            salas_info.append(f"{asig.sala.jardin.nombre} - {asig.sala.nombre} ({estado})")
+        
+        salas_str = " | ".join(salas_info) if salas_info else "Sin asignar"
+        
+        # Estado general
+        tiene_activo = any(asig.activo for asig in alumno.asignaciones.all())
+        estado_gen = "ACTIVO" if tiene_activo else ("BAJA" if alumno.asignaciones.exists() else "SIN ASIGNAR")
+        
+        # Ficha Programa
+        ficha = getattr(alumno, 'ficha_programa', None)
+        nivel = ficha.nivel_educativo if ficha else "-"
+        situacion = ficha.situacion_laboral if ficha else "-"
+        obra = ficha.obra_social if ficha else "-"
+        escolaridad = ficha.escolaridad if ficha else "-"
+        tel = ficha.telefono if ficha else "-"
+
+        writer.writerow([
+            alumno.apellido, 
+            alumno.nombre, 
+            alumno.dni, 
+            alumno.fecha_nacimiento.strftime('%d/%m/%Y') if alumno.fecha_nacimiento else '-',
+            salas_str,
+            estado_gen,
+            nivel,
+            situacion,
+            obra,
+            escolaridad,
+            tel
+        ])
+
+    return response
+
+
+@login_required
 @rol_requerido("docente")
 def imprimir_alumnos_sala(request, sala_id):
     """Genera una vista HTML optimizada para imprimir el listado de alumnos."""

@@ -7,6 +7,11 @@
             Alumnos</h2>
         <p class="text-muted small mb-0">Gestión centralizada de alumnos de todos los espacios y programas.</p>
     </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'alumnos:exportar_alumnos_completo_csv' %}" class="btn btn-outline-success fw-bold">
+            <i class="fas fa-file-excel me-1"></i> Exportar Padrón Completo
+        </a>
+    </div>
 </div>
 
 <div class="card shadow-sm border-0 mb-4">
