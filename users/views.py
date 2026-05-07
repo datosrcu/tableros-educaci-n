@@ -1,14 +1,15 @@
 import csv
-from datetime import date
+import calendar
+from datetime import date, datetime, timedelta
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Count, Q, Case, When, IntegerField
 
 from .decorators import solo_coordinador
 from .forms import (
@@ -540,3 +541,136 @@ def eliminar_docente(request, docente_id):
         except ProtectedError:
             messages.error(request, "No se puede eliminar este docente porque tiene datos operativos vinculados.")
     return redirect("users:lista_docentes")
+
+# =====================================================
+# 📊 REPORTES DE ASISTENCIA (COORDINACIÓN)
+# =====================================================
+
+@login_required
+@solo_coordinador
+def reporte_asistencia_diaria(request):
+    """
+    Muestra qué jardines han tomado asistencia en una fecha específica.
+    """
+    fecha_str = request.GET.get('fecha')
+    if fecha_str:
+        try:
+            fecha_consulta = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            fecha_consulta = date.today()
+    else:
+        fecha_consulta = date.today()
+
+    # Todos los jardines
+    jardines = Jardin.objects.all().order_by('nombre')
+    
+    # Jardines con asistencia hoy
+    jardines_con_asistencia_ids = Asistencia.objects.filter(
+        fecha=fecha_consulta
+    ).values_list('sala__jardin_id', flat=True).distinct()
+    
+    jardines_con = []
+    jardines_sin = []
+    
+    for j in jardines:
+        if j.id in jardines_con_asistencia_ids:
+            jardines_con.append(j)
+        else:
+            jardines_sin.append(j)
+            
+    context = {
+        'fecha': fecha_consulta,
+        'jardines_con': jardines_con,
+        'jardines_sin': jardines_sin,
+        'total_con': len(jardines_con),
+        'total_sin': len(jardines_sin),
+    }
+    return render(request, "users/reporte_asistencia_diaria.html", context)
+
+
+@login_required
+@solo_coordinador
+def reporte_asistencia_mensual(request):
+    """
+    Genera la matriz de asistencia mensual por jardín.
+    """
+    ahora = date.today()
+    mes = int(request.GET.get('mes', ahora.month))
+    anio = int(request.GET.get('anio', ahora.year))
+    
+    # Obtener rango de días del mes
+    primer_dia = date(anio, mes, 1)
+    ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
+    dias_mes = [date(anio, mes, d) for d in range(1, ultimo_dia_mes + 1)]
+    
+    jardines = Jardin.objects.all().order_by('nombre')
+    
+    # Data para la matriz
+    # { jardin_id: { dia: count } }
+    asistencias = Asistencia.objects.filter(
+        fecha__year=anio,
+        fecha__month=mes
+    ).values('sala__jardin_id', 'fecha').annotate(count=Count('id'))
+    
+    data_asistencia = {}
+    for a in asistencias:
+        jid = a['sala__jardin_id']
+        fecha = a['fecha']
+        if jid not in data_asistencia:
+            data_asistencia[jid] = {}
+        data_asistencia[jid][fecha.day] = a['count']
+        
+    # Construir filas para el template
+    filas = []
+    for j in jardines:
+        celdas = []
+        dias_con_asistencia = 0
+        for d in range(1, ultimo_dia_mes + 1):
+            valor = data_asistencia.get(j.id, {}).get(d, 0)
+            celdas.append(valor)
+            if valor > 0:
+                dias_con_asistencia += 1
+        filas.append({
+            'jardin': j,
+            'celdas': celdas,
+            'total_dias': dias_con_asistencia
+        })
+        
+    context = {
+        'mes_nombre': calendar.month_name[mes].capitalize(),
+        'mes': mes,
+        'anio': anio,
+        'dias_mes': range(1, ultimo_dia_mes + 1),
+        'filas': filas,
+        'anios_rango': range(ahora.year - 2, ahora.year + 1),
+        'meses_rango': range(1, 13),
+    }
+    
+    if 'export' in request.GET:
+        return exportar_asistencia_mensual_csv(context)
+    
+    if 'print' in request.GET:
+        return render(request, "users/imprimir_asistencia_mensual.html", context)
+
+    return render(request, "users/reporte_asistencia_mensual.html", context)
+
+
+def exportar_asistencia_mensual_csv(context):
+    """
+    Exporta la matriz mensual a CSV.
+    """
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="asistencia_mensual_{context["mes"]}_{context["anio"]}.csv"'
+    
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    
+    # Header
+    header = ['Jardin / Espacio'] + [str(d) for d in context['dias_mes']] + ['Días Cubiertos']
+    writer.writerow(header)
+    
+    for fila in context['filas']:
+        row = [fila['jardin'].nombre] + [str(c) if c > 0 else '0' for c in fila['celdas']] + [str(fila['total_dias'])]
+        writer.writerow(row)
+        
+    return response

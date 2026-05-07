@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-bold"><i class="fas fa-table me-2 text-primary"></i>Asistencia Mensual por Jardín</h2>
+        <p class="text-muted">Consolidado mensual de alumnos registrados por día.</p>
+    </div>
+    <div class="col-md-5">
+        <form method="GET" class="bg-white p-3 rounded shadow-sm border">
+            <div class="row g-2">
+                <div class="col-5">
+                    <select name="mes" class="form-select form-select-sm shadow-none">
+                        {% for m in meses_rango %}
+                        <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-4">
+                    <select name="anio" class="form-select form-select-sm shadow-none">
+                        {% for a in anios_rango %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3">
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Ver</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-uppercase micro-text">{{ mes_nombre }} {{ anio }}</h6>
+        <div>
+            <a href="?mes={{ mes }}&anio={{ anio }}&export=1" class="btn btn-outline-success btn-sm me-2">
+                <i class="fas fa-file-excel me-1"></i> Excel
+            </a>
+            <a href="?mes={{ mes }}&anio={{ anio }}&print=1" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-print me-1"></i> Imprimir / PDF
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle mb-0 text-center" style="font-size: 0.75rem;">
+            <thead class="bg-light text-muted">
+                <tr>
+                    <th class="text-start ps-3" style="min-width: 180px;">Jardín / Espacio</th>
+                    {% for d in dias_mes %}
+                    <th style="width: 30px;">{{ d }}</th>
+                    {% endfor %}
+                    <th class="bg-primary-subtle text-primary">Total Días</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas %}
+                <tr>
+                    <td class="text-start ps-3 fw-bold">{{ fila.jardin.nombre }}</td>
+                    {% for celda in fila.celdas %}
+                    <td class="{% if celda > 0 %}bg-light text-primary fw-bold{% else %}text-muted opacity-25{% endif %}">
+                        {{ celda|default:"-" }}
+                    </td>
+                    {% endfor %}
+                    <td class="bg-primary-subtle fw-bold text-primary">{{ fila.total_dias }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
+    <i class="fas fa-info-circle fa-2x me-3 opacity-50"></i>
+    <div class="small">
+        Los números en la tabla indican la <strong>cantidad de alumnos</strong> que tuvieron asistencia registrada ese día. 
+        Un guión (<code>-</code>) indica que no hubo registros de asistencia para ninguna sala de ese jardín en esa fecha.
+    </div>
+</div>
+{% endblock %}

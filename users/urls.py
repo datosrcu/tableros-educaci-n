@@ -166,6 +166,18 @@ urlpatterns = [
         views.TeacherAuditLogListView.as_view(),
         name="log_docente_sistema"
     ),
+
+    # Reportes de Asistencia
+    path(
+        "coordinador/reporte-diario/",
+        views.reporte_asistencia_diaria,
+        name="reporte_asistencia_diaria",
+    ),
+    path(
+        "coordinador/reporte-mensual/",
+        views.reporte_asistencia_mensual,
+        name="reporte_asistencia_mensual",
+    ),
     
     # Rutas de eliminación
     path(

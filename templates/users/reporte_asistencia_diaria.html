@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-calendar-check me-2 text-primary"></i>Cobertura Diaria de Asistencia</h2>
+        <p class="text-muted">Estado de carga de asistencia por jardín para el día seleccionado.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <form method="GET" class="d-inline-block bg-white p-2 rounded shadow-sm border">
+            <div class="input-group input-group-sm">
+                <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="form-control border-0 shadow-none">
+                <button type="submit" class="btn btn-primary btn-sm rounded ms-2">Consultar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title fw-bold text-success mb-0">Con Asistencia ({{ total_con }})</h5>
+                    <i class="fas fa-check-circle fa-2x text-success opacity-25"></i>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for j in jardines_con %}
+                    <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>{{ j.nombre }}</span>
+                        <span class="badge bg-success-subtle text-success rounded-pill">Cargado</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small">Nadie ha cargado asistencia aún.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm border-start border-4 border-danger h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title fw-bold text-danger mb-0">Pendientes ({{ total_sin }})</h5>
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger opacity-25"></i>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for j in jardines_sin %}
+                    <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span>{{ j.nombre }}</span>
+                        <span class="badge bg-danger-subtle text-danger rounded-pill">Pendiente</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-success small fw-bold"><i class="fas fa-medal me-1"></i>¡Todos los jardines han cargado!</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
