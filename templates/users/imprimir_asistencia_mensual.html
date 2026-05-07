@@ -30,11 +30,15 @@
     <table class="table-print">
         <thead class="bg-light">
             <tr>
-                <th class="text-start" style="width: 200px;">Jardín / Espacio</th>
+                <th rowspan="2" class="text-start" style="width: 200px;">Jardín / Espacio</th>
+                <th colspan="{{ dias_mes|length }}">DÍAS DEL MES</th>
+                <th rowspan="2" style="width: 50px;">Días con <br>Asist.</th>
+                <th rowspan="2" style="width: 50px;">Total <br>Alumnos</th>
+            </tr>
+            <tr>
                 {% for d in dias_mes %}
                 <th style="width: 25px;">{{ d }}</th>
                 {% endfor %}
-                <th style="width: 50px;">Total Días</th>
             </tr>
         </thead>
         <tbody>
@@ -45,9 +49,20 @@
                 <td>{{ celda|default:"-" }}</td>
                 {% endfor %}
                 <td class="fw-bold">{{ fila.total_dias }}</td>
+                <td class="fw-bold">{{ fila.total_alumnos_mes }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot class="fw-bold bg-light">
+            <tr>
+                <td class="text-start">TOTAL ALUMNOS POR DÍA</td>
+                {% for t in totales_diarios %}
+                <td>{{ t|default:"0" }}</td>
+                {% endfor %}
+                <td>-</td>
+                <td>{{ total_general_alumnos }}</td>
+            </tr>
+        </tfoot>
     </table>
 
     <div class="mt-4 row">

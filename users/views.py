@@ -622,18 +622,27 @@ def reporte_asistencia_mensual(request):
         
     # Construir filas para el template
     filas = []
+    totales_diarios = [0] * ultimo_dia_mes
+    total_general_alumnos = 0
+    
     for j in jardines:
         celdas = []
         dias_con_asistencia = 0
+        total_alumnos_jardin = 0
         for d in range(1, ultimo_dia_mes + 1):
             valor = data_asistencia.get(j.id, {}).get(d, 0)
             celdas.append(valor)
             if valor > 0:
                 dias_con_asistencia += 1
+                totales_diarios[d-1] += valor
+                total_alumnos_jardin += valor
+        
+        total_general_alumnos += total_alumnos_jardin
         filas.append({
             'jardin': j,
             'celdas': celdas,
-            'total_dias': dias_con_asistencia
+            'total_dias': dias_con_asistencia,
+            'total_alumnos_mes': total_alumnos_jardin
         })
         
     context = {
@@ -642,6 +651,8 @@ def reporte_asistencia_mensual(request):
         'anio': anio,
         'dias_mes': range(1, ultimo_dia_mes + 1),
         'filas': filas,
+        'totales_diarios': totales_diarios,
+        'total_general_alumnos': total_general_alumnos,
         'anios_rango': range(ahora.year - 2, ahora.year + 1),
         'meses_rango': range(1, 13),
     }
@@ -665,12 +676,16 @@ def exportar_asistencia_mensual_csv(context):
     response.write('\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
     
-    # Header
-    header = ['Jardin / Espacio'] + [str(d) for d in context['dias_mes']] + ['Días Cubiertos']
+    # Header con "Días"
+    header = ['Jardin / Espacio'] + [f'Día {d}' for d in context['dias_mes']] + ['Días Cubiertos', 'Total Alumnos Mes']
     writer.writerow(header)
     
     for fila in context['filas']:
-        row = [fila['jardin'].nombre] + [str(c) if c > 0 else '0' for c in fila['celdas']] + [str(fila['total_dias'])]
+        row = [fila['jardin'].nombre] + [str(c) if c > 0 else '0' for c in fila['celdas']] + [str(fila['total_dias']), str(fila['total_alumnos_mes'])]
         writer.writerow(row)
+    
+    # Fila de Totales Diarios
+    footer = ['TOTAL ALUMNOS POR DIA'] + [str(t) for t in context['totales_diarios']] + ['-', str(context['total_general_alumnos'])]
+    writer.writerow(footer)
         
     return response
