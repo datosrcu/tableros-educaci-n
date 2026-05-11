@@ -4,6 +4,7 @@ Este módulo contiene la lógica de negocio para la carga de datos de alumnos,
 el registro de asistencia diaria y la exportación de reportes.
 """
 import csv
+import calendar
 from datetime import date, datetime
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -387,30 +388,41 @@ def detalle_alumno(request, alumno_id):
     
     asistencias_base = Asistencia.objects.filter(alumno=alumno).select_related("motivo", "sala")
     
+    # Resumen General (Histórico)
+    resumen_qs = asistencias_base.order_by().values("estado").annotate(total=Count("id"))
+    resumen_general = {r["estado"]: r["total"] for r in resumen_qs}
+
     if mes and anio:
         asistencias = asistencias_base.filter(fecha__month=mes, fecha__year=anio).order_by("-fecha")
+        # Resumen Filtrado (Solo del mes seleccionado)
+        resumen_f_qs = asistencias.order_by().values("estado").annotate(total=Count("id"))
+        resumen_filtrado = {r["estado"]: r["total"] for r in resumen_f_qs}
+        
+        meses_es = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        periodo_label = f"Resumen de {meses_es[int(mes)]} {anio}"
     else:
-        # Por defecto mostramos todo el historial pero el resumen siempre es global
         asistencias = asistencias_base.order_by("-fecha")
-
-    resumen = asistencias_base.order_by().values("estado").annotate(total=Count("id"))
-    resumen_dict = {r["estado"]: r["total"] for r in resumen}
+        resumen_filtrado = resumen_general
+        periodo_label = "Resumen Histórico General"
 
     # Para el selector de fechas
     meses_rango = range(1, 13)
     anios_rango = range(date.today().year - 2, date.today().year + 1)
+    
     # Cargamos datos dinámicos si existen
     respuesta_dinamica = RespuestaFormulario.objects.filter(alumno=alumno).first()
 
     return render(request, "alumnos/detalle_alumno.html", {
         "alumno": alumno,
         "asistencias": asistencias,
-        "resumen": resumen_dict,
-        "respuesta_dinamica": respuesta_dinamica,
+        "resumen": resumen_filtrado,
+        "resumen_general": resumen_general,
+        "periodo_label": periodo_label,
         "mes_sel": int(mes) if mes else None,
         "anio_sel": int(anio) if anio else None,
         "meses_rango": meses_rango,
         "anios_rango": anios_rango,
+        "respuesta_dinamica": respuesta_dinamica,
     })
 
 
