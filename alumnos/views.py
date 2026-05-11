@@ -9,7 +9,7 @@ from datetime import date, datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count
 
 from .models import Alumno, Asistencia, MotivoJustificacion, FichaProgramaAlumno, AsignacionSala
@@ -385,7 +385,7 @@ def detalle_alumno(request, alumno_id):
     asistencias = (
         Asistencia.objects
         .filter(alumno=alumno)
-        .select_related("motivo")
+        .select_related("motivo", "sala", "docente")
         .order_by("-fecha")
     )
 

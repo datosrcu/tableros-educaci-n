@@ -114,6 +114,7 @@
       </div>
     </div>
 
+    {# SECCIÓN OCULTA SEGÚN SOLICITUD - LOS DATOS YA APARECEN EN LA FICHA DINÁMICA
     {% if ficha %}
     <div class="card shadow-sm border-0 mb-4 border-start border-4 border-info">
       <div class="card-header bg-white py-3 border-bottom border-light">
@@ -165,6 +166,7 @@
       </div>
     </div>
     {% endif %}
+    #}
 
     {% if respuesta_dinamica %}
     <div class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
@@ -247,6 +249,7 @@
           <thead class="bg-light micro-text uppercase text-muted">
             <tr>
               <th class="ps-4">Fecha</th>
+              <th>Sala</th>
               <th>Estado</th>
               <th>Docente</th>
             </tr>
@@ -255,6 +258,7 @@
             {% for a in asistencias %}
             <tr>
               <td class="ps-4 text-muted">{{ a.fecha|date:"d/m/y" }}</td>
+              <td class="text-muted small">{{ a.sala.nombre|default:"—" }}</td>
               <td>
                 {% if a.estado == 'P' %}
                 <span class="text-success fw-bold"><i class="fas fa-circle me-1 small"></i>P</span>
@@ -291,6 +295,7 @@
             <thead class="bg-light micro-text uppercase text-muted">
               <tr>
                 <th class="ps-4">Fecha</th>
+                <th>Sala</th>
                 <th>Estado</th>
                 <th>Justificación</th>
                 <th>Detalle/Motivo</th>
@@ -302,6 +307,7 @@
                   {% if a.motivo or a.observaciones %}
                   <tr>
                     <td class="ps-4 text-muted">{{ a.fecha|date:"d/m/y" }}</td>
+                    <td class="text-muted small">{{ a.sala.nombre|default:"—" }}</td>
                     <td>
                       {% if a.estado == 'T' %}<span class="text-info fw-bold">Tarde</span>
                       {% elif a.estado == 'R' %}<span class="text-secondary fw-bold">Retiro</span>
