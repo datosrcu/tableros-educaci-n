@@ -184,13 +184,28 @@
       <div
         class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-bold text-dark uppercase micro-text">Historial Reciente</h6>
-        <div class="dropdown">
-          <button
-            class="btn btn-link btn-sm text-decoration-none dropdown-toggle micro-text uppercase fw-bold text-muted p-0"
-            type="button" data-bs-toggle="dropdown">
-            Mes Actual
+        <form method="GET" class="d-flex gap-2">
+          <select name="mes" class="form-select form-select-sm micro-text fw-bold border-0 bg-light shadow-none" style="width: auto;">
+            <option value="">Mes</option>
+            {% for m in meses_rango %}
+            <option value="{{ m }}" {% if m == mes_sel %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+          <select name="anio" class="form-select form-select-sm micro-text fw-bold border-0 bg-light shadow-none" style="width: auto;">
+            <option value="">Año</option>
+            {% for a in anios_rango %}
+            <option value="{{ a }}" {% if a == anio_sel %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm rounded-pill p-1 px-2" title="Filtrar">
+            <i class="fas fa-search fa-xs"></i>
           </button>
-        </div>
+          {% if mes_sel or anio_sel %}
+          <a href="?" class="btn btn-outline-secondary btn-sm rounded-pill p-1 px-2" title="Limpiar">
+            <i class="fas fa-times fa-xs"></i>
+          </a>
+          {% endif %}
+        </form>
       </div>
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
         <table class="table table-sm table-hover mb-0">

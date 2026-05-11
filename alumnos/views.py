@@ -381,25 +381,36 @@ def detalle_alumno(request, alumno_id):
     if user.rol == "docente":
         validar_alumno_para_docente(user, alumno)
 
-    # 📊 Cálculo de estadísticas de asistencia
-    asistencias = (
-        Asistencia.objects
-        .filter(alumno=alumno)
-        .select_related("motivo", "sala")
-        .order_by("-fecha")
-    )
+    # 📊 Filtrado y Cálculo de estadísticas
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+    
+    asistencias_base = Asistencia.objects.filter(alumno=alumno).select_related("motivo", "sala")
+    
+    if mes and anio:
+        asistencias = asistencias_base.filter(fecha__month=mes, fecha__year=anio).order_by("-fecha")
+    else:
+        # Por defecto mostramos todo el historial pero el resumen siempre es global
+        asistencias = asistencias_base.order_by("-fecha")
 
-    resumen = asistencias.values("estado").annotate(total=Count("estado"))
+    resumen = asistencias_base.order_by().values("estado").annotate(total=Count("id"))
     resumen_dict = {r["estado"]: r["total"] for r in resumen}
 
+    # Para el selector de fechas
+    meses_rango = range(1, 13)
+    anios_rango = range(date.today().year - 2, date.today().year + 1)
     # Cargamos datos dinámicos si existen
     respuesta_dinamica = RespuestaFormulario.objects.filter(alumno=alumno).first()
-    
+
     return render(request, "alumnos/detalle_alumno.html", {
         "alumno": alumno,
         "asistencias": asistencias,
         "resumen": resumen_dict,
         "respuesta_dinamica": respuesta_dinamica,
+        "mes_sel": int(mes) if mes else None,
+        "anio_sel": int(anio) if anio else None,
+        "meses_rango": meses_rango,
+        "anios_rango": anios_rango,
     })
 
 
