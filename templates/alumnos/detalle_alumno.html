@@ -114,59 +114,7 @@
       </div>
     </div>
 
-    {# SECCIÓN OCULTA SEGÚN SOLICITUD - LOS DATOS YA APARECEN EN LA FICHA DINÁMICA
-    {% if ficha %}
-    <div class="card shadow-sm border-0 mb-4 border-start border-4 border-info">
-      <div class="card-header bg-white py-3 border-bottom border-light">
-        <h6 class="mb-0 fw-bold text-info uppercase micro-text">
-          <i class="fas fa-clipboard-list me-1"></i> Ficha Operativa (Datos Adicionales)
-        </h6>
-      </div>
-      <div class="card-body p-4">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Sabe Leer</label>
-            <div class="text-dark small fw-medium">{% if ficha.sabe_leer %}Sí{% elif ficha.sabe_leer == False %}No{% else %}—{% endif %}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Sabe Escribir</label>
-            <div class="text-dark small fw-medium">{% if ficha.sabe_escribir %}Sí{% elif ficha.sabe_escribir == False %}No{% else %}—{% endif %}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Nivel Educativo</label>
-            <div class="text-dark small fw-medium">{{ ficha.nivel_educativo|default:"—" }}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Situación Laboral</label>
-            <div class="text-dark small fw-medium">{{ ficha.situacion_laboral|default:"—" }}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Asistencia Social</label>
-            <div class="text-dark small fw-medium">{% if ficha.asistencia_social %}Sí{% elif ficha.asistencia_social == False %}No{% else %}—{% endif %}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Teléfono</label>
-            <div class="text-dark small fw-medium">{{ ficha.telefono|default:"—" }}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Escolaridad de Familia/Referentes</label>
-            <div class="text-dark small fw-medium">{{ ficha.escolaridad|default:"—" }}</div>
-          </div>
-          <div class="col-sm-6">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Obra Social</label>
-            <div class="text-dark small fw-medium">{{ ficha.obra_social|default:"—" }}</div>
-          </div>
-          {% if ficha.observaciones_programa %}
-          <div class="col-12 mt-3">
-            <label class="text-muted micro-text uppercase fw-bold d-block mb-1">Observaciones</label>
-            <div class="text-dark small fw-medium">{{ ficha.observaciones_programa }}</div>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% endif %}
-    #}
+
 
     {% if respuesta_dinamica %}
     <div class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
@@ -298,7 +246,7 @@
                 <th>Sala</th>
                 <th>Estado</th>
                 <th>Justificación</th>
-                <th>Detalle/Motivo</th>
+                <th>Motivo/Detalle</th>
               </tr>
             </thead>
             <tbody class="small">
