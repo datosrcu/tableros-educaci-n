@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Resumen de Actividad Docente | {{ fecha|date:"d/m/Y" }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Actividad Docente del Día</h2>
+            <p class="text-muted mb-0">Seguimiento de inicios de sesión y acciones realizadas hoy.</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-light text-dark border p-2 rounded-pill px-3">
+                <i class="fas fa-calendar-alt me-2 text-primary"></i> {{ fecha|date:"l d de F, Y" }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Estadísticas Rápidas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10 text-success p-3 text-center">
+                <h6 class="micro-text uppercase fw-bold opacity-75 mb-1">Docentes Activos</h6>
+                <h3 class="fw-bold mb-0">{{ activos_count }} / {{ resumen|length }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr class="micro-text uppercase fw-bold text-muted border-0">
+                        <th class="ps-4 py-3">Docente</th>
+                        <th class="py-3">Primer Ingreso</th>
+                        <th class="py-3">Ubicación (IP)</th>
+                        <th class="py-3">Estado / Última Acción</th>
+                        <th class="py-3 text-center">Acciones</th>
+                        <th class="py-3 text-end pe-4">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in resumen %}
+                    <tr {% if not item.activo %}class="opacity-75 bg-light bg-opacity-50"{% endif %}>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="position-relative me-3">
+                                    <div class="bg-secondary bg-opacity-10 p-2 rounded-circle text-secondary">
+                                        <i class="fas fa-user-tie"></i>
+                                    </div>
+                                    {% if item.activo %}
+                                    <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle"></span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ item.docente.last_name }}, {{ item.docente.first_name }}</div>
+                                    <div class="text-muted small">
+                                        {% for as in item.asistencias %}
+                                            {{ as.jardin.nombre }}{% if not forloop.last %}, {% endif %}
+                                        {% empty %}
+                                            Sin jardín asignado
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if item.inicio_sesion %}
+                                <div class="d-flex flex-column">
+                                    <span class="text-dark fw-bold">{{ item.inicio_sesion|time:"H:i" }} hs</span>
+                                    {% if item.asistencias.0.fuera_de_jornada %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger micro-text mt-1" style="width: fit-content;">
+                                            <i class="fas fa-clock me-1"></i>Fuera de Jornada
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small italic">No inició sesión</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.ip %}
+                                <code class="small bg-light px-2 py-1 rounded text-primary">{{ item.ip }}</code>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.ultima_accion %}
+                                <div class="small">
+                                    <span class="badge bg-info bg-opacity-10 text-info mb-1">{{ item.ultima_accion.get_accion_display }}</span>
+                                    <div class="text-dark text-truncate" style="max-width: 250px;" title="{{ item.ultima_accion.descripcion }}">
+                                        {{ item.ultima_accion.descripcion }}
+                                    </div>
+                                    <div class="micro-text text-muted">{{ item.ultima_accion.fecha|time:"H:i:s" }} hs</div>
+                                </div>
+                            {% else %}
+                                <span class="badge bg-light text-muted">Sin actividad</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary px-3">
+                                {{ item.total_acciones }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'users:log_sistema' %}?usuario={{ item.docente.id }}&fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                Ver Log <i class="fas fa-search ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-opacity-10 { --bs-bg-opacity: 0.1; }
+    .micro-text { font-size: 0.7rem; letter-spacing: 0.5px; }
+    .uppercase { text-transform: uppercase; }
+    .transition-hover { transition: all 0.2s ease; }
+    .transition-hover:hover { transform: translateY(-2px); }
+</style>
+{% endblock %}

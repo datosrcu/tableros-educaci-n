@@ -100,15 +100,55 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out
 
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
-    # Usamos dummy instance (el mismo usuario) para log_action
+    # Log de auditoría estándar
     if user.rol in ["coordinador", "administrador", "docente"]:
         AccionAuditoria.objects.create(
             usuario=user,
-            accion="creacion", # Representa "inicio"
+            accion="creacion",
             modelo="Sesión",
             objeto_id=user.pk,
             descripcion=f"Inicio de sesión exitoso desde IP: {request.META.get('REMOTE_ADDR')}"
         )
+    
+    # Registro automático de asistencia docente
+    if user.rol == "docente":
+        from jardines.models import AsistenciaDocente, Jardin
+        from django.utils import timezone
+        
+        hoy = timezone.now().date()
+        hora = timezone.now().time()
+        ip = request.META.get('REMOTE_ADDR')
+        
+        # Obtenemos los jardines asociados al docente a través de sus salas
+        salas = user.salas_asignadas.all()
+        jardines = Jardin.objects.filter(salas__in=salas).distinct()
+        
+        # Verificar si está fuera de jornada (comparamos con todas sus salas)
+        es_fuera_de_jornada = True
+        for sala in salas:
+            # Margen de 30 minutos antes y después
+            from datetime import datetime, timedelta
+            h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
+            h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
+            
+            if h_inicio <= hora <= h_fin:
+                es_fuera_de_jornada = False
+                break
+        
+        for jardin in jardines:
+            # Solo creamos el registro si no existe uno para hoy
+            AsistenciaDocente.objects.get_or_create(
+                docente=user,
+                jardin=jardin,
+                fecha=hoy,
+                defaults={
+                    'hora_ingreso': hora,
+                    'ip_address': ip,
+                    'fuera_de_jornada': es_fuera_de_jornada,
+                    'estado': 'P',
+                    'observaciones': 'Registro automático por inicio de sesión.' + (' (Fuera de jornada)' if es_fuera_de_jornada else '')
+                }
+            )
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):

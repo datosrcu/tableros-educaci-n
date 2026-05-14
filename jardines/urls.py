@@ -14,4 +14,5 @@ urlpatterns = [
     path("asistencia/jardin/<int:jardin_id>/", views.cargar_asistencia_docente, name="cargar_asistencia_docente"),
     path("asistencia/historial/", views.historial_asistencia_docente, name="historial_asistencia_docente"),
     path("asistencia/reporte-mensual/", views.reporte_asistencia_docente_mensual, name="reporte_asistencia_docente_mensual"),
+    path("asistencia/resumen-diario/", views.resumen_actividad_docente, name="resumen_actividad_docente"),
 ]

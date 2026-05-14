@@ -209,14 +209,18 @@ class AsistenciaDocente(models.Model):
         related_name="asistencias_docentes"
     )
     fecha = models.DateField()
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
+    hora_ingreso = models.TimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    fuera_de_jornada = models.BooleanField(default=False)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='P')
     observaciones = models.TextField(blank=True, null=True)
     
-    # Usuario que registró la asistencia (usualmente un coordinador)
+    # Usuario que registró la asistencia (null si fue automático)
     registrado_por = models.ForeignKey(
         "users.Usuario",
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name="asistencias_docentes_registradas"
     )
     
@@ -227,7 +231,7 @@ class AsistenciaDocente(models.Model):
         verbose_name = "Asistencia de Docente"
         verbose_name_plural = "Asistencias de Docentes"
         unique_together = ("docente", "jardin", "fecha")
-        ordering = ["-fecha", "docente__last_name"]
+        ordering = ["-fecha", "-hora_ingreso", "docente__last_name"]
 
     def clean(self):
         """Valida que la fecha no sea futura y que el usuario sea docente."""

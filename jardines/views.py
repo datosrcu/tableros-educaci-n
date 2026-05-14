@@ -250,4 +250,67 @@ def exportar_asistencia_docente_csv(context):
         writer.writerow(row)
         
     return response
+
+@login_required
+@rol_requerido("coordinador", "administrador")
+def resumen_actividad_docente(request):
+    """
+    Muestra un resumen de los docentes que iniciaron sesión hoy y sus últimas acciones.
+    """
+    from users.models import AccionAuditoria
+    from django.db.models import Max, OuterRef, Subquery
+    
+    hoy = date.today()
+    user = request.user
+    
+    # Base de docentes a supervisar
+    if user.rol == "administrador":
+        docentes = Usuario.objects.filter(rol="docente")
+    else:
+        docentes = Usuario.objects.filter(rol="docente", salas_asignadas__jardin__programa__coordinadores=user).distinct()
+
+    docentes = docentes.order_by("last_name")
+
+    # Obtener asistencias de hoy
+    asistencias_hoy = AsistenciaDocente.objects.filter(fecha=hoy).select_related("jardin")
+    asistencias_dict = {}
+    for a in asistencias_hoy:
+        if a.docente_id not in asistencias_dict:
+            asistencias_dict[a.docente_id] = []
+        asistencias_dict[a.docente_id].append(a)
+
+    # Buscar todas las acciones de hoy para los docentes filtrados
+    acciones_hoy = AccionAuditoria.objects.filter(
+        fecha__date=hoy,
+        usuario__in=docentes
+    ).select_related("usuario").order_by("-fecha")
+    
+    acciones_por_usuario = {}
+    for acc in acciones_hoy:
+        if acc.usuario_id not in acciones_por_usuario:
+            acciones_por_usuario[acc.usuario_id] = []
+        acciones_por_usuario[acc.usuario_id].append(acc)
+
+    resumen = []
+    for d in docentes:
+        asists = asistencias_dict.get(d.id, [])
+        accs = acciones_por_usuario.get(d.id, [])
+        
+        resumen.append({
+            "docente": d,
+            "asistencias": asists,
+            "inicio_sesion": asists[0].hora_ingreso if asists else None,
+            "ip": asists[0].ip_address if asists else None,
+            "ultima_accion": accs[0] if accs else None,
+            "total_acciones": len(accs),
+            "activo": len(asists) > 0 or len(accs) > 0
+        })
+
+    activos_count = sum(1 for item in resumen if item['activo'])
+
+    return render(request, "jardines/resumen_actividad_docente.html", {
+        "resumen": resumen,
+        "fecha": hoy,
+        "activos_count": activos_count,
+    })
 # Create your views here.
