@@ -1,5 +1,15 @@
 from django import forms
-from .models import Sala, Subprograma, Jardin, Programa
+from .models import Sala, Subprograma, Jardin, Programa, AsistenciaDocente
+
+class AsistenciaDocenteForm(forms.ModelForm):
+    class Meta:
+        model = AsistenciaDocente
+        fields = ["estado", "observaciones"]
+        widgets = {
+            "estado": forms.RadioSelect(attrs={"class": "form-check-input"}),
+            "observaciones": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Aclaraciones..."}),
+        }
+
 
 class JardinAdminForm(forms.ModelForm):
     class Meta:

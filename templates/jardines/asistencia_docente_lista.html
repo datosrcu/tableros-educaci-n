@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Asistencia Docente | Espacios{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Asistencia de Docentes</h2>
+            <p class="text-muted mb-0">Seleccione un Espacio (Jardín) para registrar la asistencia del día.</p>
+        </div>
+        <a href="{% url 'jardines:historial_asistencia_docente' %}" class="btn btn-outline-primary rounded-pill px-4">
+            <i class="fas fa-history me-2"></i>Ver Historial
+        </a>
+    </div>
+
+    <div class="row g-4">
+        {% for jardin in jardines %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-primary transition-hover">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="fas fa-school text-primary fa-lg"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">{{ jardin.nombre }}</h5>
+                            <span class="badge bg-light text-primary border border-primary border-opacity-25 mt-1">
+                                {{ jardin.programa.nombre }}
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-4">
+                        <i class="fas fa-map-marker-alt me-1"></i> {{ jardin.direccion|default:"Sin dirección" }}
+                    </p>
+                    <div class="d-grid">
+                        <a href="{% url 'jardines:cargar_asistencia_docente' jardin.id %}" class="btn btn-primary rounded-pill">
+                            Cargar Asistencia <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="bg-light p-5 rounded-4 d-inline-block shadow-sm">
+                <i class="fas fa-exclamation-circle text-muted fa-3x mb-3"></i>
+                <h4 class="text-dark fw-bold">No hay espacios asignados</h4>
+                <p class="text-muted">No se encontraron jardines bajo su coordinación.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .transition-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .transition-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+</style>
+{% endblock %}

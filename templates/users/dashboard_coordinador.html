@@ -69,28 +69,57 @@
 <h3 class="fw-bold mb-4"><i class="fas fa-chart-line me-2 text-primary"></i>Supervisión y Reportes</h3>
 
 <div class="row g-4 mb-5">
-    <div class="col-md-6">
-        <a href="{% url 'users:reporte_asistencia_diaria' %}" class="text-decoration-none">
-            <div class="card p-4 border-0 shadow-sm d-flex flex-row align-items-center bg-success bg-opacity-10 border-start border-4 border-success h-100">
-                <div class="bg-white p-3 rounded shadow-sm me-4">
-                    <i class="fas fa-calendar-check fs-2 text-success"></i>
+    <div class="col-md-4">
+        <a href="{% url 'jardines:lista_jardines_asistencia' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm d-flex flex-column align-items-center bg-primary bg-opacity-10 border-top border-4 border-primary h-100 transition-hover">
+                <div class="bg-white p-3 rounded-circle shadow-sm mb-3">
+                    <i class="fas fa-user-check fs-2 text-primary"></i>
                 </div>
-                <div>
-                    <h5 class="fw-bold mb-1 text-success">Cobertura Diaria</h5>
-                    <p class="small text-muted mb-0">Ver qué jardines cargaron asistencia hoy y cuáles están pendientes.</p>
+                <div class="text-center">
+                    <h5 class="fw-bold mb-1 text-primary">Asistencia Docente</h5>
+                    <p class="small text-muted mb-0">Cargar la asistencia diaria del personal por jardín.</p>
                 </div>
             </div>
         </a>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
+        <a href="{% url 'users:reporte_asistencia_diaria' %}" class="text-decoration-none">
+            <div class="card p-4 border-0 shadow-sm d-flex flex-column align-items-center bg-success bg-opacity-10 border-top border-4 border-success h-100 transition-hover">
+                <div class="bg-white p-3 rounded-circle shadow-sm mb-3">
+                    <i class="fas fa-calendar-check fs-2 text-success"></i>
+                </div>
+                <div class="text-center">
+                    <h5 class="fw-bold mb-1 text-success">Cobertura Alumnos</h5>
+                    <p class="small text-muted mb-0">Ver qué salas cargaron asistencia hoy.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
         <a href="{% url 'users:reporte_asistencia_mensual' %}" class="text-decoration-none">
-            <div class="card p-4 border-0 shadow-sm d-flex flex-row align-items-center bg-info bg-opacity-10 border-start border-4 border-info h-100">
-                <div class="bg-white p-3 rounded shadow-sm me-4">
+            <div class="card p-4 border-0 shadow-sm d-flex flex-column align-items-center bg-info bg-opacity-10 border-top border-4 border-info h-100 transition-hover">
+                <div class="bg-white p-3 rounded-circle shadow-sm mb-3">
                     <i class="fas fa-file-invoice fs-2 text-info"></i>
                 </div>
-                <div>
+                <div class="text-center">
                     <h5 class="fw-bold mb-1 text-info">Reporte Mensual</h5>
-                    <p class="small text-muted mb-0">Matriz detallada de asistencia mensual por jardín con exportación a Excel/PDF.</p>
+                    <p class="small text-muted mb-0">Matriz detallada de asistencia mensual por jardín.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 mt-4">
+        <a href="{% url 'jardines:reporte_asistencia_docente_mensual' %}" class="text-decoration-none">
+            <div class="card p-3 border-0 shadow-sm d-flex flex-row align-items-center bg-dark bg-opacity-10 border-start border-4 border-dark transition-hover">
+                <div class="bg-white p-2 rounded shadow-sm me-3">
+                    <i class="fas fa-chalkboard-teacher text-dark"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">Matriz Mensual de Asistencia Docente</h6>
+                    <p class="small text-muted mb-0">Visualizar la asistencia del personal en cuadrícula.</p>
+                </div>
+                <div class="ms-auto">
+                    <i class="fas fa-chevron-right text-muted"></i>
                 </div>
             </div>
         </a>

@@ -6,6 +6,7 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models.functions import Lower
+from django.utils import timezone
 
 class Programa(models.Model):
     """
@@ -185,3 +186,60 @@ class Sala(models.Model):
  
 
 
+class AsistenciaDocente(models.Model):
+    """
+    Registro de asistencia diaria de los docentes en un Jardín específico.
+    """
+    ESTADO_CHOICES = [
+        ('P', 'Presente'),
+        ('A', 'Ausente'),
+        ('J', 'Justificado'),
+        ('T', 'Llegada Tarde'),
+        ('R', 'Retiro Temprano'),
+    ]
+    
+    docente = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.CASCADE,
+        related_name="asistencias_docente"
+    )
+    jardin = models.ForeignKey(
+        Jardin,
+        on_delete=models.CASCADE,
+        related_name="asistencias_docentes"
+    )
+    fecha = models.DateField()
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
+    observaciones = models.TextField(blank=True, null=True)
+    
+    # Usuario que registró la asistencia (usualmente un coordinador)
+    registrado_por = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="asistencias_docentes_registradas"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Asistencia de Docente"
+        verbose_name_plural = "Asistencias de Docentes"
+        unique_together = ("docente", "jardin", "fecha")
+        ordering = ["-fecha", "docente__last_name"]
+
+    def clean(self):
+        """Valida que la fecha no sea futura y que el usuario sea docente."""
+        if self.fecha > timezone.now().date():
+            raise ValidationError("No se puede registrar asistencia para una fecha futura.")
+        
+        if self.docente.rol != "docente":
+            raise ValidationError("Solo se puede registrar asistencia para usuarios con el rol 'Docente'.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.docente} - {self.jardin} - {self.fecha} ({self.get_estado_display()})"

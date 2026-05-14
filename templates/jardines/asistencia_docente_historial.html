@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Historial Asistencia Docente{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Historial de Asistencia Docente</h2>
+            <p class="text-muted mb-0">Consulta y seguimiento de la presencia del personal.</p>
+        </div>
+        <a href="{% url 'jardines:lista_jardines_asistencia' %}" class="btn btn-primary rounded-pill px-4">
+            <i class="fas fa-plus me-2"></i>Nueva Carga
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label micro-text uppercase fw-bold text-muted">Espacio (Jardín)</label>
+                    <select name="jardin" class="form-select rounded-pill">
+                        <option value="">Todos los jardines</option>
+                        {% for j in jardines %}
+                        <option value="{{ j.id }}" {% if request.GET.jardin == j.id|stringformat:"i" %}selected{% endif %}>{{ j.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label micro-text uppercase fw-bold text-muted">Mes</label>
+                    <select name="mes" class="form-select rounded-pill">
+                        <option value="">Cualquier mes</option>
+                        {% for m in meses %}
+                        <option value="{{ m }}" {% if request.GET.mes == m|stringformat:"i" %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label micro-text uppercase fw-bold text-muted">Año</label>
+                    <select name="anio" class="form-select rounded-pill">
+                        {% for a in anios %}
+                        <option value="{{ a }}" {% if request.GET.anio == a|stringformat:"i" or not request.GET.anio and a == 2024 %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary rounded-pill flex-grow-1">
+                        <i class="fas fa-filter me-2"></i>Filtrar
+                    </button>
+                    <a href="?" class="btn btn-outline-secondary rounded-pill">
+                        <i class="fas fa-sync-alt"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de resultados -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr class="micro-text uppercase fw-bold text-muted border-0">
+                        <th class="ps-4 py-3">Fecha</th>
+                        <th class="py-3">Docente</th>
+                        <th class="py-3">Espacio</th>
+                        <th class="py-3 text-center">Estado</th>
+                        <th class="py-3">Observaciones</th>
+                        <th class="py-3">Registrado por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in asistencias %}
+                    <tr>
+                        <td class="ps-4 text-dark fw-medium">{{ a.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ a.docente.last_name }}, {{ a.docente.first_name }}</div>
+                            <div class="text-muted micro-text">DNI: {{ a.docente.dni|default:"-" }}</div>
+                        </td>
+                        <td>{{ a.jardin.nombre }}</td>
+                        <td class="text-center">
+                            {% if a.estado == 'P' %}
+                            <span class="badge bg-success bg-opacity-10 text-success px-3 rounded-pill">Presente</span>
+                            {% elif a.estado == 'A' %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger px-3 rounded-pill">Ausente</span>
+                            {% elif a.estado == 'J' %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning px-3 rounded-pill">Justificado</span>
+                            {% elif a.estado == 'T' %}
+                            <span class="badge bg-info bg-opacity-10 text-info px-3 rounded-pill">Tarde</span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 rounded-pill">Retiro</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ a.observaciones|default:"-" }}</td>
+                        <td class="small">{{ a.registrado_por.username|default:"Sistema" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <p class="mb-0">No se encontraron registros para los filtros seleccionados.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

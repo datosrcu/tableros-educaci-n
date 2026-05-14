@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte Mensual Docente | Selección{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-4">
+        <h2 class="fw-bold text-dark mb-1">Reporte Mensual de Asistencia Docente</h2>
+        <p class="text-muted">Seleccione los parámetros para generar la matriz de asistencia.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <form method="get" action="{% url 'jardines:reporte_asistencia_docente_mensual' %}">
+                    <div class="mb-4">
+                        <label class="form-label micro-text uppercase fw-bold text-muted">Espacio (Jardín)</label>
+                        <select name="jardin" class="form-select rounded-pill p-3 border-light bg-light" required>
+                            <option value="">Seleccione un espacio...</option>
+                            {% for j in jardines %}
+                            <option value="{{ j.id }}">{{ j.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label micro-text uppercase fw-bold text-muted">Mes</label>
+                            <select name="mes" class="form-select rounded-pill border-light bg-light">
+                                {% for m in meses %}
+                                <option value="{{ m }}" {% if m == mes_sel %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label micro-text uppercase fw-bold text-muted">Año</label>
+                            <select name="anio" class="form-select rounded-pill border-light bg-light">
+                                {% for a in anios %}
+                                <option value="{{ a }}" {% if a == anio_sel %}selected{% endif %}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary rounded-pill py-3 fw-bold shadow-sm">
+                            Generar Reporte <i class="fas fa-file-invoice ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

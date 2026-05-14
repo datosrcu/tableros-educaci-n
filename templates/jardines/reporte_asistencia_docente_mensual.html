@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte Mensual | {{ jardin.nombre }} | {{ mes_nombre }} {{ anio }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-end mb-4 no-print">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'jardines:reporte_asistencia_docente_mensual' %}" class="text-decoration-none">Selección de Reporte</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ jardin.nombre }}</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold text-dark mb-1">Matriz de Asistencia Docente</h2>
+            <h5 class="text-primary mb-0">{{ jardin.nombre }} - {{ mes_nombre }} {{ anio }}</h5>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4 shadow-sm">
+                <i class="fas fa-print me-2"></i>Imprimir
+            </button>
+            <a href="?jardin={{ jardin.id }}&mes={{ mes }}&anio={{ anio }}&export=1" class="btn btn-success rounded-pill px-4 shadow-sm">
+                <i class="fas fa-file-excel me-2"></i>Exportar CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Encabezado para Impresión -->
+    <div class="d-none d-print-block text-center mb-4">
+        <h3 class="fw-bold">Reporte Mensual de Asistencia Docente</h3>
+        <h4>{{ jardin.nombre }} - {{ mes_nombre }} {{ anio }}</h4>
+        <p class="text-muted small">Generado el {% now "d/m/Y H:i" %}</p>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-5">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0 text-center" style="font-size: 0.85rem;">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="text-start ps-4 py-3 bg-light position-sticky start-0 z-1" style="min-width: 250px;">Docente</th>
+                        {% for dia in dias %}
+                        <th class="py-2" style="min-width: 35px;">{{ dia }}</th>
+                        {% endfor %}
+                        <th class="bg-success bg-opacity-10 text-success fw-bold">P</th>
+                        <th class="bg-danger bg-opacity-10 text-danger fw-bold">A</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in filas %}
+                    <tr>
+                        <td class="text-start ps-4 fw-bold text-dark bg-white position-sticky start-0 z-1 border-end shadow-sm-end">
+                            {{ fila.docente.last_name }}, {{ fila.docente.first_name }}
+                        </td>
+                        {% for celda in fila.celdas %}
+                        <td class="p-1">
+                            {% if celda == 'P' %}
+                                <div class="bg-success bg-opacity-10 text-success rounded py-1 fw-bold">P</div>
+                            {% elif celda == 'A' %}
+                                <div class="bg-danger bg-opacity-10 text-danger rounded py-1 fw-bold">A</div>
+                            {% elif celda == 'J' %}
+                                <div class="bg-warning bg-opacity-10 text-warning rounded py-1 fw-bold">J</div>
+                            {% elif celda == 'T' %}
+                                <div class="bg-info bg-opacity-10 text-info rounded py-1 fw-bold">T</div>
+                            {% elif celda == 'R' %}
+                                <div class="bg-secondary bg-opacity-10 text-secondary rounded py-1 fw-bold">R</div>
+                            {% else %}
+                                <span class="text-muted opacity-25">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="bg-success bg-opacity-10 text-success fw-bold">{{ fila.presentes }}</td>
+                        <td class="bg-danger bg-opacity-10 text-danger fw-bold">{{ fila.ausentes }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="no-print">
+        <div class="card bg-light border-0 rounded-4 p-4">
+            <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>Referencia de Estados</h6>
+            <div class="d-flex flex-wrap gap-4">
+                <div class="d-flex align-items-center"><span class="badge bg-success me-2">P</span> Presente</div>
+                <div class="d-flex align-items-center"><span class="badge bg-danger me-2">A</span> Ausente</div>
+                <div class="d-flex align-items-center"><span class="badge bg-warning text-dark me-2">J</span> Justificado</div>
+                <div class="d-flex align-items-center"><span class="badge bg-info text-dark me-2">T</span> Llegada Tarde</div>
+                <div class="d-flex align-items-center"><span class="badge bg-secondary me-2">R</span> Retiro Temprano</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+        body { background: white !important; }
+    }
+    .shadow-sm-end {
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+</style>
+{% endblock %}
