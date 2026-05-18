@@ -16,7 +16,7 @@ services:
       - .env
 
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/accounts/login/" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health/" ]
       interval: 30s
       timeout: 10s
       retries: 3
