@@ -109,7 +109,7 @@ DATABASES = {
 # Support DATABASE_URL if provided
 db_url = config('DATABASE_URL', default='')
 if db_url:
-    DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=600, ssl_require=False))
+    DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=60, ssl_require=False))
 
 # Fix for MySQL/MariaDB charset if needed
 if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
