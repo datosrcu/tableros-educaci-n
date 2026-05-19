@@ -7,8 +7,14 @@ set -e
 
 echo "Esperando a que la base de datos en $DB_HOST:$DB_PORT esté lista..."
 
+RETRIES=30
 while ! python -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); s.connect(('$DB_HOST', int('$DB_PORT' or 3306))); s.close()" 2>/dev/null; do
-  echo "La base de datos no responde... reintentando en 2 segundos."
+  RETRIES=$((RETRIES-1))
+  if [ $RETRIES -le 0 ]; then
+    echo "No se pudo conectar a la base de datos tras múltiples intentos. Abortando."
+    exit 1
+  fi
+  echo "La base de datos no responde... reintentando en 2 segundos. ($RETRIES intentos restantes)"
   sleep 2
 done
 

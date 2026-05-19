@@ -2,10 +2,9 @@ services:
   web:
     build: .
     container_name: jardines_web
-    restart: unless-stopped
+    restart: on-failure:5
 
     volumes:
-      - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
 

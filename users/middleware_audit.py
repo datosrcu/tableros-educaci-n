@@ -10,8 +10,13 @@ class CurrentUserMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        _thread_locals.user = request.user if request.user.is_authenticated else None
+        _thread_locals.user = None
         try:
+            if hasattr(request, "user"):
+                user = request.user
+                # Evitar tocar auth innecesariamente
+                if getattr(user, "is_authenticated", False):
+                    _thread_locals.user = user
             response = self.get_response(request)
         finally:
             _thread_locals.user = None

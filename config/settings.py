@@ -103,8 +103,15 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default=''),
         'PORT': config('DB_PORT', default=3306, cast=int),
+        'CONN_MAX_AGE': 60,
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'ssl': {'ssl_disabled': True},
+        }
     }
 }
+
 
 # Support DATABASE_URL if provided
 db_url = config('DATABASE_URL', default='')
