@@ -14,7 +14,7 @@
             <div class="card shadow-sm border-0 rounded-4 p-4">
                 <form method="get" action="{% url 'jardines:reporte_asistencia_docente_mensual' %}">
                     <div class="mb-4">
-                        <label class="form-label micro-text uppercase fw-bold text-muted">Espacio (Jardín)</label>
+                        <label class="form-label micro-text uppercase fw-bold text-muted">Espacio</label>
                         <select name="jardin" class="form-select rounded-pill p-3 border-light bg-light" required>
                             <option value="">Seleccione un espacio...</option>
                             {% for j in jardines %}

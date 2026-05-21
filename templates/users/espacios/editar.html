@@ -49,6 +49,18 @@
                                 {{ field.label }}
                             </label>
                             {{ field|add_class:"form-control shadow-none border-light-subtle" }}
+                            {% if field.name == 'coordenadas' %}
+                            <div class="alert alert-primary mt-2 p-3 mb-0" style="font-size: 0.8rem;">
+                                <strong><i class="fas fa-info-circle me-1"></i>¿Cómo obtener las coordenadas?</strong>
+                                <ol class="ps-3 mb-0 mt-2">
+                                    <li>Entra a <a href="https://www.google.com/maps" target="_blank" class="fw-bold">Google Maps</a>.</li>
+                                    <li>Busca tu ubicación exacta en el mapa.</li>
+                                    <li>Haz <strong>clic derecho</strong> sobre el punto exacto del lugar.</li>
+                                    <li>En el menú que aparece, haz clic izquierdo sobre los primeros números (por ejemplo: <code>-34.6037, -58.3816</code>). ¡Listo! Se copiarán automáticamente.</li>
+                                    <li>Regresa aquí y pégalas en el campo.</li>
+                                </ol>
+                            </div>
+                            {% endif %}
                             {% endif %}
                             {% if field.errors %}
                             <div class="text-danger micro-text mt-1">

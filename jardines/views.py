@@ -52,11 +52,7 @@ def lista_jardines_asistencia(request):
     Lista de jardines para que el coordinador seleccione uno y cargue asistencia docente.
     Si es coordinador, solo ve los jardines de sus programas asignados.
     """
-    user = request.user
-    if user.rol == "administrador":
-        jardines = Jardin.objects.all().select_related("programa")
-    else:
-        jardines = Jardin.objects.filter(programa__coordinadores=user).select_related("programa")
+    jardines = Jardin.objects.all().select_related("programa").order_by("nombre")
     
     return render(request, "jardines/asistencia_docente_lista.html", {
         "jardines": jardines
@@ -132,9 +128,6 @@ def historial_asistencia_docente(request):
 
     asistencias = AsistenciaDocente.objects.select_related("docente", "jardin", "registrado_por")
 
-    if user.rol == "coordinador":
-        asistencias = asistencias.filter(jardin__programa__coordinadores=user)
-
     if mes:
         asistencias = asistencias.filter(fecha__month=mes)
     if anio:
@@ -161,11 +154,7 @@ def reporte_asistencia_docente_mensual(request):
 
     if not jardin_id:
         # Si no hay jardín seleccionado, mostrar lista para elegir
-        user = request.user
-        if user.rol == "administrador":
-            jardines = Jardin.objects.all()
-        else:
-            jardines = Jardin.objects.filter(programa__coordinadores=user)
+        jardines = Jardin.objects.all().order_by("nombre")
         
         return render(request, "jardines/reporte_docente_seleccion.html", {
             "jardines": jardines,
