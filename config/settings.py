@@ -108,7 +108,7 @@ DATABASES = {
             'charset': 'utf8mb4',
             'ssl': {'ssl_disabled': True},
             'connect_timeout': 5,
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'init_command': "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')",
         }
     }
 }
@@ -128,7 +128,7 @@ if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
     opts['charset'] = 'utf8mb4'
     opts.setdefault('ssl', {})['ssl_disabled'] = True
     opts.setdefault('connect_timeout', 5)
-    opts.setdefault('init_command', "SET sql_mode='STRICT_TRANS_TABLES'")
+    opts.setdefault('init_command', "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')")
 
 
 # Password validation
@@ -190,6 +190,45 @@ if not DEBUG:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Logging — siempre a stdout para que Dokploy/Docker capture los errores
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
