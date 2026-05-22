@@ -113,14 +113,20 @@ DATABASES = {
 }
 
 
-# Support DATABASE_URL if provided
+# Support DATABASE_URL if provided (ej: sqlite:///db.sqlite3 para dev)
 db_url = config('DATABASE_URL', default='')
 if db_url:
     DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=60, ssl_require=False))
 
-# Fix for MySQL/MariaDB charset if needed
+# Blindar estos valores — dj_database_url.parse puede pisar CONN_MAX_AGE
+DATABASES['default']['CONN_MAX_AGE'] = 60
+DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+
+# Garantizar charset y SSL para MySQL/MariaDB
 if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
-    DATABASES['default'].setdefault('OPTIONS', {})['charset'] = 'utf8mb4'
+    opts = DATABASES['default'].setdefault('OPTIONS', {})
+    opts['charset'] = 'utf8mb4'
+    opts.setdefault('ssl', {})['ssl_disabled'] = True
 
 
 # Password validation

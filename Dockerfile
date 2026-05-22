@@ -37,4 +37,16 @@ EXPOSE 8000
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
+CMD [ \
+    "gunicorn", \
+    "--bind", "0.0.0.0:8000", \
+    "--workers", "4", \
+    "--threads", "4", \
+    "--worker-class", "gthread", \
+    "--timeout", "60", \
+    "--keepalive", "5", \
+    "--max-requests", "1000", \
+    "--max-requests-jitter", "100", \
+    "--log-level", "warning", \
+    "config.wsgi:application" \
+]

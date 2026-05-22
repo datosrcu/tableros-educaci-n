@@ -8,14 +8,25 @@ set -e
 echo "Esperando a que la base de datos en $DB_HOST:$DB_PORT esté lista..."
 
 RETRIES=30
-while ! python -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); s.connect(('$DB_HOST', int('$DB_PORT' or 3306))); s.close()" 2>/dev/null; do
+until python -c "
+import django, os, sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from django.db import connections
+try:
+    connections['default'].ensure_connection()
+    print('OK')
+except Exception as e:
+    print(f'Error: {e}', file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null; do
   RETRIES=$((RETRIES-1))
   if [ $RETRIES -le 0 ]; then
     echo "No se pudo conectar a la base de datos tras múltiples intentos. Abortando."
     exit 1
   fi
-  echo "La base de datos no responde... reintentando en 2 segundos. ($RETRIES intentos restantes)"
-  sleep 2
+  echo "La base de datos no responde... reintentando en 5 segundos. ($RETRIES intentos restantes)"
+  sleep 5
 done
 
 echo "Base de datos disponible."

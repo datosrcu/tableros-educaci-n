@@ -36,7 +36,15 @@ def home_redirect(request):
     return redirect("/admin/")
 
 
+from django.http import HttpResponse
+
+def health_check(request):
+    """Endpoint para el healthcheck de Docker. No toca la DB."""
+    return HttpResponse("OK", status=200, content_type="text/plain")
+
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
+
     path('', home_redirect),
     path('admin-panel/', admin.site.urls),
     path('admin/', lambda r: redirect('/admin-panel/')),
