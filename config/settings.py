@@ -103,11 +103,12 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default=''),
         'PORT': config('DB_PORT', default=3306, cast=int),
-        'CONN_MAX_AGE': 60,
-        'CONN_HEALTH_CHECKS': True,
+        'CONN_MAX_AGE': 0,
         'OPTIONS': {
             'charset': 'utf8mb4',
             'ssl': {'ssl_disabled': True},
+            'connect_timeout': 5,
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
     }
 }
@@ -119,14 +120,15 @@ if db_url:
     DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=60, ssl_require=False))
 
 # Blindar estos valores — dj_database_url.parse puede pisar CONN_MAX_AGE
-DATABASES['default']['CONN_MAX_AGE'] = 60
-DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+DATABASES['default']['CONN_MAX_AGE'] = 0
 
-# Garantizar charset y SSL para MySQL/MariaDB
+# Garantizar charset, SSL y strict mode para MySQL/MariaDB
 if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
     opts = DATABASES['default'].setdefault('OPTIONS', {})
     opts['charset'] = 'utf8mb4'
     opts.setdefault('ssl', {})['ssl_disabled'] = True
+    opts.setdefault('connect_timeout', 5)
+    opts.setdefault('init_command', "SET sql_mode='STRICT_TRANS_TABLES'")
 
 
 # Password validation
