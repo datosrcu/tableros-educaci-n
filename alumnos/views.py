@@ -81,17 +81,26 @@ def dashboard_docente(request):
 def lista_alumnos(request):
     """
     Muestra el listado de alumnos filtrado por rol:
-    - Admin/Coordinador: Ven todos los alumnos.
+    - Admin: Ve todos los alumnos.
+    - Coordinador: Ve alumnos de sus programas asignados.
     - Docente: Solo ve los alumnos de sus salas asignadas.
     """
     user = request.user
 
-    # 🏢 Administradores y coordinadores ven todo el padrón
+    # 🏢 Administradores y coordinadores ven el padrón
     if user.is_superuser or user.rol in ["administrador", "coordinador"]:
-        alumnos = Alumno.objects.prefetch_related(
-            "asignaciones",
-            "asignaciones__sala__jardin"
-        ).distinct()
+        if user.es_admin():
+            alumnos = Alumno.objects.prefetch_related(
+                "asignaciones",
+                "asignaciones__sala__jardin"
+            ).distinct()
+        else:
+            alumnos = Alumno.objects.filter(
+                asignaciones__sala__jardin__programa__in=user.programas_asignados.all()
+            ).prefetch_related(
+                "asignaciones",
+                "asignaciones__sala__jardin"
+            ).distinct()
 
     # 👨‍🏫 Docentes ven solo su jurisdicción
     elif user.rol == "docente":
@@ -129,7 +138,12 @@ def alumnos_por_sala(request, sala_id):
     if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
+    if request.user.rol == "coordinador" and not request.user.es_admin():
+        if sala.jardin.programa not in request.user.programas_asignados.all():
+            raise PermissionDenied
+
     asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+
 
     # 🔹 Acciones masivas de baja/activación
     if request.method == "POST" and request.user.rol == "docente":
@@ -381,6 +395,10 @@ def detalle_alumno(request, alumno_id):
 
     if user.rol == "docente":
         validar_alumno_para_docente(user, alumno)
+    elif user.rol == "coordinador" and not user.es_admin():
+        if not Alumno.objects.filter(id=alumno_id, asignaciones__sala__jardin__programa__in=user.programas_asignados.all()).exists():
+            raise PermissionDenied("No tiene permiso para ver este alumno.")
+
 
     # 📊 Filtrado y Cálculo de estadísticas
     mes = request.GET.get('mes')
@@ -639,10 +657,19 @@ def exportar_alumnos_completo_csv(request):
         'Nivel Educativo', 'Situación Laboral', 'Obra Social', 'Escolaridad', 'Teléfono'
     ])
 
-    alumnos = Alumno.objects.prefetch_related(
-        'asignaciones__sala__jardin',
-        'ficha_programa'
-    ).order_by('apellido', 'nombre')
+    if request.user.es_admin():
+        alumnos = Alumno.objects.prefetch_related(
+            'asignaciones__sala__jardin',
+            'ficha_programa'
+        ).order_by('apellido', 'nombre')
+    else:
+        alumnos = Alumno.objects.filter(
+            asignaciones__sala__jardin__programa__in=request.user.programas_asignados.all()
+        ).prefetch_related(
+            'asignaciones__sala__jardin',
+            'ficha_programa'
+        ).distinct().order_by('apellido', 'nombre')
+
 
     for alumno in alumnos:
         # Espacios y salas

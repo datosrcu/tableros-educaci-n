@@ -182,13 +182,19 @@ class AsignarDocentesSalaForm(forms.ModelForm):
         fields = ("docentes",)
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         # 🔒 Queryset dinámico
-        self.fields["docentes"].queryset = Usuario.objects.filter(
-            rol="docente",
-            is_active=True
-        )
+        qs = Usuario.objects.filter(rol="docente", is_active=True)
+        if user and not user.es_admin():
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
+                Q(salas_asignadas__isnull=True)
+            ).distinct()
+        self.fields["docentes"].queryset = qs
+
 
     def clean_docentes(self):
         docentes = self.cleaned_data.get("docentes")
@@ -219,6 +225,15 @@ class JardinForm(forms.ModelForm):
             "sector",
         )
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        if user and not user.es_admin():
+            self.fields["programa"].queryset = user.programas_asignados.all()
+            self.fields["subprograma"].queryset = Subprograma.objects.filter(
+                programa__in=user.programas_asignados.all()
+            )
+
 
 # =====================================================
 # PROGRAMA
@@ -248,6 +263,12 @@ class SubprogramaForm(forms.ModelForm):
             "usa_formulario_ampliado",
         )
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        if user and not user.es_admin():
+            self.fields["programa"].queryset = user.programas_asignados.all()
+
 
 # =====================================================
 # SALA
@@ -266,6 +287,26 @@ class SalaForm(forms.ModelForm):
             "docentes",
             "responsable",
         )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        if user and not user.es_admin():
+            self.fields["jardin"].queryset = Jardin.objects.filter(
+                programa__in=user.programas_asignados.all()
+            )
+            from django.db.models import Q
+            self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente").filter(
+                Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
+                Q(salas_asignadas__isnull=True)
+            ).distinct()
+            self.fields["responsable"].queryset = Usuario.objects.filter(
+                rol__in=["docente", "coordinador"]
+            ).filter(
+                Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
+                Q(programas_asignados__in=user.programas_asignados.all()) |
+                Q(rol="docente", salas_asignadas__isnull=True)
+            ).distinct()
 
     def clean_docentes(self):
         docentes = self.cleaned_data.get("docentes")
@@ -287,6 +328,7 @@ class SalaForm(forms.ModelForm):
             )
 
         return responsable
+
 
 # =====================================================
 # RESTABLECER PASSWORD

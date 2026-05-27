@@ -35,12 +35,30 @@ from users.models import Usuario, AccionAuditoria
 @login_required
 @solo_coordinador
 def dashboard_coordinador(request):
+    user = request.user
+    if user.es_admin():
+        espacios = Jardin.objects.all()
+        programas = Programa.objects.all()
+        subprogramas = Subprograma.objects.all()
+        salas = Sala.objects.all()
+        docentes = Usuario.objects.filter(rol="docente")
+    else:
+        espacios = Jardin.objects.filter(programa__in=user.programas_asignados.all())
+        programas = user.programas_asignados.all()
+        subprogramas = Subprograma.objects.filter(programa__in=user.programas_asignados.all())
+        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all())
+        from django.db.models import Q
+        docentes = Usuario.objects.filter(rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).distinct()
+
     context = {
-        "espacios_count": Jardin.objects.count(),
-        "programas_count": Programa.objects.count(),
-        "subprogramas_count": Subprograma.objects.count(),
-        "salas_count": Sala.objects.count(),
-        "docentes_count": Usuario.objects.filter(rol="docente").count(),
+        "espacios_count": espacios.count(),
+        "programas_count": programas.count(),
+        "subprogramas_count": subprogramas.count(),
+        "salas_count": salas.count(),
+        "docentes_count": docentes.count(),
     }
     return render(request, "users/dashboard_coordinador.html", context)
 
@@ -52,36 +70,61 @@ def dashboard_coordinador(request):
 @login_required
 @solo_coordinador
 def lista_espacios(request):
-    espacios = Jardin.objects.all()
+    user = request.user
+    if user.es_admin():
+        espacios = Jardin.objects.all()
+    else:
+        espacios = Jardin.objects.filter(programa__in=user.programas_asignados.all())
     return render(request, "users/lista_espacios.html", {"espacios": espacios})
 
 
 @login_required
 @solo_coordinador
 def lista_programas(request):
-    programas = Programa.objects.all()
+    user = request.user
+    if user.es_admin():
+        programas = Programa.objects.all()
+    else:
+        programas = user.programas_asignados.all()
     return render(request, "users/lista_programas.html", {"programas": programas})
 
 
 @login_required
 @solo_coordinador
 def lista_subprogramas(request):
-    subprogramas = Subprograma.objects.select_related("programa").all()
+    user = request.user
+    if user.es_admin():
+        subprogramas = Subprograma.objects.select_related("programa").all()
+    else:
+        subprogramas = Subprograma.objects.filter(programa__in=user.programas_asignados.all()).select_related("programa")
     return render(request, "users/lista_subprogramas.html", {"subprogramas": subprogramas})
 
 
 @login_required
 @solo_coordinador
 def lista_salas(request):
-    salas = Sala.objects.select_related("jardin").all()
+    user = request.user
+    if user.es_admin():
+        salas = Sala.objects.select_related("jardin").all()
+    else:
+        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related("jardin")
     return render(request, "users/lista_salas.html", {"salas": salas})
 
 
 @login_required
 @solo_coordinador
 def lista_docentes(request):
-    docentes = Usuario.objects.filter(rol="docente")
+    user = request.user
+    if user.es_admin():
+        docentes = Usuario.objects.filter(rol="docente")
+    else:
+        from django.db.models import Q
+        docentes = Usuario.objects.filter(rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).distinct()
     return render(request, "users/lista_docentes.html", {"docentes": docentes})
+
 
 
 # =====================================================
@@ -92,12 +135,12 @@ def lista_docentes(request):
 @solo_coordinador
 def crear_jardin(request):
     if request.method == "POST":
-        form = JardinForm(request.POST)
+        form = JardinForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_espacios")
     else:
-        form = JardinForm()
+        form = JardinForm(user=request.user)
 
     return render(request, "users/espacios/crear.html", {"form": form})
 
@@ -107,13 +150,18 @@ def crear_jardin(request):
 def editar_jardin(request, jardin_id):
     jardin = get_object_or_404(Jardin, id=jardin_id)
 
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar este espacio.")
+
     if request.method == "POST":
-        form = JardinForm(request.POST, instance=jardin)
+        form = JardinForm(request.POST, instance=jardin, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_espacios")
     else:
-        form = JardinForm(instance=jardin)
+        form = JardinForm(instance=jardin, user=request.user)
+
 
     return render(
         request,
@@ -131,7 +179,10 @@ def crear_programa(request):
     if request.method == "POST":
         form = ProgramaForm(request.POST)
         if form.is_valid():
-            form.save()
+            programa = form.save()
+            # 🔒 Asignar automáticamente el programa al coordinador que lo crea
+            if not request.user.es_admin():
+                request.user.programas_asignados.add(programa)
             return redirect("users:lista_programas")
     else:
         form = ProgramaForm()
@@ -143,6 +194,11 @@ def crear_programa(request):
 @solo_coordinador
 def editar_programa(request, programa_id):
     programa = get_object_or_404(Programa, id=programa_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar este programa.")
+
     if request.method == "POST":
         form = ProgramaForm(request.POST, instance=programa)
         if form.is_valid():
@@ -153,16 +209,17 @@ def editar_programa(request, programa_id):
     return render(request, "users/programas/editar.html", {"form": form, "programa": programa})
 
 
+
 @login_required
 @solo_coordinador
 def crear_subprograma(request):
     if request.method == "POST":
-        form = SubprogramaForm(request.POST)
+        form = SubprogramaForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_subprogramas")
     else:
-        form = SubprogramaForm()
+        form = SubprogramaForm(user=request.user)
 
     return render(request, "users/subprogramas/crear.html", {"form": form})
 
@@ -171,26 +228,32 @@ def crear_subprograma(request):
 @solo_coordinador
 def editar_subprograma(request, subprograma_id):
     subprograma = get_object_or_404(Subprograma, id=subprograma_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and subprograma.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar este subprograma.")
+
     if request.method == "POST":
-        form = SubprogramaForm(request.POST, instance=subprograma)
+        form = SubprogramaForm(request.POST, instance=subprograma, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_subprogramas")
     else:
-        form = SubprogramaForm(instance=subprograma)
+        form = SubprogramaForm(instance=subprograma, user=request.user)
     return render(request, "users/subprogramas/editar.html", {"form": form, "subprograma": subprograma})
+
 
 
 @login_required
 @solo_coordinador
 def crear_sala(request):
     if request.method == "POST":
-        form = SalaForm(request.POST)
+        form = SalaForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_salas")
     else:
-        form = SalaForm()
+        form = SalaForm(user=request.user)
 
     return render(request, "users/salas/crear.html", {"form": form})
 
@@ -199,14 +262,20 @@ def crear_sala(request):
 @solo_coordinador
 def editar_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and sala.jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar esta sala.")
+
     if request.method == "POST":
-        form = SalaForm(request.POST, instance=sala)
+        form = SalaForm(request.POST, instance=sala, user=request.user)
         if form.is_valid():
             form.save()
             return redirect("users:lista_salas")
     else:
-        form = SalaForm(instance=sala)
+        form = SalaForm(instance=sala, user=request.user)
     return render(request, "users/salas/editar.html", {"form": form, "sala": sala})
+
 
 
 @login_required
@@ -240,6 +309,16 @@ def editar_docente(request, docente_id):
     if docente.rol != "docente":
         raise PermissionDenied("Solo se pueden editar usuarios con rol docente.")
 
+    # 🔒 Validación de propiedad para coordinadores
+    if not request.user.es_admin():
+        from django.db.models import Q
+        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).exists()
+        if not permiso:
+            raise PermissionDenied("No tiene permiso para editar este docente.")
+
     if request.method == "POST":
         form = EditarDocenteForm(request.POST, instance=docente)
         if form.is_valid():
@@ -263,8 +342,12 @@ def editar_docente(request, docente_id):
 def asignar_docentes_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
 
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and sala.jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para gestionar esta sala.")
+
     if request.method == "POST":
-        form = AsignarDocentesSalaForm(request.POST, instance=sala)
+        form = AsignarDocentesSalaForm(request.POST, instance=sala, user=request.user)
         if form.is_valid():
             # 🔒 Validación defensiva
             docentes = form.cleaned_data["docentes"]
@@ -275,7 +358,8 @@ def asignar_docentes_sala(request, sala_id):
             form.save()
             return redirect("users:lista_salas")
     else:
-        form = AsignarDocentesSalaForm(instance=sala)
+        form = AsignarDocentesSalaForm(instance=sala, user=request.user)
+
 
     return render(
         request,
@@ -348,6 +432,8 @@ class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
 
 @login_required
 @solo_coordinador
+@login_required
+@solo_coordinador
 def exportar_docentes_csv(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="docentes.csv"'
@@ -355,7 +441,15 @@ def exportar_docentes_csv(request):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['Apellido', 'Nombre', 'DNI', 'Email', 'Teléfono', 'Estado'])
 
-    docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    if request.user.es_admin():
+        docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    else:
+        from django.db.models import Q
+        docentes = Usuario.objects.filter(rol='docente').filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).distinct().order_by('last_name', 'first_name')
+
     for doc in docentes:
         writer.writerow([doc.last_name, doc.first_name, doc.dni, doc.email, doc.telefono, 'Activo' if doc.is_active else 'Inactivo'])
     return response
@@ -363,7 +457,15 @@ def exportar_docentes_csv(request):
 @login_required
 @solo_coordinador
 def imprimir_docentes(request):
-    docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    if request.user.es_admin():
+        docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+    else:
+        from django.db.models import Q
+        docentes = Usuario.objects.filter(rol='docente').filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).distinct().order_by('last_name', 'first_name')
+
     return render(request, "users/imprimir_docentes.html", {
         "docentes": docentes,
         "fecha": date.today()
@@ -378,7 +480,11 @@ def exportar_salas_csv(request):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['Nombre', 'Turno', 'Horario', 'Jardín', 'Docentes'])
 
-    salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+    if request.user.es_admin():
+        salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+    else:
+        salas = Sala.objects.filter(jardin__programa__in=request.user.programas_asignados.all()).select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+
     for sala in salas:
         horario = f"{sala.horario_inicio.strftime('%H:%M')} a {sala.horario_fin.strftime('%H:%M')}"
         docentes = " - ".join([f"{d.last_name}, {d.first_name}" for d in sala.docentes.all()])
@@ -388,7 +494,11 @@ def exportar_salas_csv(request):
 @login_required
 @solo_coordinador
 def imprimir_salas(request):
-    salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+    if request.user.es_admin():
+        salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+    else:
+        salas = Sala.objects.filter(jardin__programa__in=request.user.programas_asignados.all()).select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+
     return render(request, "users/imprimir_salas.html", {
         "salas": salas,
         "fecha": date.today()
@@ -403,7 +513,11 @@ def exportar_espacios_csv(request):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['Nombre', 'Dirección', 'Coordenadas', 'Sector', 'Programa', 'Subprograma'])
 
-    jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    if request.user.es_admin():
+        jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    else:
+        jardines = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).select_related('programa', 'subprograma').order_by('nombre')
+
     for j in jardines:
         writer.writerow([j.nombre, j.direccion, j.coordenadas, j.sector, j.programa.nombre if j.programa else '-', j.subprograma.nombre if j.subprograma else '-'])
     return response
@@ -411,7 +525,11 @@ def exportar_espacios_csv(request):
 @login_required
 @solo_coordinador
 def imprimir_espacios(request):
-    jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    if request.user.es_admin():
+        jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+    else:
+        jardines = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).select_related('programa', 'subprograma').order_by('nombre')
+
     return render(request, "users/imprimir_espacios.html", {
         "jardines": jardines,
         "fecha": date.today()
@@ -426,7 +544,11 @@ def exportar_programas_csv(request):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['ID', 'Nombre'])
 
-    programas = Programa.objects.all().order_by('nombre')
+    if request.user.es_admin():
+        programas = Programa.objects.all().order_by('nombre')
+    else:
+        programas = request.user.programas_asignados.all().order_by('nombre')
+
     for p in programas:
         writer.writerow([p.id, p.nombre])
     return response
@@ -434,7 +556,11 @@ def exportar_programas_csv(request):
 @login_required
 @solo_coordinador
 def imprimir_programas(request):
-    programas = Programa.objects.all().order_by('nombre')
+    if request.user.es_admin():
+        programas = Programa.objects.all().order_by('nombre')
+    else:
+        programas = request.user.programas_asignados.all().order_by('nombre')
+
     return render(request, "users/imprimir_programas.html", {
         "programas": programas,
         "fecha": date.today()
@@ -449,7 +575,11 @@ def exportar_subprogramas_csv(request):
     writer = csv.writer(response, delimiter=';')
     writer.writerow(['ID', 'Nombre', 'Programa'])
 
-    subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    if request.user.es_admin():
+        subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    else:
+        subprogramas = Subprograma.objects.filter(programa__in=request.user.programas_asignados.all()).select_related('programa').order_by('programa__nombre', 'nombre')
+
     for s in subprogramas:
         writer.writerow([s.id, s.nombre, s.programa.nombre])
     return response
@@ -457,16 +587,31 @@ def exportar_subprogramas_csv(request):
 @login_required
 @solo_coordinador
 def imprimir_subprogramas(request):
-    subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    if request.user.es_admin():
+        subprogramas = Subprograma.objects.all().select_related('programa').order_by('programa__nombre', 'nombre')
+    else:
+        subprogramas = Subprograma.objects.filter(programa__in=request.user.programas_asignados.all()).select_related('programa').order_by('programa__nombre', 'nombre')
+
     return render(request, "users/imprimir_subprogramas.html", {
         "subprogramas": subprogramas,
         "fecha": date.today()
     })
 
+
 @login_required
 @solo_coordinador
 def restablecer_password_docente(request, docente_id):
     docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin():
+        from django.db.models import Q
+        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).exists()
+        if not permiso:
+            raise PermissionDenied("No tiene permiso para restablecer la contraseña de este docente.")
     
     if request.method == "POST":
         form = RestablecerPasswordForm(request.POST)
@@ -490,6 +635,7 @@ def restablecer_password_docente(request, docente_id):
         
     return render(request, "users/restablecer_password.html", {"form": form, "docente": docente})
 
+
 # =====================================================
 # ELIMINACIÓN DE ENTIDADES
 # =====================================================
@@ -498,6 +644,11 @@ def restablecer_password_docente(request, docente_id):
 @solo_coordinador
 def eliminar_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and sala.jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para eliminar esta sala.")
+
     if request.method == "POST":
         try:
             sala.delete()
@@ -510,6 +661,11 @@ def eliminar_sala(request, sala_id):
 @solo_coordinador
 def eliminar_jardin(request, jardin_id):
     jardin = get_object_or_404(Jardin, id=jardin_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para eliminar este espacio.")
+
     if request.method == "POST":
         try:
             jardin.delete()
@@ -522,6 +678,11 @@ def eliminar_jardin(request, jardin_id):
 @solo_coordinador
 def eliminar_subprograma(request, subprograma_id):
     subprograma = get_object_or_404(Subprograma, id=subprograma_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and subprograma.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para eliminar este subprograma.")
+
     if request.method == "POST":
         try:
             subprograma.delete()
@@ -534,6 +695,17 @@ def eliminar_subprograma(request, subprograma_id):
 @solo_coordinador
 def eliminar_docente(request, docente_id):
     docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin():
+        from django.db.models import Q
+        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).exists()
+        if not permiso:
+            raise PermissionDenied("No tiene permiso para eliminar este docente.")
+
     if request.method == "POST":
         try:
             docente.delete()
@@ -541,6 +713,7 @@ def eliminar_docente(request, docente_id):
         except ProtectedError:
             messages.error(request, "No se puede eliminar este docente porque tiene datos operativos vinculados.")
     return redirect("users:lista_docentes")
+
 
 # =====================================================
 # 📊 REPORTES DE ASISTENCIA (COORDINACIÓN)
@@ -561,8 +734,11 @@ def reporte_asistencia_diaria(request):
     else:
         fecha_consulta = date.today()
 
-    # Todos los jardines
-    jardines = Jardin.objects.all().order_by('nombre')
+    # Todos los jardines (filtrados por coordinador)
+    if request.user.es_admin():
+        jardines = Jardin.objects.all().order_by('nombre')
+    else:
+        jardines = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).order_by('nombre')
     
     # Jardines con asistencia hoy
     jardines_con_asistencia_ids = Asistencia.objects.filter(
@@ -603,7 +779,11 @@ def reporte_asistencia_mensual(request):
     ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
     dias_mes = [date(anio, mes, d) for d in range(1, ultimo_dia_mes + 1)]
     
-    jardines = Jardin.objects.all().order_by('nombre')
+    if request.user.es_admin():
+        jardines = Jardin.objects.all().order_by('nombre')
+    else:
+        jardines = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).order_by('nombre')
+
     
     # Data para la matriz
     # { jardin_id: { dia: count } }
