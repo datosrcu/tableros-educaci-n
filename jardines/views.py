@@ -65,6 +65,11 @@ def cargar_asistencia_docente(request, jardin_id):
     Carga masiva de asistencia para los docentes de un jardín específico.
     """
     jardin = get_object_or_404(Jardin, id=jardin_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para cargar asistencia en este espacio.")
+
     fecha_str = request.GET.get("fecha", str(date.today()))
     fecha = date.fromisoformat(fecha_str)
 
@@ -126,20 +131,31 @@ def historial_asistencia_docente(request):
     anio = request.GET.get("anio")
     jardin_id = request.GET.get("jardin")
 
-    asistencias = AsistenciaDocente.objects.select_related("docente", "jardin", "registrado_por")
+    # 🔒 Base queryset filtrado por programas del coordinador
+    if user.es_admin():
+        asistencias = AsistenciaDocente.objects.select_related("docente", "jardin", "registrado_por")
+        jardines = Jardin.objects.all()
+    else:
+        asistencias = AsistenciaDocente.objects.filter(
+            jardin__programa__in=user.programas_asignados.all()
+        ).select_related("docente", "jardin", "registrado_por")
+        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all())
 
     if mes:
         asistencias = asistencias.filter(fecha__month=mes)
     if anio:
         asistencias = asistencias.filter(fecha__year=anio)
     if jardin_id:
+        # 🔒 Doble chequeo: el jardín filtrado debe estar en el queryset ya filtrado
         asistencias = asistencias.filter(jardin_id=jardin_id)
 
-    # Para los filtros
-    if user.rol == "administrador":
-        jardines = Jardin.objects.all()
-    else:
-        jardines = Jardin.objects.filter(programa__coordinadores=user)
+    return render(request, "jardines/asistencia_docente_historial.html", {
+        "asistencias": asistencias.order_by("-fecha"),
+        "jardines": jardines,
+        "mes_sel": mes,
+        "anio_sel": anio,
+        "jardin_sel": jardin_id,
+    })
 
 @login_required
 @rol_requerido("coordinador", "administrador")
@@ -154,8 +170,13 @@ def reporte_asistencia_docente_mensual(request):
 
     if not jardin_id:
         # Si no hay jardín seleccionado, mostrar lista para elegir
-        jardines = Jardin.objects.all().order_by("nombre")
-        
+        if request.user.es_admin():
+            jardines = Jardin.objects.all().order_by("nombre")
+        else:
+            jardines = Jardin.objects.filter(
+                programa__in=request.user.programas_asignados.all()
+            ).order_by("nombre")
+
         return render(request, "jardines/reporte_docente_seleccion.html", {
             "jardines": jardines,
             "meses": range(1, 13),
@@ -165,6 +186,10 @@ def reporte_asistencia_docente_mensual(request):
         })
 
     jardin = get_object_or_404(Jardin, id=jardin_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para ver el reporte de este espacio.")
     ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
     
     # Docentes del jardín
