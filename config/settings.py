@@ -107,6 +107,7 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'ssl': {'ssl_disabled': True},
+            'connect_timeout': 5,
             'init_command': "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')",
         }
     }
@@ -126,6 +127,7 @@ if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
     opts = DATABASES['default'].setdefault('OPTIONS', {})
     opts['charset'] = 'utf8mb4'
     opts.setdefault('ssl', {})['ssl_disabled'] = True
+    opts.setdefault('connect_timeout', 5)
     opts.setdefault('init_command', "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')")
 
 

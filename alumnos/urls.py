@@ -72,7 +72,7 @@ urlpatterns = [
         name="exportar_asistencias_csv",
     ),
     path(
-        "docente/sala/<int:sala_id>/asistencias/imprimir/",
+        "coordinador/asistencias/imprimir/",
         views.imprimir_asistencias_sala,
         name="imprimir_asistencias_sala",
     ),
