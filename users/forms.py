@@ -219,6 +219,17 @@ class JardinForm(forms.ModelForm):
             "sector",
         )
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "programa" in self.fields:
+                self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
+            if "subprograma" in self.fields:
+                self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
+
 
 # =====================================================
 # PROGRAMA
@@ -248,6 +259,15 @@ class SubprogramaForm(forms.ModelForm):
             "usa_formulario_ampliado",
         )
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "programa" in self.fields:
+                self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
+
 
 # =====================================================
 # SALA
@@ -266,6 +286,15 @@ class SalaForm(forms.ModelForm):
             "docentes",
             "responsable",
         )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "jardin" in self.fields:
+                self.fields["jardin"].queryset = Jardin.objects.filter(programa__in=programas)
 
     def clean_docentes(self):
         docentes = self.cleaned_data.get("docentes")
