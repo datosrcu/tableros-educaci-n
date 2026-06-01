@@ -86,18 +86,9 @@ def lista_alumnos(request):
     """
     user = request.user
 
-    # 🏢 Administradores y coordinadores generales ven todo el padrón
-    if user.es_admin() or (user.rol == "coordinador" and not user.programas_asignados.exists()):
+    # 🏢 Administradores y coordinadores ven todo el padrón
+    if user.is_superuser or user.rol in ["administrador", "coordinador"]:
         alumnos = Alumno.objects.prefetch_related(
-            "asignaciones",
-            "asignaciones__sala__jardin"
-        ).distinct()
-
-    # 🏢 Coordinadores restringidos ven su padrón
-    elif user.rol == "coordinador" and user.programas_asignados.exists():
-        alumnos = Alumno.objects.filter(
-            asignaciones__sala__jardin__programa__in=user.programas_asignados.all()
-        ).prefetch_related(
             "asignaciones",
             "asignaciones__sala__jardin"
         ).distinct()
@@ -137,9 +128,6 @@ def alumnos_por_sala(request, sala_id):
 
     if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
-    elif request.user.rol == "coordinador" and not request.user.es_admin() and request.user.programas_asignados.exists():
-        if sala.jardin.programa not in request.user.programas_asignados.all():
-            raise PermissionDenied("No tiene permiso para ver los alumnos de esta sala.")
 
     asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
 
@@ -393,9 +381,6 @@ def detalle_alumno(request, alumno_id):
 
     if user.rol == "docente":
         validar_alumno_para_docente(user, alumno)
-    elif user.rol == "coordinador" and not user.es_admin() and user.programas_asignados.exists():
-        if not Alumno.objects.filter(id=alumno_id, asignaciones__sala__jardin__programa__in=user.programas_asignados.all()).exists():
-            raise PermissionDenied("No tiene permiso para ver este alumno.")
 
     # 📊 Filtrado y Cálculo de estadísticas
     mes = request.GET.get('mes')
@@ -654,18 +639,10 @@ def exportar_alumnos_completo_csv(request):
         'Nivel Educativo', 'Situación Laboral', 'Obra Social', 'Escolaridad', 'Teléfono'
     ])
 
-    if request.user.es_admin() or not request.user.programas_asignados.exists():
-        alumnos = Alumno.objects.prefetch_related(
-            'asignaciones__sala__jardin',
-            'ficha_programa'
-        ).order_by('apellido', 'nombre')
-    else:
-        alumnos = Alumno.objects.filter(
-            asignaciones__sala__jardin__programa__in=request.user.programas_asignados.all()
-        ).prefetch_related(
-            'asignaciones__sala__jardin',
-            'ficha_programa'
-        ).distinct().order_by('apellido', 'nombre')
+    alumnos = Alumno.objects.prefetch_related(
+        'asignaciones__sala__jardin',
+        'ficha_programa'
+    ).order_by('apellido', 'nombre')
 
     for alumno in alumnos:
         # Espacios y salas
