@@ -236,7 +236,6 @@ class JardinForm(forms.ModelForm):
                 self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
 
 
-
 # =====================================================
 # PROGRAMA
 # =====================================================
@@ -274,7 +273,6 @@ class SubprogramaForm(forms.ModelForm):
                 self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
 
 
-
 # =====================================================
 # SALA
 # =====================================================
@@ -300,7 +298,6 @@ class SalaForm(forms.ModelForm):
             programas = user.programas_asignados.all()
             if "jardin" in self.fields:
                 self.fields["jardin"].queryset = Jardin.objects.filter(programa__in=programas)
-            # Filtrar docentes y responsables a los de la jurisdicción del coordinador
             from django.db.models import Q as Qlocal
             self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente").filter(
                 Qlocal(salas_asignadas__jardin__programa__in=programas) |
