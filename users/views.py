@@ -264,7 +264,7 @@ def asignar_docentes_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
 
     if request.method == "POST":
-        form = AsignarDocentesSalaForm(request.POST, instance=sala)
+        form = AsignarDocentesSalaForm(request.POST, instance=sala, user=request.user)
         if form.is_valid():
             # 🔒 Validación defensiva
             docentes = form.cleaned_data["docentes"]
@@ -275,7 +275,7 @@ def asignar_docentes_sala(request, sala_id):
             form.save()
             return redirect("users:lista_salas")
     else:
-        form = AsignarDocentesSalaForm(instance=sala)
+        form = AsignarDocentesSalaForm(instance=sala, user=request.user)
 
     return render(
         request,
