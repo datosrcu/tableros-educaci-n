@@ -141,11 +141,19 @@ def alumnos_por_sala(request, sala_id):
         if sala.jardin.programa not in request.user.programas_asignados.all():
             raise PermissionDenied("No tiene permiso para ver los alumnos de esta sala.")
 
-    asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+    asignaciones_todas = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+
+    # 📊 Cálculo de totales antes del filtrado
+    total_alumnos = asignaciones_todas.count()
+    activos_count = asignaciones_todas.filter(activo=True).count()
+    bajas_count = asignaciones_todas.filter(activo=False).count()
 
     # 🔹 Acciones masivas de baja/activación
     if request.method == "POST" and request.user.rol == "docente":
-        for asignacion in asignaciones:
+        renderizados_ids = request.POST.getlist('alumnos_renderizados')
+        asignaciones_a_actualizar = asignaciones_todas.filter(alumno_id__in=renderizados_ids)
+        
+        for asignacion in asignaciones_a_actualizar:
             activo = request.POST.get(f'activo_{asignacion.alumno.id}') == "on"
 
             if asignacion.activo != activo:
@@ -169,11 +177,46 @@ def alumnos_por_sala(request, sala_id):
                         descripcion=f"El docente {request.user.username} dio de baja al alumno {asignacion.alumno.nombre} {asignacion.alumno.apellido} en la sala {sala.nombre}."
                     )
 
+        # Redirigir conservando la query string de búsqueda y orden
+        query_params = request.GET.urlencode()
+        url = redirect("alumnos:alumnos_por_sala", sala_id=sala.id).url
+        if query_params:
+            return redirect(f"{url}?{query_params}")
         return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
+
+    # 🔍 Búsqueda
+    q = request.GET.get("q", "").strip()
+    if q:
+        from django.db.models import Q
+        asignaciones = asignaciones_todas.filter(
+            Q(alumno__nombre__icontains=q) |
+            Q(alumno__apellido__icontains=q) |
+            Q(alumno__dni__icontains=q)
+        )
+    else:
+        asignaciones = asignaciones_todas
+
+    # ↕️ Ordenamiento
+    orden = request.GET.get("orden", "apellido_asc")
+    if orden == "apellido_asc":
+        asignaciones = asignaciones.order_by("alumno__apellido", "alumno__nombre")
+    elif orden == "apellido_desc":
+        asignaciones = asignaciones.order_by("-alumno__apellido", "-alumno__nombre")
+    elif orden == "registro_desc":
+        asignaciones = asignaciones.order_by("-id")
+    elif orden == "registro_asc":
+        asignaciones = asignaciones.order_by("id")
+    else:
+        asignaciones = asignaciones.order_by("alumno__apellido", "alumno__nombre")
 
     return render(request, "docentes/alumnos_por_sala.html", {
         "sala": sala,
-        "asignaciones": asignaciones
+        "asignaciones": asignaciones,
+        "total_alumnos": total_alumnos,
+        "activos_count": activos_count,
+        "bajas_count": bajas_count,
+        "q": q,
+        "orden": orden,
     })
 
 
@@ -446,15 +489,26 @@ def detalle_alumno(request, alumno_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def cargar_asistencia(request, sala_id):
     """
     Formulario maestro para cargar la asistencia de toda una sala en una fecha dada.
     Utiliza update_or_create para permitir correcciones sobre fechas pasadas.
     """
-    sala = get_object_or_404(Sala, id=sala_id)
+    sala = get_object_or_404(Sala.objects.select_related('jardin', 'jardin__programa'), id=sala_id)
+    user = request.user
 
-    if not docente_tiene_sala(request.user, sala.id):
+    # 🔒 Control de accesos según rol y jurisdicción
+    if user.is_superuser or user.rol == "administrador":
+        pass
+    elif user.rol == "coordinador":
+        if not user.es_admin() and user.programas_asignados.exists():
+            if sala.jardin.programa not in user.programas_asignados.all():
+                raise PermissionDenied("No tiene permiso para gestionar asistencias en esta sala.")
+    elif user.rol == "docente":
+        if not docente_tiene_sala(user, sala.id):
+            raise PermissionDenied
+    else:
         raise PermissionDenied
 
     # Determinar la fecha de carga (default hoy)
@@ -494,7 +548,8 @@ def cargar_asistencia(request, sala_id):
                     }
                 )
             messages.success(request, f"Asistencia del {fecha} guardada correctamente.")
-            return redirect("alumnos:cargar_asistencia", sala_id=sala.id)
+            from django.urls import reverse
+            return redirect(f"{reverse('alumnos:cargar_asistencia', args=[sala.id])}?fecha={fecha.strftime('%Y-%m-%d')}")
         except ValidationError as e:
             messages.error(request, f"Error al guardar: {e.message if hasattr(e, 'message') else e.messages[0]}")
 
