@@ -71,8 +71,14 @@ urlpatterns = [
         views.exportar_asistencias_csv,
         name="exportar_asistencias_csv",
     ),
+    # NUEVA URL para imprimir asistencias desde docente
     path(
-        "coordinador/asistencias/imprimir/",
+        "docente/sala/<int:sala_id>/asistencias/imprimir/",
+        views.imprimir_asistencias_sala,
+        name="imprimir_asistencias_sala",
+    ),
+    path(
+        "coordinador/asistencias/imprimir/<int:sala_id>/",
         views.imprimir_asistencias_sala,
         name="imprimir_asistencias_sala",
     ),
