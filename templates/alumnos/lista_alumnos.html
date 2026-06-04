@@ -3,8 +3,7 @@
 {% block content %}
 <div class="row mb-4 align-items-center">
     <div class="col-md-8">
-        <h2 class="fw-bold mb-0 text-dark"><i class="fas fa-user-graduate me-2 text-primary"></i>Listado General de
-            Alumnos</h2>
+        <h2 class="fw-bold mb-0 text-dark"><i class="fas fa-user-graduate me-2 text-primary"></i>Listado General de Alumnos</h2>
         <p class="text-muted small mb-0">Gestión centralizada de alumnos de todos los espacios y programas.</p>
     </div>
     <div class="col-md-4 text-md-end">
@@ -15,6 +14,66 @@
 </div>
 
 <div class="card shadow-sm border-0 mb-4">
+    <!-- Cabecera con contadores -->
+    <div class="card-header bg-white py-3 border-bottom border-light">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="mb-0 fw-bold text-dark">Alumnos Registrados</h5>
+                <span class="badge bg-primary rounded-pill">{{ total_alumnos }} en total</span>
+                <span class="badge bg-success rounded-pill">{{ activos_count }} activos</span>
+                <span class="badge bg-danger rounded-pill">{{ bajas_count }} solo bajas</span>
+            </div>
+            {% if q %}
+            <span class="text-muted small fst-italic">
+                {{ alumnos|length }} resultado{{ alumnos|length|pluralize }} para "<strong>{{ q }}</strong>"
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Buscador y Ordenamiento (GET) -->
+    <div class="p-3 bg-light border-bottom border-light">
+        <form method="get" class="row g-2 align-items-center m-0">
+            <!-- Buscador -->
+            <div class="col-12 col-md-5 col-lg-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-light-subtle rounded-start-pill">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" name="q" value="{{ q }}"
+                           class="form-control border-light-subtle rounded-end-pill shadow-none"
+                           placeholder="Buscar por nombre, apellido o DNI...">
+                </div>
+            </div>
+
+            <!-- Ordenamiento -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-center gap-2">
+                <label for="orden" class="small text-muted text-nowrap mb-0">Ordenar por:</label>
+                <select name="orden" id="orden"
+                        class="form-select form-select-sm border-light-subtle rounded-pill shadow-none"
+                        onchange="this.form.submit()">
+                    <option value="apellido_asc"  {% if orden == 'apellido_asc'  %}selected{% endif %}>Apellido (A-Z)</option>
+                    <option value="apellido_desc" {% if orden == 'apellido_desc' %}selected{% endif %}>Apellido (Z-A)</option>
+                    <option value="registro_desc" {% if orden == 'registro_desc' %}selected{% endif %}>Más recientes primero</option>
+                    <option value="registro_asc"  {% if orden == 'registro_asc'  %}selected{% endif %}>Más antiguos primero</option>
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="col-12 col-sm-6 col-md-3 col-lg-3 d-flex gap-2 justify-content-sm-end">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm">
+                    Filtrar
+                </button>
+                {% if q or orden != 'apellido_asc' %}
+                <a href="{% url 'alumnos:lista_alumnos' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    Limpiar
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de alumnos -->
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="bg-light text-muted small text-uppercase fw-bold">
@@ -69,7 +128,15 @@
                 {% empty %}
                 <tr>
                     <td colspan="5" class="text-center py-5 text-muted">
+                        {% if q %}
+                        <i class="fas fa-search fa-2x mb-2 d-block opacity-25"></i>
+                        No se encontraron alumnos que coincidan con "<strong>{{ q }}</strong>".
+                        <div class="mt-2">
+                            <a href="{% url 'alumnos:lista_alumnos' %}" class="btn btn-sm btn-outline-secondary rounded-pill">Limpiar búsqueda</a>
+                        </div>
+                        {% else %}
                         <i class="fas fa-info-circle me-1"></i>No hay alumnos registrados en el sistema.
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -79,17 +146,9 @@
 </div>
 
 <style>
-    .grayscale {
-        filter: grayscale(1);
-    }
-
-    .micro-text {
-        font-size: 0.7rem;
-    }
-
-    .uppercase {
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    .grayscale { filter: grayscale(1); }
+    .micro-text { font-size: 0.7rem; }
+    .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+    .border-light-subtle { border-color: #e2e8f0 !important; }
 </style>
 {% endblock %}
