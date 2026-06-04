@@ -80,22 +80,24 @@ def dashboard_docente(request):
 @rol_requerido("docente", "coordinador", "administrador")
 def lista_alumnos(request):
     """
-    Muestra el listado de alumnos filtrado por rol:
+    Muestra el listado de alumnos filtrado por rol con buscador y ordenamiento.
     - Admin/Coordinador: Ven todos los alumnos.
     - Docente: Solo ve los alumnos de sus salas asignadas.
     """
+    from django.db.models import Q, Exists, OuterRef
+    from .models import AsignacionSala
     user = request.user
 
     # 🏢 Administradores y coordinadores generales ven todo el padrón
     if user.es_admin() or (user.rol == "coordinador" and not user.programas_asignados.exists()):
-        alumnos = Alumno.objects.prefetch_related(
+        alumnos_base = Alumno.objects.prefetch_related(
             "asignaciones",
             "asignaciones__sala__jardin"
         ).distinct()
 
     # 🏢 Coordinadores restringidos ven su padrón
     elif user.rol == "coordinador" and user.programas_asignados.exists():
-        alumnos = Alumno.objects.filter(
+        alumnos_base = Alumno.objects.filter(
             asignaciones__sala__jardin__programa__in=user.programas_asignados.all()
         ).prefetch_related(
             "asignaciones",
@@ -104,7 +106,7 @@ def lista_alumnos(request):
 
     # 👨‍🏫 Docentes ven solo su jurisdicción
     elif user.rol == "docente":
-        alumnos = Alumno.objects.filter(
+        alumnos_base = Alumno.objects.filter(
             asignaciones__sala__in=user.salas_asignadas.all()
         ).prefetch_related(
             "asignaciones",
@@ -114,10 +116,50 @@ def lista_alumnos(request):
     else:
         raise PermissionDenied
 
+    # 📊 Contadores globales (antes del filtro de búsqueda)
+    total_alumnos = alumnos_base.count()
+    activos_count = alumnos_base.filter(asignaciones__activo=True).distinct().count()
+    bajas_count = alumnos_base.filter(
+        asignaciones__activo=False
+    ).exclude(
+        asignaciones__activo=True
+    ).distinct().count()
+
+    # 🔍 Búsqueda por nombre, apellido o DNI
+    q = request.GET.get("q", "").strip()
+    if q:
+        alumnos = alumnos_base.filter(
+            Q(nombre__icontains=q) |
+            Q(apellido__icontains=q) |
+            Q(dni__icontains=q)
+        )
+    else:
+        alumnos = alumnos_base
+
+    # ↕️ Ordenamiento
+    orden = request.GET.get("orden", "apellido_asc")
+    if orden == "apellido_asc":
+        alumnos = alumnos.order_by("apellido", "nombre")
+    elif orden == "apellido_desc":
+        alumnos = alumnos.order_by("-apellido", "-nombre")
+    elif orden == "registro_desc":
+        alumnos = alumnos.order_by("-id")
+    elif orden == "registro_asc":
+        alumnos = alumnos.order_by("id")
+    else:
+        alumnos = alumnos.order_by("apellido", "nombre")
+
     return render(
         request,
         "alumnos/lista_alumnos.html",
-        {"alumnos": alumnos}
+        {
+            "alumnos": alumnos,
+            "total_alumnos": total_alumnos,
+            "activos_count": activos_count,
+            "bajas_count": bajas_count,
+            "q": q,
+            "orden": orden,
+        }
     )
 
 
