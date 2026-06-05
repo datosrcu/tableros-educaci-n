@@ -236,7 +236,6 @@ class JardinForm(forms.ModelForm):
                 self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
 
 
-
 # =====================================================
 # PROGRAMA
 # =====================================================
@@ -272,7 +271,6 @@ class SubprogramaForm(forms.ModelForm):
             programas = user.programas_asignados.all()
             if "programa" in self.fields:
                 self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
-
 
 
 # =====================================================

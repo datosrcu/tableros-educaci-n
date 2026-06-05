@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-white p-4 shadow-sm" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border-radius: 16px;">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-white bg-opacity-10 rounded-3 me-3">
+                        <i class="fas fa-wallet fa-2x text-info"></i>
+                    </div>
+                    <div>
+                        <h1 class="h3 mb-1 fw-bold text-white">Gestión de Cobros</h1>
+                        <p class="mb-0 text-white-50">Control de cuotas mensuales, registro de pagos y recaudaciones del sistema.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicadores -->
+    <div class="row g-3 mb-4">
+        <!-- Total Alumnos -->
+        <div class="col-md-4 col-lg-2-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; border-left: 5px solid #3b82f6 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Total Alumnos</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-primary">{{ total_alumnos }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-2.5 rounded-circle text-primary">
+                            <i class="fas fa-users fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Total Pagados -->
+        <div class="col-md-4 col-lg-2-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; border-left: 5px solid #10b981 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Total Pagados</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-success">{{ total_pagados }}</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-2.5 rounded-circle text-success">
+                            <i class="fas fa-check-circle fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Total Adeudan -->
+        <div class="col-md-4 col-lg-2-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; border-left: 5px solid #ef4444 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Total Adeudan</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-danger">{{ total_adeudan }}</h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-2.5 rounded-circle text-danger">
+                            <i class="fas fa-exclamation-circle fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Recaudación Mes -->
+        <div class="col-md-6 col-lg-2-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; border-left: 5px solid #8b5cf6 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Recaudación del Período</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-purple" style="color: #8b5cf6;">${{ recaudacion_mes|floatformat:2 }}</h3>
+                        </div>
+                        <div class="bg-purple bg-opacity-10 p-2.5 rounded-circle text-purple" style="color: #8b5cf6; background-color: rgba(139, 92, 246, 0.1);">
+                            <i class="fas fa-calendar-alt fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Recaudación Acumulada -->
+        <div class="col-md-6 col-lg-2-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; border-left: 5px solid #f59e0b !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.75rem;">Recaudación Total</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-warning">${{ recaudacion_acumulada|floatformat:2 }}</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-2.5 rounded-circle text-warning">
+                            <i class="fas fa-piggy-bank fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y Listado -->
+    <div class="card shadow-sm border-0" style="border-radius: 16px;">
+        <div class="card-body p-4">
+            <!-- Formulario de Filtros -->
+            <form method="get" class="row g-2 mb-4 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Buscar Alumno</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                        <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Nombre, Apellido o DNI">
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Subprograma</label>
+                    <select name="subprograma" class="form-select">
+                        <option value="">Todos</option>
+                        {% for sub in subprogramas_choices %}
+                            <option value="{{ sub.id }}" {% if selected_subprograma == sub.id %}selected{% endif %}>{{ sub.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-1.5">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Sala</label>
+                    <select name="sala" class="form-select">
+                        <option value="">Todas</option>
+                        {% for sala in salas_choices %}
+                            <option value="{{ sala.id }}" {% if selected_sala == sala.id %}selected{% endif %}>{{ sala.nombre }} ({{ sala.get_turno_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-sm-4 col-md-1.5">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Mes Cuota</label>
+                    <select name="mes" class="form-select">
+                        {% for m_id, m_name in meses_choices %}
+                            <option value="{{ m_id }}" {% if selected_month == m_id %}selected{% endif %}>{{ m_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-sm-4 col-md-1.5">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Año Cuota</label>
+                    <select name="anio" class="form-select">
+                        {% for y in anios_choices %}
+                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4 col-md-1.5">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="pagado" {% if selected_estado == 'pagado' %}selected{% endif %}>Pagado</option>
+                        <option value="adeuda" {% if selected_estado == 'adeuda' %}selected{% endif %}>Adeuda</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-1 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary px-3 w-100" title="Filtrar"><i class="fas fa-filter"></i></button>
+                    <a href="{% url 'cobros:dashboard' %}" class="btn btn-light border px-2.5 text-secondary" title="Limpiar Filtros"><i class="fas fa-undo"></i></a>
+                </div>
+            </form>
+
+            <!-- Mensajes de Notificación -->
+            {% if messages %}
+                <div class="row mb-3">
+                    <div class="col-12">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0" role="alert" style="border-radius: 8px;">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Listado de Alumnos -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                        <tr>
+                            <th class="ps-3">Alumno</th>
+                            <th>DNI</th>
+                            <th>Programa</th>
+                            <th>Subprograma</th>
+                            <th>Sala</th>
+                            <th class="text-end">Importe</th>
+                            <th class="text-center">Estado</th>
+                            <th>Fecha de Pago</th>
+                            <th>Método</th>
+                            <th class="text-end pe-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.9rem;">
+                        {% for row in rows %}
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">{{ row.alumno.apellido }}, {{ row.alumno.nombre }}</td>
+                                <td>{{ row.alumno.dni }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ row.programa.nombre }}</span></td>
+                                <td>{{ row.subprograma.nombre|default:"-" }}</td>
+                                <td>{{ row.sala.nombre|default:"-" }} <small class="text-muted">({{ row.sala.get_turno_display }})</small></td>
+                                <td class="text-end fw-bold text-secondary">${{ row.importe_mensual }}</td>
+                                <td class="text-center">
+                                    {% if row.estado == 'pagado' %}
+                                        <span class="badge bg-success-subtle text-success px-3 py-2" style="border-radius: 20px;">
+                                            <i class="fas fa-check-circle me-1"></i>Pagado
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger px-3 py-2 cursor-help" 
+                                              style="border-radius: 20px; cursor: help;"
+                                              data-bs-toggle="popover"
+                                              data-bs-placement="top"
+                                              data-bs-trigger="hover focus"
+                                              data-bs-html="true"
+                                              data-bs-title="Periodos Adeudados"
+                                              data-bs-content="{% if row.meses_adeudados_list %}<ul class='list-unstyled mb-0 text-start'>{% for m in row.meses_adeudados_list %}<li><i class='fas fa-exclamation-circle text-danger me-1'></i>{{ m }}</li>{% endfor %}</ul>{% else %}Sin deuda acumulada.{% endif %}">
+                                            <i class="fas fa-exclamation-circle me-1"></i>Adeuda
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.fecha_pago|date:"d/m/Y"|default:"-" }}</td>
+                                <td>
+                                    {% if row.metodo_pago %}
+                                        <span class="badge bg-secondary-subtle text-secondary px-2.5 py-1.5">{{ row.metodo_pago }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{% url 'cobros:registrar_pago' row.asignacion.id %}" class="btn btn-sm btn-outline-primary fw-semibold" style="border-radius: 6px;">
+                                            <i class="fas fa-cash-register me-1"></i> Registrar Pago
+                                        </a>
+                                        <a href="{% url 'cobros:historial_pagos' row.alumno.id %}" class="btn btn-sm btn-outline-secondary" title="Historial de Pagos" style="border-radius: 6px;">
+                                            <i class="fas fa-history"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="10" class="text-center py-5 text-muted">
+                                    <i class="fas fa-user-slash fa-3x mb-3 text-light"></i>
+                                    <p class="mb-0 fs-5">No se encontraron alumnos para gestionar cobros.</p>
+                                    <small>Verifica los filtros aplicados o comprueba tus permisos de responsable de cobros.</small>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Premium layout styles */
+    .col-lg-2-4 {
+        flex: 0 0 20%;
+        max-width: 20%;
+    }
+    @media (max-width: 992px) {
+        .col-lg-2-4 {
+            flex: 0 0 33.33%;
+            max-width: 33.33%;
+        }
+    }
+    @media (max-width: 768px) {
+        .col-lg-2-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+    @media (max-width: 576px) {
+        .col-lg-2-4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+    .bg-success-subtle {
+        background-color: #d1fae5 !important;
+    }
+    .bg-danger-subtle {
+        background-color: #fee2e2 !important;
+    }
+    .bg-secondary-subtle {
+        background-color: #f1f5f9 !important;
+    }
+    .text-purple {
+        color: #8b5cf6 !important;
+    }
+    .cursor-help {
+        cursor: help !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        })
+    })
+</script>
+{% endblock %}

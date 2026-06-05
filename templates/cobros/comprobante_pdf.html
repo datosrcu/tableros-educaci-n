@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4;
+            margin: 1.2cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #1e293b;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 6px;
+            margin-bottom: 15px;
+        }
+        .header table {
+            width: 100%;
+        }
+        .header .municipality {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-transform: uppercase;
+        }
+        .header .receipt-no {
+            text-align: right;
+            font-size: 11pt;
+            font-weight: bold;
+            color: #ef4444;
+        }
+        .title-container {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .title-container h1 {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+        .section-title {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 2px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .data-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border-collapse: collapse;
+        }
+        .data-table td {
+            padding: 4px 0;
+            vertical-align: top;
+        }
+        .data-table .label {
+            font-weight: bold;
+            color: #475569;
+            width: 30%;
+        }
+        .data-table .value {
+            color: #0f172a;
+            width: 70%;
+        }
+        .audit-info {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
+        }
+        .audit-table {
+            width: 100%;
+        }
+        .audit-table td {
+            width: 33.33%;
+        }
+        .footer-text {
+            font-size: 8.5pt;
+            color: #475569;
+            text-align: center;
+            margin-top: 25px;
+            line-height: 1.5;
+        }
+        .footer-decorations {
+            margin-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
+            font-size: 7.5pt;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <table>
+            <tr>
+                <td>
+                    <div class="municipality">{{ pago.programa.nombre }}</div>
+                </td>
+                <td style="text-align: right; vertical-align: top;">
+                    <div class="receipt-no">{{ pago.numero_comprobante }}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Título Principal -->
+    <div class="title-container">
+        <h1>COMPROBANTE</h1>
+    </div>
+
+    <!-- Datos del Alumno -->
+    <div class="section-title">Datos del Alumno</div>
+    <table class="data-table">
+        <tr>
+            <td class="label">Nombre completo:</td>
+            <td class="value"><strong>{{ pago.alumno.apellido }}, {{ pago.alumno.nombre }}</strong></td>
+        </tr>
+        <tr>
+            <td class="label">DNI:</td>
+            <td class="value">{{ pago.alumno.dni }}</td>
+        </tr>
+        <tr>
+            <td class="label">Programa:</td>
+            <td class="value">{{ pago.programa.nombre }}</td>
+        </tr>
+        {% if pago.subprograma %}
+        <tr>
+            <td class="label">Subprograma:</td>
+            <td class="value">{{ pago.subprograma.nombre }}</td>
+        </tr>
+        {% endif %}
+        {% if pago.sala %}
+        <tr>
+            <td class="label">Sala:</td>
+            <td class="value">{{ pago.sala.nombre }} ({{ pago.sala.get_turno_display }})</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <!-- Datos del Pago -->
+    <div class="section-title">Datos del Pago</div>
+    <table class="data-table">
+        <tr>
+            <td class="label">Concepto:</td>
+            <td class="value">BONO CONTRIBUCIÓN</td>
+        </tr>
+        <tr>
+            <td class="label">Fecha de pago:</td>
+            <td class="value">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Método de pago:</td>
+            <td class="value">{{ pago.get_metodo_pago_display }}</td>
+        </tr>
+        <tr>
+            <td class="label">Periodo:</td>
+            <td class="value">{{ pago.get_mes_pagado_display }} de {{ pago.anio_pagado }}</td>
+        </tr>
+    </table>
+
+    <!-- Caja Destacada de Importe (Usa tabla para evitar bug de xhtml2pdf) -->
+    <table style="width: 100%; border: 1px solid #1e3a8a; background-color: #f8fafc; padding: 12px; text-align: center; margin: 15px 0;">
+        <tr>
+            <td>
+                <div style="font-size: 9pt; text-transform: uppercase; color: #475569; font-weight: bold; letter-spacing: 0.5px;">Importe de la contribución</div>
+                <div style="font-size: 20pt; font-weight: bold; color: #1e3a8a; margin-top: 4px;">$ {{ pago.importe }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Información de Auditoría -->
+    <div class="audit-info">
+        <table class="audit-table">
+            <tr>
+                <td><strong>Fecha de emisión:</strong> {{ fecha_emision|date:"d/m/Y H:i" }}</td>
+                <td style="text-align: center;"><strong>Registrado por:</strong> {{ pago.registrado_por.get_full_name|default:pago.registrado_por.username }}</td>
+                <td style="text-align: right;"><strong>Nº Registro Interno:</strong> {{ pago.id }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Pie Institucional -->
+    <div class="footer-text">
+        <p>El presente comprobante acredita la recepción de un Bono Contribución destinado al sostenimiento de las actividades desarrolladas por el programa correspondiente.</p>
+        <div class="footer-decorations">
+            Este comprobante fue generado electrónicamente por el Sistema Presente.
+        </div>
+    </div>
+</body>
+</html>
