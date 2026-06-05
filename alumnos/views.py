@@ -80,31 +80,33 @@ def dashboard_docente(request):
 @rol_requerido("docente", "coordinador", "administrador")
 def lista_alumnos(request):
     """
-    Muestra el listado de alumnos filtrado por rol:
-    - Admin: Ve todos los alumnos.
-    - Coordinador: Ve alumnos de sus programas asignados.
+    Muestra el listado de alumnos filtrado por rol con buscador y ordenamiento.
+    - Admin/Coordinador: Ven todos los alumnos.
     - Docente: Solo ve los alumnos de sus salas asignadas.
     """
+    from django.db.models import Q, Exists, OuterRef
+    from .models import AsignacionSala
     user = request.user
 
-    # 🏢 Administradores y coordinadores ven el padrón
-    if user.is_superuser or user.rol in ["administrador", "coordinador"]:
-        if user.es_admin():
-            alumnos = Alumno.objects.prefetch_related(
-                "asignaciones",
-                "asignaciones__sala__jardin"
-            ).distinct()
-        else:
-            alumnos = Alumno.objects.filter(
-                asignaciones__sala__jardin__programa__in=user.programas_asignados.all()
-            ).prefetch_related(
-                "asignaciones",
-                "asignaciones__sala__jardin"
-            ).distinct()
+    # 🏢 Administradores y coordinadores generales ven todo el padrón
+    if user.es_admin() or (user.rol == "coordinador" and not user.programas_asignados.exists()):
+        alumnos_base = Alumno.objects.prefetch_related(
+            "asignaciones",
+            "asignaciones__sala__jardin"
+        ).distinct()
+
+    # 🏢 Coordinadores restringidos ven su padrón
+    elif user.rol == "coordinador" and user.programas_asignados.exists():
+        alumnos_base = Alumno.objects.filter(
+            asignaciones__sala__jardin__programa__in=user.programas_asignados.all()
+        ).prefetch_related(
+            "asignaciones",
+            "asignaciones__sala__jardin"
+        ).distinct()
 
     # 👨‍🏫 Docentes ven solo su jurisdicción
     elif user.rol == "docente":
-        alumnos = Alumno.objects.filter(
+        alumnos_base = Alumno.objects.filter(
             asignaciones__sala__in=user.salas_asignadas.all()
         ).prefetch_related(
             "asignaciones",
@@ -114,10 +116,50 @@ def lista_alumnos(request):
     else:
         raise PermissionDenied
 
+    # 📊 Contadores globales (antes del filtro de búsqueda)
+    total_alumnos = alumnos_base.count()
+    activos_count = alumnos_base.filter(asignaciones__activo=True).distinct().count()
+    bajas_count = alumnos_base.filter(
+        asignaciones__activo=False
+    ).exclude(
+        asignaciones__activo=True
+    ).distinct().count()
+
+    # 🔍 Búsqueda por nombre, apellido o DNI
+    q = request.GET.get("q", "").strip()
+    if q:
+        alumnos = alumnos_base.filter(
+            Q(nombre__icontains=q) |
+            Q(apellido__icontains=q) |
+            Q(dni__icontains=q)
+        )
+    else:
+        alumnos = alumnos_base
+
+    # ↕️ Ordenamiento
+    orden = request.GET.get("orden", "apellido_asc")
+    if orden == "apellido_asc":
+        alumnos = alumnos.order_by("apellido", "nombre")
+    elif orden == "apellido_desc":
+        alumnos = alumnos.order_by("-apellido", "-nombre")
+    elif orden == "registro_desc":
+        alumnos = alumnos.order_by("-id")
+    elif orden == "registro_asc":
+        alumnos = alumnos.order_by("id")
+    else:
+        alumnos = alumnos.order_by("apellido", "nombre")
+
     return render(
         request,
         "alumnos/lista_alumnos.html",
-        {"alumnos": alumnos}
+        {
+            "alumnos": alumnos,
+            "total_alumnos": total_alumnos,
+            "activos_count": activos_count,
+            "bajas_count": bajas_count,
+            "q": q,
+            "orden": orden,
+        }
     )
 
 
@@ -137,17 +179,24 @@ def alumnos_por_sala(request, sala_id):
 
     if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
-
-    if request.user.rol == "coordinador" and not request.user.es_admin():
+    elif request.user.rol == "coordinador" and not request.user.es_admin() and request.user.programas_asignados.exists():
         if sala.jardin.programa not in request.user.programas_asignados.all():
-            raise PermissionDenied
+            raise PermissionDenied("No tiene permiso para ver los alumnos de esta sala.")
 
-    asignaciones = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+    asignaciones_todas = AsignacionSala.objects.filter(sala=sala).select_related('alumno')
+
+    # 📊 Cálculo de totales antes del filtrado
+    total_alumnos = asignaciones_todas.count()
+    activos_count = asignaciones_todas.filter(activo=True).count()
+    bajas_count = asignaciones_todas.filter(activo=False).count()
 
 
     # 🔹 Acciones masivas de baja/activación
     if request.method == "POST" and request.user.rol == "docente":
-        for asignacion in asignaciones:
+        renderizados_ids = request.POST.getlist('alumnos_renderizados')
+        asignaciones_a_actualizar = asignaciones_todas.filter(alumno_id__in=renderizados_ids)
+        
+        for asignacion in asignaciones_a_actualizar:
             activo = request.POST.get(f'activo_{asignacion.alumno.id}') == "on"
 
             if asignacion.activo != activo:
@@ -171,11 +220,46 @@ def alumnos_por_sala(request, sala_id):
                         descripcion=f"El docente {request.user.username} dio de baja al alumno {asignacion.alumno.nombre} {asignacion.alumno.apellido} en la sala {sala.nombre}."
                     )
 
+        # Redirigir conservando la query string de búsqueda y orden
+        query_params = request.GET.urlencode()
+        url = redirect("alumnos:alumnos_por_sala", sala_id=sala.id).url
+        if query_params:
+            return redirect(f"{url}?{query_params}")
         return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
+
+    # 🔍 Búsqueda
+    q = request.GET.get("q", "").strip()
+    if q:
+        from django.db.models import Q
+        asignaciones = asignaciones_todas.filter(
+            Q(alumno__nombre__icontains=q) |
+            Q(alumno__apellido__icontains=q) |
+            Q(alumno__dni__icontains=q)
+        )
+    else:
+        asignaciones = asignaciones_todas
+
+    # ↕️ Ordenamiento
+    orden = request.GET.get("orden", "apellido_asc")
+    if orden == "apellido_asc":
+        asignaciones = asignaciones.order_by("alumno__apellido", "alumno__nombre")
+    elif orden == "apellido_desc":
+        asignaciones = asignaciones.order_by("-alumno__apellido", "-alumno__nombre")
+    elif orden == "registro_desc":
+        asignaciones = asignaciones.order_by("-id")
+    elif orden == "registro_asc":
+        asignaciones = asignaciones.order_by("id")
+    else:
+        asignaciones = asignaciones.order_by("alumno__apellido", "alumno__nombre")
 
     return render(request, "docentes/alumnos_por_sala.html", {
         "sala": sala,
-        "asignaciones": asignaciones
+        "asignaciones": asignaciones,
+        "total_alumnos": total_alumnos,
+        "activos_count": activos_count,
+        "bajas_count": bajas_count,
+        "q": q,
+        "orden": orden,
     })
 
 
@@ -395,10 +479,9 @@ def detalle_alumno(request, alumno_id):
 
     if user.rol == "docente":
         validar_alumno_para_docente(user, alumno)
-    elif user.rol == "coordinador" and not user.es_admin():
+    elif user.rol == "coordinador" and not user.es_admin() and user.programas_asignados.exists():
         if not Alumno.objects.filter(id=alumno_id, asignaciones__sala__jardin__programa__in=user.programas_asignados.all()).exists():
             raise PermissionDenied("No tiene permiso para ver este alumno.")
-
 
     # 📊 Filtrado y Cálculo de estadísticas
     mes = request.GET.get('mes')
@@ -449,15 +532,26 @@ def detalle_alumno(request, alumno_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def cargar_asistencia(request, sala_id):
     """
     Formulario maestro para cargar la asistencia de toda una sala en una fecha dada.
     Utiliza update_or_create para permitir correcciones sobre fechas pasadas.
     """
-    sala = get_object_or_404(Sala, id=sala_id)
+    sala = get_object_or_404(Sala.objects.select_related('jardin', 'jardin__programa'), id=sala_id)
+    user = request.user
 
-    if not docente_tiene_sala(request.user, sala.id):
+    # 🔒 Control de accesos según rol y jurisdicción
+    if user.is_superuser or user.rol == "administrador":
+        pass
+    elif user.rol == "coordinador":
+        if not user.es_admin() and user.programas_asignados.exists():
+            if sala.jardin.programa not in user.programas_asignados.all():
+                raise PermissionDenied("No tiene permiso para gestionar asistencias en esta sala.")
+    elif user.rol == "docente":
+        if not docente_tiene_sala(user, sala.id):
+            raise PermissionDenied
+    else:
         raise PermissionDenied
 
     # Determinar la fecha de carga (default hoy)
@@ -497,7 +591,8 @@ def cargar_asistencia(request, sala_id):
                     }
                 )
             messages.success(request, f"Asistencia del {fecha} guardada correctamente.")
-            return redirect("alumnos:cargar_asistencia", sala_id=sala.id)
+            from django.urls import reverse
+            return redirect(f"{reverse('alumnos:cargar_asistencia', args=[sala.id])}?fecha={fecha.strftime('%Y-%m-%d')}")
         except ValidationError as e:
             messages.error(request, f"Error al guardar: {e.message if hasattr(e, 'message') else e.messages[0]}")
 
@@ -657,7 +752,7 @@ def exportar_alumnos_completo_csv(request):
         'Nivel Educativo', 'Situación Laboral', 'Obra Social', 'Escolaridad', 'Teléfono'
     ])
 
-    if request.user.es_admin():
+    if request.user.es_admin() or not request.user.programas_asignados.exists():
         alumnos = Alumno.objects.prefetch_related(
             'asignaciones__sala__jardin',
             'ficha_programa'
@@ -669,7 +764,6 @@ def exportar_alumnos_completo_csv(request):
             'asignaciones__sala__jardin',
             'ficha_programa'
         ).distinct().order_by('apellido', 'nombre')
-
 
     for alumno in alumnos:
         # Espacios y salas

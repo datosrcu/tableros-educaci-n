@@ -228,11 +228,13 @@ class JardinForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        if user and not user.es_admin():
-            self.fields["programa"].queryset = user.programas_asignados.all()
-            self.fields["subprograma"].queryset = Subprograma.objects.filter(
-                programa__in=user.programas_asignados.all()
-            )
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "programa" in self.fields:
+                self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
+            if "subprograma" in self.fields:
+                self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
+
 
 
 # =====================================================
@@ -266,8 +268,11 @@ class SubprogramaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        if user and not user.es_admin():
-            self.fields["programa"].queryset = user.programas_asignados.all()
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "programa" in self.fields:
+                self.fields["programa"].queryset = Programa.objects.filter(id__in=programas)
+
 
 
 # =====================================================
@@ -291,22 +296,24 @@ class SalaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        if user and not user.es_admin():
-            self.fields["jardin"].queryset = Jardin.objects.filter(
-                programa__in=user.programas_asignados.all()
-            )
-            from django.db.models import Q
+        if user and not user.es_admin() and user.programas_asignados.exists():
+            programas = user.programas_asignados.all()
+            if "jardin" in self.fields:
+                self.fields["jardin"].queryset = Jardin.objects.filter(programa__in=programas)
+            # Filtrar docentes y responsables a los de la jurisdicción del coordinador
+            from django.db.models import Q as Qlocal
             self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente").filter(
-                Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
-                Q(salas_asignadas__isnull=True)
+                Qlocal(salas_asignadas__jardin__programa__in=programas) |
+                Qlocal(salas_asignadas__isnull=True)
             ).distinct()
             self.fields["responsable"].queryset = Usuario.objects.filter(
                 rol__in=["docente", "coordinador"]
             ).filter(
-                Q(salas_asignadas__jardin__programa__in=user.programas_asignados.all()) |
-                Q(programas_asignados__in=user.programas_asignados.all()) |
-                Q(rol="docente", salas_asignadas__isnull=True)
+                Qlocal(salas_asignadas__jardin__programa__in=programas) |
+                Qlocal(programas_asignados__in=programas) |
+                Qlocal(rol="docente", salas_asignadas__isnull=True)
             ).distinct()
+
 
     def clean_docentes(self):
         docentes = self.cleaned_data.get("docentes")

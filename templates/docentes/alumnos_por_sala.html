@@ -45,7 +45,9 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold text-dark">Alumnos Registrados</h5>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary rounded-pill">{{ asignaciones.count }} alumnos</span>
+                        <span class="badge bg-primary rounded-pill">{{ total_alumnos }} alumnos</span>
+                        <span class="badge bg-success rounded-pill">{{ activos_count }} activos</span>
+                        <span class="badge bg-danger rounded-pill">{{ bajas_count }} bajas</span>
                         <div class="dropdown">
                             <button class="btn btn-outline-primary btn-sm rounded-pill dropdown-toggle px-3" type="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-file-export me-1"></i>Exportar
@@ -65,6 +67,42 @@
                 </div>
             </div>
             <div class="card-body p-0">
+                <!-- Formulario de Búsqueda y Filtros (GET) -->
+                <div class="p-3 bg-light border-bottom border-light">
+                    <form method="get" class="row g-2 align-items-center m-0">
+                        <!-- Buscador -->
+                        <div class="col-12 col-md-5 col-lg-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-light-subtle rounded-start-pill"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" name="q" value="{{ q }}" class="form-control border-light-subtle rounded-end-pill shadow-none" placeholder="Buscar por nombre, apellido o DNI...">
+                            </div>
+                        </div>
+                        
+                        <!-- Ordenamiento -->
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-center gap-2">
+                            <label for="orden" class="small text-muted text-nowrap mb-0">Ordenar por:</label>
+                            <select name="orden" id="orden" class="form-select form-select-sm border-light-subtle rounded-pill shadow-none" onchange="this.form.submit()">
+                                <option value="apellido_asc" {% if orden == 'apellido_asc' %}selected{% endif %}>Apellido (A-Z)</option>
+                                <option value="apellido_desc" {% if orden == 'apellido_desc' %}selected{% endif %}>Apellido (Z-A)</option>
+                                <option value="registro_desc" {% if orden == 'registro_desc' %}selected{% endif %}>Más recientes primero</option>
+                                <option value="registro_asc" {% if orden == 'registro_asc' %}selected{% endif %}>Más antiguos primero</option>
+                            </select>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-3 d-flex gap-2 justify-content-sm-end">
+                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm">
+                                Filtrar
+                            </button>
+                            {% if q or orden != 'apellido_asc' %}
+                            <a href="{% url 'alumnos:alumnos_por_sala' sala.id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                                Limpiar
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+
                 {% if request.user.rol == 'docente' %}<form method="post">{% csrf_token %}{% endif %}
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -83,6 +121,7 @@
                                 <tr>
                                     {% if request.user.rol == 'docente' %}
                                     <td class="ps-4">
+                                        <input type="hidden" name="alumnos_renderizados" value="{{ a.alumno.id }}">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox"
                                                 name="activo_{{ a.alumno.id }}" {% if a.activo %}checked{% endif %}>

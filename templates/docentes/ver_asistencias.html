@@ -39,7 +39,7 @@
         </button>
         <ul class="dropdown-menu shadow-sm">
           <li><a class="dropdown-item" href="{% url 'alumnos:exportar_asistencias_csv' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}"><i class="fas fa-file-csv me-2 text-success"></i>Descargar CSV</a></li>
-          <li><a class="dropdown-item" href="{% url 'alumnos:imprimir_asistencias_sala' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
+          <li><a class="dropdown-item" href="{% url 'alumnos:imprimir_asistencias_sala_docente' sala.id %}?fecha={{ fecha|date:'Y-m-d' }}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
         </ul>
       </div>
       {% if request.user.rol == 'docente' %}

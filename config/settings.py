@@ -30,9 +30,13 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if h.strip()]
+# Limpiamos posibles comillas accidentales de variables de entorno (p. ej. en Dokploy)
+def clean_env_list(env_val):
+    return [item.strip().strip('\'"[]') for item in env_val.split(',') if item.strip()]
 
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if o.strip()]
+ALLOWED_HOSTS = clean_env_list(config('ALLOWED_HOSTS', default='jardines.gobiernoriocuarto.gob.ar,jardinesdev.gobiernoriocuarto.gob.ar,localhost,127.0.0.1,*'))
+
+CSRF_TRUSTED_ORIGINS = clean_env_list(config('CSRF_TRUSTED_ORIGINS', default='https://jardines.gobiernoriocuarto.gob.ar,https://jardinesdev.gobiernoriocuarto.gob.ar'))
 
 
 # Application definition
@@ -107,6 +111,7 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'ssl': {'ssl_disabled': True},
+            'connect_timeout': 5,
             'init_command': "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')",
         }
     }
@@ -116,7 +121,7 @@ DATABASES = {
 # Support DATABASE_URL if provided (ej: sqlite:///db.sqlite3 para dev)
 db_url = config('DATABASE_URL', default='')
 if db_url:
-    DATABASES['default'].update(dj_database_url.parse(db_url, conn_max_age=60, ssl_require=False))
+    DATABASES['default'] = dj_database_url.parse(db_url, conn_max_age=60, ssl_require=False)
 
 # Blindar estos valores — dj_database_url.parse puede pisar CONN_MAX_AGE
 DATABASES['default']['CONN_MAX_AGE'] = 0
@@ -126,6 +131,7 @@ if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql':
     opts = DATABASES['default'].setdefault('OPTIONS', {})
     opts['charset'] = 'utf8mb4'
     opts.setdefault('ssl', {})['ssl_disabled'] = True
+    opts.setdefault('connect_timeout', 5)
     opts.setdefault('init_command', "SET SESSION sql_mode=CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')")
 
 
