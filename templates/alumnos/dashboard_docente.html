@@ -15,6 +15,7 @@
 </div>
 
 {% if tiene_jardines %}
+<div style="display:none;">{% csrf_token %}</div>
 <div class="row mb-4">
   <div class="col-12">
     <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 5px solid {% if fichado_hoy %}#10b981{% else %}#3b82f6{% endif %} !important;">
@@ -140,13 +141,17 @@ document.addEventListener("DOMContentLoaded", function() {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     
+                    const csrfTokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+                    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+                    
+                    const formData = new FormData();
+                    formData.append('latitude', lat);
+                    formData.append('longitude', lon);
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+                    
                     fetch("{% url 'jardines:registrar_asistencia_docente' %}", {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/x-www-form-urlencoded",
-                            "X-CSRFToken": "{{ csrf_token }}"
-                        },
-                        body: `latitude=${lat}&longitude=${lon}`
+                        body: formData
                     })
                     .then(response => response.json().then(data => ({ status: response.status, body: data })))
                     .then(res => {

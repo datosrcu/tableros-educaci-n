@@ -35,7 +35,6 @@
                             <thead class="table-light text-secondary" style="font-size: 0.85rem;">
                                 <tr>
                                     <th class="ps-3">Fecha de Pago</th>
-                                    <th>Programa</th>
                                     <th>Subprograma</th>
                                     <th>Sala</th>
                                     <th>Período</th>
@@ -51,7 +50,6 @@
                                 {% for pago in pagos %}
                                     <tr>
                                         <td class="ps-3 fw-bold">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                                        <td><span class="badge bg-light text-dark border">{{ pago.programa.nombre }}</span></td>
                                         <td>{{ pago.subprograma.nombre|default:"-" }}</td>
                                         <td>{{ pago.sala.nombre|default:"-" }}</td>
                                         <td>{{ pago.get_mes_pagado_display }} / {{ pago.anio_pagado }}</td>
