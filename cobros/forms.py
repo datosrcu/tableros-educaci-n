@@ -97,3 +97,5 @@ class PagoForm(forms.ModelForm):
             self.add_error("correo_envio", "Debe ingresar un correo electrónico si activa la opción de envío.")
             
         return cleaned_data
+
+

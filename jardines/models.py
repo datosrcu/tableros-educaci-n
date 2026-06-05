@@ -19,6 +19,13 @@ class Programa(models.Model):
         help_text="Marca si este programa requiere el formulario ampliado de inscripción"
     )
     activo = models.BooleanField(default=True)
+    prefijo_comprobante = models.CharField(
+        max_length=10,
+        default="BC",
+        verbose_name="Prefijo Comprobante",
+        help_text="Prefijo utilizado para generar los números de comprobantes (ej: EA, EC)"
+    )
+
     
     class Meta:
         verbose_name = "Programa"
@@ -214,6 +221,10 @@ class AsistenciaDocente(models.Model):
     fuera_de_jornada = models.BooleanField(default=False)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='P')
     observaciones = models.TextField(blank=True, null=True)
+    fichado = models.BooleanField(default=False, verbose_name="Fichado")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud")
+
     
     # Usuario que registró la asistencia (null si fue automático)
     registrado_por = models.ForeignKey(
@@ -247,3 +258,44 @@ class AsistenciaDocente(models.Model):
 
     def __str__(self):
         return f"{self.docente} - {self.jardin} - {self.fecha} ({self.get_estado_display()})"
+
+
+def inicializar_asistencia_diaria(user, request=None):
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    
+    hoy = timezone.now().date()
+    hora = timezone.now().time()
+    ip = request.META.get('REMOTE_ADDR') if request else None
+    
+    # Obtenemos los jardines asociados al docente a través de sus salas
+    salas = user.salas_asignadas.all()
+    jardines = Jardin.objects.filter(salas__in=salas).distinct()
+    
+    # Verificar si está fuera de jornada (comparamos con todas sus salas)
+    es_fuera_de_jornada = True
+    for sala in salas:
+        # Margen de 30 minutos antes y después
+        h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
+        h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
+        
+        if h_inicio <= hora <= h_fin:
+            es_fuera_de_jornada = False
+            break
+            
+    for jardin in jardines:
+        # Solo creamos el registro si no existe uno para hoy
+        AsistenciaDocente.objects.get_or_create(
+            docente=user,
+            jardin=jardin,
+            fecha=hoy,
+            defaults={
+                'hora_ingreso': None,
+                'ip_address': ip,
+                'fuera_de_jornada': es_fuera_de_jornada,
+                'estado': 'A',  # Empieza en Ausente hasta que fiche
+                'fichado': False,
+                'observaciones': 'Registro inicializado por el sistema.'
+            }
+        )
+

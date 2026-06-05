@@ -57,6 +57,23 @@ def dashboard_docente(request):
     Vista principal para el rol Docente. 
     Muestra el listado de salas que tiene bajo su responsabilidad.
     """
+    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria
+    from django.utils import timezone
+    
+    # Inicializar registros de asistencia de hoy si no existen
+    inicializar_asistencia_diaria(request.user, request)
+    
+    # Obtener registros de asistencia de hoy
+    hoy = timezone.now().date()
+    asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+    
+    fichado_hoy = False
+    hora_fichada = None
+    if asistencias_hoy.exists():
+        fichado_hoy = asistencias_hoy.filter(fichado=True).exists()
+        if fichado_hoy:
+            hora_fichada = asistencias_hoy.filter(fichado=True).first().hora_ingreso
+
     salas = (
         request.user.salas_asignadas
         .select_related(
@@ -68,8 +85,12 @@ def dashboard_docente(request):
     )
 
     return render(request, "alumnos/dashboard_docente.html", {
-        "salas": salas
+        "salas": salas,
+        "fichado_hoy": fichado_hoy,
+        "hora_fichada": hora_fichada,
+        "tiene_jardines": asistencias_hoy.exists()
     })
+
 
 
 # =========================================================

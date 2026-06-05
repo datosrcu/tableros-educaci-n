@@ -364,3 +364,42 @@ class CobrosTestCase(TestCase):
         self.assertIn("correo_envio", form.errors)
         self.assertEqual(form.errors["correo_envio"], ["Debe ingresar un correo electrónico si activa la opción de envío."])
 
+    def test_registrar_pago_duplicate_period(self):
+        # 1. Registrar un primer pago para Junio de 2026
+        Pago.objects.create(
+            alumno=self.alumno_arte,
+            programa=self.programa_arte,
+            importe=Decimal("15000.00"),
+            fecha_pago=timezone.now().date(),
+            metodo_pago="efectivo",
+            estado="pagado",
+            registrado_por=self.coordinator,
+            mes_pagado=6,
+            anio_pagado=2026
+        )
+        
+        self.client.login(username="coordinador1", password="coordpassword")
+        
+        # 2. Intentar registrar otro pago para el mismo alumno, programa y período
+        post_data = {
+            "alumno": self.alumno_arte.id,
+            "programa": self.programa_arte.id,
+            "importe": "15000.00",
+            "fecha_pago": timezone.now().date().strftime("%Y-%m-%d"),
+            "metodo_pago": "transferencia",
+            "estado": "pagado",
+            "mes_pagado": 6,
+            "anio_pagado": 2026,
+            "enviar_correo": False,
+            "observaciones": ""
+        }
+        
+        response = self.client.post(reverse("cobros:registrar_pago", args=[self.asignacion_arte.id]), post_data)
+        # Debe fallar y recargar la página con error de validación en lugar de redirigir
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertFalse(form.is_valid())
+        self.assertIn("mes_pagado", form.errors)
+        self.assertEqual(form.errors["mes_pagado"], ["Ya existe un pago registrado como 'Pagado' para este alumno en el período seleccionado."])
+
+

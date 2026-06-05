@@ -9,6 +9,32 @@
         </a>
     </div>
 
+    <!-- Search Form -->
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px;">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-12 col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                        <input type="text" name="q" value="{{ request.GET.q|default:'' }}" class="form-control border-start-0" placeholder="Buscar por usuario, nombre, modelo o descripción...">
+                    </div>
+                </div>
+                {% if request.GET.usuario %}
+                    <input type="hidden" name="usuario" value="{{ request.GET.usuario }}">
+                {% endif %}
+                {% if request.GET.fecha %}
+                    <input type="hidden" name="fecha" value="{{ request.GET.fecha }}">
+                {% endif %}
+                <div class="col-12 col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 w-100 fw-bold"><i class="fas fa-filter me-1"></i> Filtrar</button>
+                    {% if request.GET.q or request.GET.usuario or request.GET.fecha %}
+                        <a href="{% url 'users:log_sistema' %}" class="btn btn-outline-secondary px-3" title="Limpiar Filtros"><i class="fas fa-undo"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -56,7 +82,7 @@
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.usuario %}&usuario={{ request.GET.usuario }}{% endif %}{% if request.GET.fecha %}&fecha={{ request.GET.fecha }}{% endif %}">Anterior</a>
             </li>
             {% endif %}
             
@@ -66,7 +92,7 @@
 
             {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.usuario %}&usuario={{ request.GET.usuario }}{% endif %}{% if request.GET.fecha %}&fecha={{ request.GET.fecha }}{% endif %}">Siguiente</a>
             </li>
             {% endif %}
         </ul>

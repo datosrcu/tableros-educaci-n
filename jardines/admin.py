@@ -20,9 +20,9 @@ class BaseAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.rol == "administrador"
 
-admin.site.register(Programa)
+@admin.register(Programa)
 class ProgramaAdmin(BaseAdmin):
-    list_display = ('id', 'nombre', 'usa_formulario_ampliado', 'activo')
+    list_display = ('id', 'nombre', 'prefijo_comprobante', 'usa_formulario_ampliado', 'activo')
     search_fields = ('nombre',)
     list_filter = ('usa_formulario_ampliado','activo',)
     ordering = ('nombre',)
@@ -39,7 +39,7 @@ class ProgramaAdmin(BaseAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.rol == "administrador"
 
-admin.site.register(Subprograma)
+@admin.register(Subprograma)
 class SubprogramaAdmin(BaseAdmin):
     list_display = ('id', 'nombre', 'usa_formulario_ampliado', 'programa')
     list_filter = ('programa', 'usa_formulario_ampliado')
@@ -59,7 +59,7 @@ class SubprogramaAdmin(BaseAdmin):
         return request.user.rol == "administrador"
 
 
-admin.site.register(Jardin)
+@admin.register(Jardin)
 class EspacioAdmin(BaseAdmin):
     form = JardinAdminForm
     list_display = (
@@ -97,7 +97,7 @@ class EspacioAdmin(BaseAdmin):
     class Media:
         js = ("jardines/subprogramas_admin.js",)
 
-admin.site.register(Sala)
+@admin.register(Sala)
 class SalaAdmin(BaseAdmin):
     form = SalaAdminForm
     list_display = (

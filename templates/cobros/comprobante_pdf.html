@@ -143,11 +143,18 @@
         {% endif %}
         {% if pago.sala %}
         <tr>
+            <td class="label">Espacio:</td>
+            <td class="value">{{ pago.sala.jardin.nombre }}</td>
+        </tr>
+        {% endif %}
+        {% if pago.sala %}
+        <tr>
             <td class="label">Sala:</td>
             <td class="value">{{ pago.sala.nombre }} ({{ pago.sala.get_turno_display }})</td>
         </tr>
         {% endif %}
     </table>
+
 
     <!-- Datos del Pago -->
     <div class="section-title">Datos del Pago</div>

@@ -15,4 +15,6 @@ urlpatterns = [
     path("asistencia/historial/", views.historial_asistencia_docente, name="historial_asistencia_docente"),
     path("asistencia/reporte-mensual/", views.reporte_asistencia_docente_mensual, name="reporte_asistencia_docente_mensual"),
     path("asistencia/resumen-diario/", views.resumen_actividad_docente, name="resumen_actividad_docente"),
+    path("asistencia/registrar-fichada/", views.registrar_asistencia_docente, name="registrar_asistencia_docente"),
 ]
+
