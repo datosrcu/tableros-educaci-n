@@ -190,6 +190,7 @@ def alumnos_por_sala(request, sala_id):
     activos_count = asignaciones_todas.filter(activo=True).count()
     bajas_count = asignaciones_todas.filter(activo=False).count()
 
+
     # 🔹 Acciones masivas de baja/activación
     if request.method == "POST" and request.user.rol == "docente":
         renderizados_ids = request.POST.getlist('alumnos_renderizados')
