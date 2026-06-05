@@ -147,7 +147,13 @@
               </li>
             </ul>
           </li>
-          {% elif user.rol == "docente" %}
+          {% endif %}
+          {% if user.puede_gestionar_cobros %}
+          <li class="nav-item">
+            <a class="nav-link text-white-50" href="{% url 'cobros:dashboard' %}">Cobros</a>
+          </li>
+          {% endif %}
+          {% if user.rol == "docente" %}
           <li class="nav-item">
             <a class="nav-link text-white-50" href="{% url 'alumnos:dashboard_docente' %}">Mi Panel</a>
           </li>

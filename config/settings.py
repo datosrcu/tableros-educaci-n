@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'jardines',
     'alumnos',
     'formularios',
-    
+    'cobros',
 ]
 
 

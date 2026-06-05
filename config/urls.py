@@ -57,4 +57,5 @@ urlpatterns = [
     path("jardines/", include("jardines.urls")),
     path("usuarios/", include("users.urls")),
     path("formularios/", include("formularios.urls")),
+    path("cobros/", include("cobros.urls")),
 ]
