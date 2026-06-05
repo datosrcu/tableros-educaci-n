@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     netcat-openbsd \
     ca-certificates \
+    libcairo2 \
+    libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar dependencias Python
