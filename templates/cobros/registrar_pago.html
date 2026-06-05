@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="font-size: 0.9rem;">
+            <li class="breadcrumb-item"><a href="{% url 'cobros:dashboard' %}" class="text-decoration-none text-primary"><i class="fas fa-wallet me-1"></i>Gestión de Cobros</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Registrar Pago</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0" style="border-radius: 16px;">
+                <!-- Header -->
+                <div class="card-header bg-dark text-white p-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%); border-radius: 16px 16px 0 0; border-bottom: none;">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2.5 bg-white bg-opacity-10 rounded-3 me-3">
+                            <i class="fas fa-cash-register fa-lg text-info"></i>
+                        </div>
+                        <div>
+                            <h2 class="h5 mb-0 fw-bold">Registrar Pago</h2>
+                            <small class="text-white-50">Cargar un nuevo comprobante de cobro de cuota mensual.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Hidden Inputs (Alumno y Programa IDs) -->
+                        {{ form.alumno }}
+                        {{ form.programa }}
+
+                        <!-- Campos de solo lectura estilizados -->
+                        <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.8rem;">Alumno</label>
+                                <div class="fs-6 fw-bold text-dark">{{ form.alumno_text.value }}</div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.8rem;">Programa</label>
+                                <div class="fs-6 fw-bold text-dark">{{ form.programa_text.value }}</div>
+                            </div>
+                            <div class="col-12 mt-2 pt-2 border-top">
+                                <span class="badge bg-info-subtle text-info"><i class="fas fa-info-circle me-1"></i>Espacio: {{ asignacion.sala.jardin.nombre }}</span>
+                                {% if asignacion.sala.jardin.subprograma %}
+                                    <span class="badge bg-secondary-subtle text-secondary"><i class="fas fa-layer-group me-1"></i>Subprograma: {{ asignacion.sala.jardin.subprograma.nombre }}</span>
+                                {% endif %}
+                                <span class="badge bg-secondary-subtle text-secondary"><i class="fas fa-school me-1"></i>Sala: {{ asignacion.sala.nombre }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Selección del Período a Cancelar -->
+                        <div class="row g-3 mb-4 p-3 bg-light bg-opacity-50 rounded-3 border">
+                            <div class="col-12">
+                                <span class="fw-semibold text-secondary" style="font-size: 0.85rem;">
+                                    <i class="fas fa-calendar-check text-primary me-1"></i>Periodo a Cancelar
+                                </span>
+                            </div>
+                            <!-- Mes Pagado -->
+                            <div class="col-12 col-sm-6">
+                                <label for="{{ form.mes_pagado.id_for_label }}" class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.8rem;">Mes</label>
+                                {{ form.mes_pagado }}
+                                {% if form.mes_pagado.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.mes_pagado.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <!-- Año Pagado -->
+                            <div class="col-12 col-sm-6">
+                                <label for="{{ form.anio_pagado.id_for_label }}" class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.8rem;">Año</label>
+                                {{ form.anio_pagado }}
+                                {% if form.anio_pagado.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.anio_pagado.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if adeudos %}
+                                <div class="col-12 mt-2">
+                                    <div class="alert alert-warning border-0 p-2 mb-0" style="font-size: 0.78rem; border-radius: 8px;">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        El alumno tiene cuotas pendientes. Se ha preseleccionado automáticamente el periodo adeudado más antiguo.
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Importe -->
+                        <div class="mb-3">
+                            <label for="{{ form.importe.id_for_label }}" class="form-label fw-semibold text-secondary">Monto de la Cuota ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted">$</span>
+                                <input type="number" name="importe" id="{{ form.importe.id_for_label }}" value="{{ form.importe.value|stringformat:'.2f' }}" class="form-control border-start-0 {% if form.importe.errors %}is-invalid{% endif %}" step="0.01" required>
+                                {% if form.importe.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.importe.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <small class="form-text text-muted">Este monto se precarga de la configuración del programa, pero puedes modificarlo.</small>
+                        </div>
+
+                        <!-- Fecha de Transacción de Pago -->
+                        <div class="mb-3">
+                            <label for="{{ form.fecha_pago.id_for_label }}" class="form-label fw-semibold text-secondary">Fecha de Cobro/Operación</label>
+                            <input type="date" name="fecha_pago" id="{{ form.fecha_pago.id_for_label }}" value="{{ form.fecha_pago.value|date:'Y-m-d' }}" class="form-control {% if form.fecha_pago.errors %}is-invalid{% endif %}" required>
+                            {% if form.fecha_pago.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.fecha_pago.errors|join:", " }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <!-- Método de Pago -->
+                            <div class="col-12 col-sm-6">
+                                <label for="{{ form.metodo_pago.id_for_label }}" class="form-label fw-semibold text-secondary">Método de Pago</label>
+                                {{ form.metodo_pago }}
+                                {% if form.metodo_pago.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.metodo_pago.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <!-- Estado -->
+                            <div class="col-12 col-sm-6">
+                                <label for="{{ form.estado.id_for_label }}" class="form-label fw-semibold text-secondary">Estado del Pago</label>
+                                {{ form.estado }}
+                                {% if form.estado.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.estado.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Sección de Envío por Correo -->
+                        <div class="mb-4 mt-4 p-3 bg-light bg-opacity-50 rounded-3 border">
+                            <div class="form-check">
+                                {{ form.enviar_correo }}
+                                <label class="form-check-label fw-semibold text-secondary ms-2" for="enviar_correo_checkbox">
+                                    Enviar comprobante por correo electrónico
+                                </label>
+                            </div>
+                            <div class="mt-3" id="correo_envio_container" style="display: none;">
+                                <label for="correo_envio_input" class="form-label fw-semibold text-secondary mb-1" style="font-size: 0.85rem;">Correo electrónico</label>
+                                {{ form.correo_envio }}
+                                {% if form.correo_envio.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.correo_envio.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div class="mb-4">
+                            <label for="{{ form.observaciones.id_for_label }}" class="form-label fw-semibold text-secondary">Observaciones</label>
+                            {{ form.observaciones }}
+                            {% if form.observaciones.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.observaciones.errors|join:", " }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'cobros:dashboard' %}" class="btn btn-light border px-4" style="border-radius: 8px;">Cancelar</a>
+                            <button type="submit" class="btn btn-primary px-4" style="border-radius: 8px;"><i class="fas fa-save me-2"></i>Guardar Pago</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-info-subtle {
+        background-color: #e0f2fe !important;
+        color: #0369a1 !important;
+    }
+    .bg-secondary-subtle {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var checkbox = document.getElementById('enviar_correo_checkbox');
+        var container = document.getElementById('correo_envio_container');
+        
+        function toggleEmailInput() {
+            if (checkbox.checked) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+        
+        checkbox.addEventListener('change', toggleEmailInput);
+        toggleEmailInput(); // Estado inicial al cargar
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="font-size: 0.9rem;">
+            <li class="breadcrumb-item"><a href="{% url 'cobros:dashboard' %}" class="text-decoration-none text-primary"><i class="fas fa-wallet me-1"></i>Gestión de Cobros</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Historial de Pagos</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0" style="border-radius: 16px;">
+                <!-- Header -->
+                <div class="card-header bg-dark text-white p-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px 16px 0 0; border-bottom: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="p-2.5 bg-white bg-opacity-10 rounded-3 me-3 text-info">
+                                <i class="fas fa-history fa-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="h5 mb-0 fw-bold">Historial de Pagos</h2>
+                                <p class="mb-0 text-white-50 small">Historial de cuotas y estados de transacciones del alumno.</p>
+                            </div>
+                        </div>
+                        <span class="fs-6 fw-bold text-white bg-white bg-opacity-10 px-3 py-1.5 rounded-pill"><i class="fas fa-user me-1 text-info"></i>{{ alumno.apellido }}, {{ alumno.nombre }}</span>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                                <tr>
+                                    <th class="ps-3">Fecha de Pago</th>
+                                    <th>Programa</th>
+                                    <th>Subprograma</th>
+                                    <th>Sala</th>
+                                    <th class="text-end">Importe</th>
+                                    <th class="text-center">Estado</th>
+                                    <th>Método de Pago</th>
+                                    <th>Registrado Por</th>
+                                    <th class="text-center">Comprobante</th>
+                                    <th class="pe-3">Observaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody style="font-size: 0.9rem;">
+                                {% for pago in pagos %}
+                                    <tr>
+                                        <td class="ps-3 fw-bold">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                                        <td><span class="badge bg-light text-dark border">{{ pago.programa.nombre }}</span></td>
+                                        <td>{{ pago.subprograma.nombre|default:"-" }}</td>
+                                        <td>{{ pago.sala.nombre|default:"-" }}</td>
+                                        <td class="text-end fw-bold text-dark">${{ pago.importe }}</td>
+                                        <td class="text-center">
+                                            {% if pago.estado == 'pagado' %}
+                                                <span class="badge bg-success-subtle text-success px-3 py-1.5" style="border-radius: 20px;"><i class="fas fa-check-circle me-1"></i>Pagado</span>
+                                            {% else %}
+                                                <span class="badge bg-danger-subtle text-danger px-3 py-1.5" style="border-radius: 20px;"><i class="fas fa-exclamation-circle me-1"></i>Adeuda</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary-subtle text-secondary px-2.5 py-1.5">{{ pago.get_metodo_pago_display }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-secondary" style="font-size: 0.85rem;" title="Registrado el {{ pago.created_at|date:'d/m/Y H:i' }}">
+                                                <i class="fas fa-user-edit me-1 text-muted"></i>{{ pago.registrado_por.get_full_name|default:pago.registrado_por.username }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if pago.estado == 'pagado' %}
+                                                <a href="{% url 'cobros:descargar_comprobante' pago.id %}" class="btn btn-sm btn-success fw-semibold text-white px-2 py-1" style="border-radius: 6px;" title="Descargar Comprobante">
+                                                    <i class="fas fa-file-pdf"></i> PDF
+                                                </a>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td class="pe-3 text-muted" style="font-size: 0.85rem;">{{ pago.observaciones|default:"-" }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="10" class="text-center py-5 text-muted">
+                                            <i class="fas fa-receipt fa-3x mb-3 text-light"></i>
+                                            <p class="mb-0 fs-5">No existen pagos registrados para este alumno.</p>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top d-flex justify-content-between">
+                        <span class="text-muted small">Mostrando {{ pagos.count }} registro(s) de pago.</span>
+                        <a href="{% url 'cobros:dashboard' %}" class="btn btn-primary px-4" style="border-radius: 8px;"><i class="fas fa-arrow-left me-2"></i>Volver al Listado</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-subtle {
+        background-color: #d1fae5 !important;
+        color: #065f46 !important;
+    }
+    .bg-danger-subtle {
+        background-color: #fee2e2 !important;
+        color: #991b1b !important;
+    }
+    .bg-secondary-subtle {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+    }
+</style>
+{% endblock %}

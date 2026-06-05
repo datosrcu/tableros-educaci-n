@@ -130,6 +130,7 @@ def lista_docentes(request):
     return render(request, "users/lista_docentes.html", {"docentes": docentes})
 
 
+
 # =====================================================
 # CREACIÓN
 # =====================================================
@@ -158,6 +159,10 @@ def editar_jardin(request, jardin_id):
         if jardin.programa not in user.programas_asignados.all():
             raise PermissionDenied("No tiene permiso para editar este espacio.")
 
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar este espacio.")
+
     if request.method == "POST":
         form = JardinForm(request.POST, instance=jardin, user=request.user)
         if form.is_valid():
@@ -182,7 +187,10 @@ def crear_programa(request):
     if request.method == "POST":
         form = ProgramaForm(request.POST)
         if form.is_valid():
-            form.save()
+            programa = form.save()
+            # 🔒 Asignar automáticamente el programa al coordinador que lo crea
+            if not request.user.es_admin():
+                request.user.programas_asignados.add(programa)
             return redirect("users:lista_programas")
     else:
         form = ProgramaForm()
@@ -194,6 +202,11 @@ def crear_programa(request):
 @solo_coordinador
 def editar_programa(request, programa_id):
     programa = get_object_or_404(Programa, id=programa_id)
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para editar este programa.")
+
     if request.method == "POST":
         form = ProgramaForm(request.POST, instance=programa)
         if form.is_valid():
@@ -202,6 +215,7 @@ def editar_programa(request, programa_id):
     else:
         form = ProgramaForm(instance=programa)
     return render(request, "users/programas/editar.html", {"form": form, "programa": programa})
+
 
 
 @login_required
@@ -238,6 +252,7 @@ def editar_subprograma(request, subprograma_id):
     return render(request, "users/subprogramas/editar.html", {"form": form, "subprograma": subprograma})
 
 
+
 @login_required
 @solo_coordinador
 def crear_sala(request):
@@ -272,6 +287,7 @@ def editar_sala(request, sala_id):
     return render(request, "users/salas/editar.html", {"form": form, "sala": sala})
 
 
+
 @login_required
 @solo_coordinador
 def crear_docente(request):
@@ -303,6 +319,16 @@ def editar_docente(request, docente_id):
     if docente.rol != "docente":
         raise PermissionDenied("Solo se pueden editar usuarios con rol docente.")
 
+    # 🔒 Validación de propiedad para coordinadores
+    if not request.user.es_admin():
+        from django.db.models import Q
+        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).exists()
+        if not permiso:
+            raise PermissionDenied("No tiene permiso para editar este docente.")
+
     if request.method == "POST":
         form = EditarDocenteForm(request.POST, instance=docente)
         if form.is_valid():
@@ -330,6 +356,10 @@ def asignar_docentes_sala(request, sala_id):
     if not user.es_admin() and user.programas_asignados.exists():
         if sala.jardin.programa not in user.programas_asignados.all():
             raise PermissionDenied("No tiene permiso para asignar docentes en esta sala.")
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin() and sala.jardin.programa not in request.user.programas_asignados.all():
+        raise PermissionDenied("No tiene permiso para gestionar esta sala.")
 
     if request.method == "POST":
         form = AsignarDocentesSalaForm(request.POST, instance=sala, user=request.user)
@@ -414,6 +444,8 @@ class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
 # 📊 EXPORTACIÓN DE DATOS - COORDINADOR
 # =========================================================
 
+@login_required
+@solo_coordinador
 @login_required
 @solo_coordinador
 def exportar_docentes_csv(request):
@@ -581,6 +613,7 @@ def imprimir_subprogramas(request):
         "fecha": date.today()
     })
 
+
 @login_required
 @solo_coordinador
 def restablecer_password_docente(request, docente_id):
@@ -615,6 +648,7 @@ def restablecer_password_docente(request, docente_id):
         form = RestablecerPasswordForm()
         
     return render(request, "users/restablecer_password.html", {"form": form, "docente": docente})
+
 
 # =====================================================
 # ELIMINACIÓN DE ENTIDADES
@@ -675,6 +709,17 @@ def eliminar_subprograma(request, subprograma_id):
 @solo_coordinador
 def eliminar_docente(request, docente_id):
     docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+
+    # 🔒 Validación de propiedad
+    if not request.user.es_admin():
+        from django.db.models import Q
+        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+            Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
+            Q(salas_asignadas__isnull=True)
+        ).exists()
+        if not permiso:
+            raise PermissionDenied("No tiene permiso para eliminar este docente.")
+
     if request.method == "POST":
         try:
             docente.delete()
@@ -682,6 +727,7 @@ def eliminar_docente(request, docente_id):
         except ProtectedError:
             messages.error(request, "No se puede eliminar este docente porque tiene datos operativos vinculados.")
     return redirect("users:lista_docentes")
+
 
 # =====================================================
 # 📊 REPORTES DE ASISTENCIA (COORDINACIÓN)

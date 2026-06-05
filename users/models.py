@@ -58,6 +58,14 @@ class Usuario(AbstractUser):
         """Verifica si el usuario es docente."""
         return self.rol == "docente"
 
+    @property
+    def puede_gestionar_cobros(self):
+        """Verifica si el usuario tiene permiso para gestionar cobros."""
+        if self.is_superuser or self.rol == "administrador":
+            return True
+        from cobros.models import ResponsableCobro
+        return ResponsableCobro.objects.filter(usuario=self).exists()
+
     # =====================================================
     # VALIDACIONES DE NEGOCIO
     # =====================================================
