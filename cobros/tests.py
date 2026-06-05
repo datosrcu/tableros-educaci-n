@@ -402,4 +402,41 @@ class CobrosTestCase(TestCase):
         self.assertIn("mes_pagado", form.errors)
         self.assertEqual(form.errors["mes_pagado"], ["Ya existe un pago registrado como 'Pagado' para este alumno en el período seleccionado."])
 
+    def test_dashboard_espacio_filter(self):
+        # Iniciar sesión como administrador (ve todos los programas y espacios)
+        self.client.login(username="admin", password="adminpassword")
+        
+        # Filtrar por el jardín de Arte
+        response = self.client.get(reverse("cobros:dashboard") + f"?espacio={self.jardin_arte.id}")
+        self.assertEqual(response.status_code, 200)
+        
+        rows = response.context["rows"]
+        alumnos_list = [r["alumno"] for r in rows]
+        # Debe incluir al alumno de Arte pero no al de Carpintería
+        self.assertIn(self.alumno_arte, alumnos_list)
+        self.assertNotIn(self.alumno_carp, alumnos_list)
+
+    def test_exportar_excel_format(self):
+        self.client.login(username="admin", password="adminpassword")
+        response = self.client.get(reverse("cobros:dashboard") + "?export=excel")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn("planilla_cobros_", response['Content-Disposition'])
+        
+        # Comprobar que comience con la marca BOM UTF-8 y contenga los delimitadores correspondientes
+        content_decoded = response.content.decode('utf-8')
+        self.assertIn("Alumno;DNI;Subprograma;Espacio;Sala;Importe;Estado;Fecha de Pago;Método;Deuda Histórica", content_decoded)
+        # Resumen al final de los registros
+        self.assertIn("Resumen de Planilla", content_decoded)
+        self.assertIn("Total Alumnos", content_decoded)
+
+    def test_exportar_pdf_format(self):
+        self.client.login(username="admin", password="adminpassword")
+        response = self.client.get(reverse("cobros:dashboard") + "?export=pdf")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn("planilla_cobros_", response['Content-Disposition'])
+        # Formato de cabecera PDF
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
 

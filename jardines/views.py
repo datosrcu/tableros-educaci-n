@@ -269,13 +269,23 @@ def exportar_asistencia_docente_csv(context):
 @rol_requerido("coordinador", "administrador")
 def resumen_actividad_docente(request):
     """
-    Muestra un resumen de los docentes que iniciaron sesión hoy y sus últimas acciones.
+    Muestra un resumen de los docentes que iniciaron sesión y sus últimas acciones.
     """
     from users.models import AccionAuditoria
     from django.db.models import Max, OuterRef, Subquery
     
-    hoy = date.today()
+    fecha_str = request.GET.get("fecha")
+    if fecha_str:
+        try:
+            hoy = date.fromisoformat(fecha_str)
+        except (ValueError, TypeError):
+            hoy = date.today()
+    else:
+        hoy = date.today()
+        
     user = request.user
+
+
     
     # Base de docentes a supervisar
     if user.rol == "administrador":
