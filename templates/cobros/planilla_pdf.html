@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4 landscape;
+            margin: 1cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #1e293b;
+            font-size: 8.5pt;
+            line-height: 1.3;
+        }
+        .header {
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+        }
+        .header table {
+            width: 100%;
+        }
+        .header .title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-transform: uppercase;
+        }
+        .header .meta {
+            text-align: right;
+            font-size: 9pt;
+            color: #475569;
+        }
+        
+        /* Summary / Indicators Box */
+        .summary-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            border-collapse: collapse;
+        }
+        .summary-table td {
+            padding: 8px;
+            text-align: center;
+            border-right: 1px solid #e2e8f0;
+        }
+        .summary-table td:last-child {
+            border-right: none;
+        }
+        .summary-label {
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .summary-value {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .summary-value.primary { color: #3b82f6; }
+        .summary-value.success { color: #10b981; }
+        .summary-value.danger { color: #ef4444; }
+        .summary-value.purple { color: #8b5cf6; }
+
+        /* Main Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+        .data-table th {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: left;
+            padding: 5px 6px;
+            font-size: 8pt;
+            border: 1px solid #1e3a8a;
+        }
+        .data-table td {
+            padding: 5px 6px;
+            border-bottom: 1px solid #e2e8f0;
+            border-left: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        
+        /* Status styling */
+        .status-pagado {
+            color: #047857;
+            font-weight: bold;
+        }
+        .status-adeuda {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+        
+        .footer {
+            font-size: 7.5pt;
+            color: #64748b;
+            margin-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 5px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <table>
+            <tr>
+                <td>
+                    <div class="title">Planilla de Cobros - Período: {{ month_name }} {{ year }}</div>
+                </td>
+                <td class="meta">
+                    Fecha de emisión: {{ fecha_emision|date:"d/m/Y H:i" }}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Summary Box -->
+    <table class="summary-table">
+        <tr>
+            <td>
+                <div class="summary-label">Total Alumnos</div>
+                <div class="summary-value primary">{{ total_alumnos }}</div>
+            </td>
+            <td>
+                <div class="summary-label">Total Pagados</div>
+                <div class="summary-value success">{{ total_pagados }}</div>
+            </td>
+            <td>
+                <div class="summary-label">Total Adeudan</div>
+                <div class="summary-value danger">{{ total_adeudan }}</div>
+            </td>
+            <td>
+                <div class="summary-label">Recaudación de Período</div>
+                <div class="summary-value purple">$ {{ recaudacion_total|floatformat:2 }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Main Table -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 20%;">Alumno</th>
+                <th style="width: 10%;">DNI</th>
+                <th style="width: 15%;">Subprograma</th>
+                <th style="width: 15%;">Espacio</th>
+                <th style="width: 10%;">Sala</th>
+                <th style="width: 8%; text-align: right;">Importe</th>
+                <th style="width: 10%; text-align: center;">Estado</th>
+                <th style="width: 12%;">Fecha / Método</th>
+                <th style="width: 15%;">Deuda Histórica</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rows %}
+                <tr>
+                    <td><strong>{{ r.alumno.apellido }}, {{ r.alumno.nombre }}</strong></td>
+                    <td>{{ r.alumno.dni }}</td>
+                    <td>{{ r.subprograma.nombre|default:"-" }}</td>
+                    <td>{{ r.sala.jardin.nombre }}</td>
+                    <td>{{ r.sala.nombre|default:"-" }} <span style="font-size: 7.5pt; color: #64748b;">({{ r.sala.get_turno_display }})</span></td>
+                    <td class="text-right"><strong>$ {{ r.importe_mensual }}</strong></td>
+                    <td class="text-center">
+                        {% if r.estado == 'pagado' %}
+                            <span class="status-pagado">PAGADO</span>
+                        {% else %}
+                            <span class="status-adeuda">ADEUDA</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.estado == 'pagado' %}
+                            {{ r.fecha_pago|date:"d/m/Y" }}<br/>
+                            <span style="font-size: 7.5pt; color: #64748b;">{{ r.metodo_pago }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 7.5pt; color: #64748b;">
+                        {{ r.meses_adeudados_str|default:"-" }}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">
+                        No se encontraron registros de cobros para este período.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Planilla oficial generada electrónicamente por el Sistema Presente.
+    </div>
+</body>
+</html>

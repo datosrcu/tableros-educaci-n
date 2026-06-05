@@ -108,7 +108,7 @@
         <div class="card-body p-4">
             <!-- Formulario de Filtros -->
             <form method="get" class="row g-2 mb-4 align-items-end">
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Buscar Alumno</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
@@ -124,7 +124,16 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-1.5">
+                <div class="col-12 col-sm-6 col-md-2">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Espacio</label>
+                    <select name="espacio" class="form-select">
+                        <option value="">Todos</option>
+                        {% for esp in jardines_choices %}
+                            <option value="{{ esp.id }}" {% if selected_espacio == esp.id %}selected{% endif %}>{{ esp.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-1">
                     <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Sala</label>
                     <select name="sala" class="form-select">
                         <option value="">Todas</option>
@@ -133,23 +142,23 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-6 col-sm-4 col-md-1.5">
-                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Mes Cuota</label>
+                <div class="col-6 col-sm-3 col-md-1">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Mes</label>
                     <select name="mes" class="form-select">
                         {% for m_id, m_name in meses_choices %}
                             <option value="{{ m_id }}" {% if selected_month == m_id %}selected{% endif %}>{{ m_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-6 col-sm-4 col-md-1.5">
-                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Año Cuota</label>
+                <div class="col-6 col-sm-3 col-md-1">
+                    <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Año</label>
                     <select name="anio" class="form-select">
                         {% for y in anios_choices %}
                             <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-12 col-sm-4 col-md-1.5">
+                <div class="col-12 col-sm-3 col-md-1">
                     <label class="form-label fw-semibold text-secondary" style="font-size: 0.85rem;">Estado</label>
                     <select name="estado" class="form-select">
                         <option value="">Todos</option>
@@ -157,9 +166,11 @@
                         <option value="adeuda" {% if selected_estado == 'adeuda' %}selected{% endif %}>Adeuda</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-1 d-flex gap-1">
-                    <button type="submit" class="btn btn-primary px-3 w-100" title="Filtrar"><i class="fas fa-filter"></i></button>
+                <div class="col-12 col-sm-3 col-md-2 d-flex gap-1 justify-content-md-end">
+                    <button type="submit" class="btn btn-primary px-2.5" title="Filtrar"><i class="fas fa-filter"></i></button>
                     <a href="{% url 'cobros:dashboard' %}" class="btn btn-light border px-2.5 text-secondary" title="Limpiar Filtros"><i class="fas fa-undo"></i></a>
+                    <button type="submit" name="export" value="excel" class="btn btn-success px-2.5" title="Exportar a Excel (CSV)"><i class="fas fa-file-excel"></i></button>
+                    <button type="submit" name="export" value="pdf" class="btn btn-danger px-2.5" title="Exportar a PDF"><i class="fas fa-file-pdf"></i></button>
                 </div>
             </form>
 
