@@ -32,11 +32,9 @@
                 <thead class="bg-light">
                     <tr class="micro-text uppercase fw-bold text-muted border-0">
                         <th class="ps-4 py-3">Docente</th>
-                        <th class="py-3">Primer Ingreso</th>
+                        <th class="py-3">Asistencia</th>
                         <th class="py-3">Ubicación (IP)</th>
-                        <th class="py-3">Estado / Última Acción</th>
-                        <th class="py-3 text-center">Acciones</th>
-                        <th class="py-3 text-end pe-4">Detalle</th>
+                        <th class="py-3">Coordenadas / Mapa</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,9 +63,11 @@
                             </div>
                         </td>
                         <td>
-                            {% if item.inicio_sesion %}
+                            {% if item.fichado %}
                                 <div class="d-flex flex-column">
-                                    <span class="text-dark fw-bold">{{ item.inicio_sesion|time:"H:i" }} hs</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
+                                        <i class="fas fa-check-circle me-1"></i> Fichó ({{ item.inicio_sesion|time:"H:i" }} hs)
+                                    </span>
                                     {% if item.asistencias.0.fuera_de_jornada %}
                                         <span class="badge bg-danger bg-opacity-10 text-danger micro-text mt-1" style="width: fit-content;">
                                             <i class="fas fa-clock me-1"></i>Fuera de Jornada
@@ -75,7 +75,9 @@
                                     {% endif %}
                                 </div>
                             {% else %}
-                                <span class="text-muted small italic">No inició sesión</span>
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
+                                    <i class="fas fa-times-circle me-1"></i> No Fichó
+                                </span>
                             {% endif %}
                         </td>
                         <td>
@@ -86,27 +88,21 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.ultima_accion %}
-                                <div class="small">
-                                    <span class="badge bg-info bg-opacity-10 text-info mb-1">{{ item.ultima_accion.get_accion_display }}</span>
-                                    <div class="text-dark text-truncate" style="max-width: 250px;" title="{{ item.ultima_accion.descripcion }}">
-                                        {{ item.ultima_accion.descripcion }}
-                                    </div>
-                                    <div class="micro-text text-muted">{{ item.ultima_accion.fecha|time:"H:i:s" }} hs</div>
+                            {% if item.lat and item.lon %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted fw-mono" style="font-family: monospace;">{{ item.lat|floatformat:6 }}, {{ item.lon|floatformat:6 }}</span>
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 transition-hover" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#mapModal" 
+                                            data-lat="{{ item.lat }}" 
+                                            data-lon="{{ item.lon }}" 
+                                            data-name="{{ item.docente.last_name }}, {{ item.docente.first_name }}">
+                                        <i class="fas fa-map-marked-alt me-1"></i> Mapa
+                                    </button>
                                 </div>
                             {% else %}
-                                <span class="badge bg-light text-muted">Sin actividad</span>
+                                <span class="text-muted small italic">Sin coordenadas</span>
                             {% endif %}
-                        </td>
-                        <td class="text-center">
-                            <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary px-3">
-                                {{ item.total_acciones }}
-                            </span>
-                        </td>
-                        <td class="text-end pe-4">
-                            <a href="{% url 'users:log_sistema' %}?usuario={{ item.docente.id }}&fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-sm btn-outline-primary rounded-pill">
-                                Ver Log <i class="fas fa-search ms-1"></i>
-                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -116,6 +112,57 @@
     </div>
 </div>
 
+<!-- Modal de Mapa -->
+<div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-header bg-dark text-white border-0" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+        <h5 class="modal-title fw-bold" id="mapModalLabel"><i class="fas fa-map-marked-alt text-info me-2"></i> Ubicación del Docente</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" style="background-color: #f8fafc;">
+        <div id="map" style="height: 450px; width: 100%; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; z-index: 1;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS y JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let map;
+    let marker;
+    
+    const mapModal = document.getElementById('mapModal');
+    if (mapModal) {
+        mapModal.addEventListener('shown.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const lat = parseFloat(button.getAttribute('data-lat'));
+            const lon = parseFloat(button.getAttribute('data-lon'));
+            const name = button.getAttribute('data-name');
+            
+            // Initialize map if not initialized
+            if (!map) {
+                map = L.map('map').setView([lat, lon], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+                marker = L.marker([lat, lon]).addTo(map).bindPopup(name).openPopup();
+            } else {
+                map.setView([lat, lon], 16);
+                marker.setLatLng([lat, lon]).setPopupContent(name).openPopup();
+            }
+            
+            // Force Leaflet map resize check
+            setTimeout(() => { map.invalidateSize(); }, 200);
+        });
+    }
+});
+</script>
+
 <style>
     .bg-opacity-10 { --bs-bg-opacity: 0.1; }
     .micro-text { font-size: 0.7rem; letter-spacing: 0.5px; }
@@ -124,3 +171,4 @@
     .transition-hover:hover { transform: translateY(-2px); }
 </style>
 {% endblock %}
+

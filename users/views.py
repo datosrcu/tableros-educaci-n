@@ -409,9 +409,30 @@ class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return self.request.user.es_coordinador() or self.request.user.es_admin()
 
     def get_queryset(self):
-        # Coordinadores y administradores ven todo el log.
-        # Ordenamos descendente para ver lo más reciente primero.
-        return AccionAuditoria.objects.select_related('usuario').order_by('-fecha')
+        from django.db.models import Q
+        qs = AccionAuditoria.objects.select_related('usuario')
+        usuario_id = self.request.GET.get('usuario')
+        fecha = self.request.GET.get('fecha')
+        search_query = self.request.GET.get('q')
+        
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+        if fecha:
+            try:
+                qs = qs.filter(fecha__date=fecha)
+            except (ValueError, TypeError):
+                pass
+        if search_query:
+            qs = qs.filter(
+                Q(usuario__username__icontains=search_query) |
+                Q(usuario__first_name__icontains=search_query) |
+                Q(usuario__last_name__icontains=search_query) |
+                Q(descripcion__icontains=search_query) |
+                Q(modelo__icontains=search_query)
+            )
+            
+        return qs.order_by('-fecha')
+
 
 class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = AccionAuditoria

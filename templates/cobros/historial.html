@@ -38,6 +38,7 @@
                                     <th>Programa</th>
                                     <th>Subprograma</th>
                                     <th>Sala</th>
+                                    <th>Período</th>
                                     <th class="text-end">Importe</th>
                                     <th class="text-center">Estado</th>
                                     <th>Método de Pago</th>
@@ -53,6 +54,7 @@
                                         <td><span class="badge bg-light text-dark border">{{ pago.programa.nombre }}</span></td>
                                         <td>{{ pago.subprograma.nombre|default:"-" }}</td>
                                         <td>{{ pago.sala.nombre|default:"-" }}</td>
+                                        <td>{{ pago.get_mes_pagado_display }} / {{ pago.anio_pagado }}</td>
                                         <td class="text-end fw-bold text-dark">${{ pago.importe }}</td>
                                         <td class="text-center">
                                             {% if pago.estado == 'pagado' %}

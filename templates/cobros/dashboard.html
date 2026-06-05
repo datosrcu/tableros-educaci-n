@@ -184,8 +184,8 @@
                         <tr>
                             <th class="ps-3">Alumno</th>
                             <th>DNI</th>
-                            <th>Programa</th>
                             <th>Subprograma</th>
+                            <th>Espacio</th>
                             <th>Sala</th>
                             <th class="text-end">Importe</th>
                             <th class="text-center">Estado</th>
@@ -199,10 +199,11 @@
                             <tr>
                                 <td class="ps-3 fw-bold text-dark">{{ row.alumno.apellido }}, {{ row.alumno.nombre }}</td>
                                 <td>{{ row.alumno.dni }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ row.programa.nombre }}</span></td>
                                 <td>{{ row.subprograma.nombre|default:"-" }}</td>
+                                <td>{{ row.sala.jardin.nombre }}</td>
                                 <td>{{ row.sala.nombre|default:"-" }} <small class="text-muted">({{ row.sala.get_turno_display }})</small></td>
                                 <td class="text-end fw-bold text-secondary">${{ row.importe_mensual }}</td>
+
                                 <td class="text-center">
                                     {% if row.estado == 'pagado' %}
                                         <span class="badge bg-success-subtle text-success px-3 py-2" style="border-radius: 20px;">

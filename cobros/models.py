@@ -207,8 +207,26 @@ class Pago(models.Model):
         ordering = ["-fecha_pago", "-created_at"]
 
     def clean(self):
+        super().clean()
         if self.importe is not None and self.importe < 0:
             raise ValidationError({"importe": "El importe del pago no puede ser negativo."})
+        
+        # Prevent duplicate 'pagado' payments for the same period
+        if self.alumno_id and self.programa_id and self.mes_pagado and self.anio_pagado and self.estado == 'pagado':
+            duplicate_query = Pago.objects.filter(
+                alumno=self.alumno,
+                programa=self.programa,
+                mes_pagado=self.mes_pagado,
+                anio_pagado=self.anio_pagado,
+                estado='pagado'
+            )
+            if self.pk:
+                duplicate_query = duplicate_query.exclude(pk=self.pk)
+                
+            if duplicate_query.exists():
+                raise ValidationError({
+                    "mes_pagado": "Ya existe un pago registrado como 'Pagado' para este alumno en el período seleccionado."
+                })
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -220,4 +238,6 @@ class Pago(models.Model):
     @property
     def numero_comprobante(self):
         """Genera un número único de comprobante."""
-        return f"BC-{self.anio_pagado}-{self.id:06d}"
+        prefix = getattr(self.programa, 'prefijo_comprobante', 'BC') or 'BC'
+        return f"{prefix}-{self.anio_pagado}-{self.id:06d}"
+
