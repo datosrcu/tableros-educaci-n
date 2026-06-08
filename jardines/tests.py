@@ -121,4 +121,46 @@ class AsistenciaDocenteTestCase(TestCase):
         self.assertEqual(asistencia.latitude, Decimal("-35.123457"))  # Redondea .123456789... a .123457
         self.assertEqual(asistencia.longitude, Decimal("-65.654321")) # Redondea .654321098... a .654321
 
+    def test_resumen_actividad_docente_coordinator(self):
+        # Crear un coordinador
+        coordinador = User.objects.create_user(
+            username="coordinadortest",
+            password="testpassword",
+            rol="coordinador"
+        )
+        # Asignar el programa al coordinador
+        coordinador.programas_asignados.add(self.programa)
+        
+        # Iniciar sesión como coordinador
+        self.client.login(username="coordinadortest", password="testpassword")
+        
+        # 1. Crear un docente sin salas asignadas
+        docente_sin_sala = User.objects.create_user(
+            username="docentesinsala",
+            password="testpassword",
+            rol="docente"
+        )
+        
+        # 2. Registrar asistencia hoy para este docente sin sala en el jardin del programa
+        hoy = timezone.localtime(timezone.now()).date()
+        AsistenciaDocente.objects.create(
+            docente=docente_sin_sala,
+            jardin=self.jardin,
+            fecha=hoy,
+            fichado=True,
+            hora_ingreso=timezone.localtime(timezone.now()).time()
+        )
+        
+        # Obtener el resumen de actividad docente
+        response = self.client.get(reverse("jardines:resumen_actividad_docente"))
+        self.assertEqual(response.status_code, 200)
+        
+        # Verificar que ambos docentes (el de la sala, y el que no tiene sala pero fichó hoy) están en el contexto
+        resumen = response.context["resumen"]
+        docentes_en_resumen = [item["docente"] for item in resumen]
+        
+        self.assertIn(self.docente, docentes_en_resumen)
+        self.assertIn(docente_sin_sala, docentes_en_resumen)
+
+
 

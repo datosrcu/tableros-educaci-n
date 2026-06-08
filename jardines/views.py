@@ -289,10 +289,20 @@ def resumen_actividad_docente(request):
 
     
     # Base de docentes a supervisar
-    if user.rol == "administrador":
+    if user.es_admin() or not user.programas_asignados.exists():
         docentes = Usuario.objects.filter(rol="docente")
     else:
-        docentes = Usuario.objects.filter(rol="docente", salas_asignadas__jardin__programa__coordinadores=user).distinct()
+        programas = user.programas_asignados.all()
+        docentes_salas = Usuario.objects.filter(
+            rol="docente",
+            salas_asignadas__jardin__programa__in=programas
+        )
+        docentes_asistencia_hoy = Usuario.objects.filter(
+            rol="docente",
+            asistencias_docente__fecha=hoy,
+            asistencias_docente__jardin__programa__in=programas
+        )
+        docentes = (docentes_salas | docentes_asistencia_hoy).distinct()
 
     docentes = docentes.order_by("last_name")
 
