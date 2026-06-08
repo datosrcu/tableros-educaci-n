@@ -24,6 +24,7 @@ class BaseAdmin(admin.ModelAdmin):
 class ProgramaAdmin(BaseAdmin):
     list_display = ('id', 'nombre', 'prefijo_comprobante', 'usa_formulario_ampliado', 'activo')
     list_display_links = ('id', 'nombre')
+    list_editable = ('prefijo_comprobante', 'activo')
     search_fields = ('nombre',)
     list_filter = ('usa_formulario_ampliado','activo',)
     ordering = ('nombre',)
