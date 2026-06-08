@@ -50,9 +50,10 @@ class AlumnoTutorTest(TestCase):
             nombre='Maria',
             apellido='Lopez',
             dni='11222333',
-            fecha_nacimiento='2016-05-05',
-            sala=self.sala
+            fecha_nacimiento='2016-05-05'
         )
+        from alumnos.models import AsignacionSala
+        AsignacionSala.objects.create(alumno=alumno, sala=self.sala, activo=True)
         url = reverse('alumnos:cargar_asistencia', kwargs={'sala_id': self.sala.id})
         motivo = MotivoJustificacion.objects.create(nombre="Medico")
         

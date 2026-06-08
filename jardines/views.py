@@ -9,6 +9,7 @@ from users.models import Usuario
 from datetime import date
 import calendar
 import csv
+from django.utils import timezone
 
 @login_required
 @rol_requerido("coordinador", "administrador")
@@ -70,7 +71,7 @@ def cargar_asistencia_docente(request, jardin_id):
     if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
         raise PermissionDenied("No tiene permiso para cargar asistencia en este espacio.")
 
-    fecha_str = request.GET.get("fecha", str(date.today()))
+    fecha_str = request.GET.get("fecha", str(timezone.localtime(timezone.now()).date()))
     fecha = date.fromisoformat(fecha_str)
 
     # Obtenemos los docentes vinculados a las salas de este jardín
@@ -163,7 +164,7 @@ def reporte_asistencia_docente_mensual(request):
     """
     Genera una matriz mensual de asistencia para todos los docentes de un jardín.
     """
-    ahora = date.today()
+    ahora = timezone.localtime(timezone.now()).date()
     mes = int(request.GET.get('mes', ahora.month))
     anio = int(request.GET.get('anio', ahora.year))
     jardin_id = request.GET.get('jardin')
@@ -269,19 +270,39 @@ def exportar_asistencia_docente_csv(context):
 @rol_requerido("coordinador", "administrador")
 def resumen_actividad_docente(request):
     """
-    Muestra un resumen de los docentes que iniciaron sesión hoy y sus últimas acciones.
+    Muestra un resumen de los docentes que iniciaron sesión y sus últimas acciones.
     """
     from users.models import AccionAuditoria
     from django.db.models import Max, OuterRef, Subquery
     
-    hoy = date.today()
+    fecha_str = request.GET.get("fecha")
+    if fecha_str:
+        try:
+            hoy = date.fromisoformat(fecha_str)
+        except (ValueError, TypeError):
+            hoy = timezone.localtime(timezone.now()).date()
+    else:
+        hoy = timezone.localtime(timezone.now()).date()
+        
     user = request.user
+
+
     
     # Base de docentes a supervisar
-    if user.rol == "administrador":
+    if user.es_admin() or not user.programas_asignados.exists():
         docentes = Usuario.objects.filter(rol="docente")
     else:
-        docentes = Usuario.objects.filter(rol="docente", salas_asignadas__jardin__programa__coordinadores=user).distinct()
+        programas = user.programas_asignados.all()
+        docentes_salas = Usuario.objects.filter(
+            rol="docente",
+            salas_asignadas__jardin__programa__in=programas
+        )
+        docentes_asistencia_hoy = Usuario.objects.filter(
+            rol="docente",
+            asistencias_docente__fecha=hoy,
+            asistencias_docente__jardin__programa__in=programas
+        )
+        docentes = (docentes_salas | docentes_asistencia_hoy).distinct()
 
     docentes = docentes.order_by("last_name")
 
@@ -310,14 +331,29 @@ def resumen_actividad_docente(request):
         asists = asistencias_dict.get(d.id, [])
         accs = acciones_por_usuario.get(d.id, [])
         
+        # Determine if they checked in (fichó) today
+        fichado = any(a.fichado for a in asists) if asists else False
+        
+        # Get coordinates if fichado
+        lat = None
+        lon = None
+        for a in asists:
+            if a.fichado and a.latitude and a.longitude:
+                lat = float(a.latitude)
+                lon = float(a.longitude)
+                break
+        
         resumen.append({
             "docente": d,
             "asistencias": asists,
-            "inicio_sesion": asists[0].hora_ingreso if asists else None,
+            "fichado": fichado,
+            "inicio_sesion": asists[0].hora_ingreso if (asists and asists[0].hora_ingreso) else None,
             "ip": asists[0].ip_address if asists else None,
             "ultima_accion": accs[0] if accs else None,
             "total_acciones": len(accs),
-            "activo": len(asists) > 0 or len(accs) > 0
+            "activo": len(asists) > 0 or len(accs) > 0,
+            "lat": lat,
+            "lon": lon,
         })
 
     activos_count = sum(1 for item in resumen if item['activo'])
@@ -327,4 +363,73 @@ def resumen_actividad_docente(request):
         "fecha": hoy,
         "activos_count": activos_count,
     })
-# Create your views here.
+
+
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation
+
+@login_required
+@rol_requerido("docente")
+@require_POST
+def registrar_asistencia_docente(request):
+    latitude_str = request.POST.get("latitude")
+    longitude_str = request.POST.get("longitude")
+    
+    if not latitude_str or not longitude_str:
+        return JsonResponse({"status": "error", "message": "Las coordenadas de ubicación son requeridas al fichar."}, status=400)
+        
+    try:
+        latitude = Decimal(latitude_str).quantize(Decimal('.000001'))
+        longitude = Decimal(longitude_str).quantize(Decimal('.000001'))
+    except (InvalidOperation, ValueError, TypeError):
+        return JsonResponse({"status": "error", "message": "Formato de coordenadas no válido."}, status=400)
+        
+    ahora_local = timezone.localtime(timezone.now())
+    hoy = ahora_local.date()
+    hora = ahora_local.time()
+    ip = request.META.get('REMOTE_ADDR')
+    
+    from .models import AsistenciaDocente, inicializar_asistencia_diaria
+    from users.models import AccionAuditoria
+    from django.core.exceptions import ValidationError
+    
+    asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+    if not asistencias.exists():
+        inicializar_asistencia_diaria(request.user, request)
+        asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+        
+    if not asistencias.exists():
+        return JsonResponse({"status": "error", "message": "No tiene salas o espacios asignados para registrar asistencia."}, status=400)
+        
+    # Validar si ya fichó hoy
+    if asistencias.filter(fichado=True).exists():
+        return JsonResponse({"status": "success", "message": "La asistencia ya fue registrada hoy."})
+        
+    try:
+        # Guardar
+        for asist in asistencias:
+            asist.fichado = True
+            asist.estado = 'P'
+            asist.hora_ingreso = hora
+            asist.ip_address = ip
+            asist.latitude = latitude
+            asist.longitude = longitude
+            asist.observaciones = f"Fichado manual por el docente el {hoy} a las {hora.strftime('%H:%M')} hs."
+            asist.save()
+    except ValidationError as e:
+        error_msg = ", ".join(e.messages) if hasattr(e, "messages") else str(e)
+        return JsonResponse({"status": "error", "message": f"Error de validación al guardar: {error_msg}"}, status=400)
+        
+    # Registrar log
+    AccionAuditoria.objects.create(
+        usuario=request.user,
+        accion="modificacion",
+        modelo="AsistenciaDocente",
+        objeto_id=request.user.id,
+        descripcion=f"Registró asistencia docente (Fichó) el día {hoy.strftime('%d/%m/%Y')} a las {hora.strftime('%H:%M:%S')} hs. Coordenadas: {latitude}, {longitude} - IP: {ip}"
+    )
+    
+    return JsonResponse({"status": "success", "message": "Asistencia registrada correctamente."})
+
+

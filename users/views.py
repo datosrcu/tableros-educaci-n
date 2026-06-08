@@ -259,7 +259,8 @@ def crear_sala(request):
     if request.method == "POST":
         form = SalaForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
+            sala = form.save()
+            messages.success(request, f"La sala '{sala.nombre}' fue creada correctamente.")
             return redirect("users:lista_salas")
     else:
         form = SalaForm(user=request.user)
@@ -280,11 +281,13 @@ def editar_sala(request, sala_id):
     if request.method == "POST":
         form = SalaForm(request.POST, instance=sala, user=request.user)
         if form.is_valid():
-            form.save()
+            sala = form.save()
+            messages.success(request, f"La sala '{sala.nombre}' fue modificada correctamente.")
             return redirect("users:lista_salas")
     else:
         form = SalaForm(instance=sala, user=request.user)
     return render(request, "users/salas/editar.html", {"form": form, "sala": sala})
+
 
 
 
@@ -409,9 +412,30 @@ class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return self.request.user.es_coordinador() or self.request.user.es_admin()
 
     def get_queryset(self):
-        # Coordinadores y administradores ven todo el log.
-        # Ordenamos descendente para ver lo más reciente primero.
-        return AccionAuditoria.objects.select_related('usuario').order_by('-fecha')
+        from django.db.models import Q
+        qs = AccionAuditoria.objects.select_related('usuario')
+        usuario_id = self.request.GET.get('usuario')
+        fecha = self.request.GET.get('fecha')
+        search_query = self.request.GET.get('q')
+        
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+        if fecha:
+            try:
+                qs = qs.filter(fecha__date=fecha)
+            except (ValueError, TypeError):
+                pass
+        if search_query:
+            qs = qs.filter(
+                Q(usuario__username__icontains=search_query) |
+                Q(usuario__first_name__icontains=search_query) |
+                Q(usuario__last_name__icontains=search_query) |
+                Q(descripcion__icontains=search_query) |
+                Q(modelo__icontains=search_query)
+            )
+            
+        return qs.order_by('-fecha')
+
 
 class TeacherAuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = AccionAuditoria
