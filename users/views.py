@@ -259,7 +259,8 @@ def crear_sala(request):
     if request.method == "POST":
         form = SalaForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
+            sala = form.save()
+            messages.success(request, f"La sala '{sala.nombre}' fue creada correctamente.")
             return redirect("users:lista_salas")
     else:
         form = SalaForm(user=request.user)
@@ -280,11 +281,13 @@ def editar_sala(request, sala_id):
     if request.method == "POST":
         form = SalaForm(request.POST, instance=sala, user=request.user)
         if form.is_valid():
-            form.save()
+            sala = form.save()
+            messages.success(request, f"La sala '{sala.nombre}' fue modificada correctamente.")
             return redirect("users:lista_salas")
     else:
         form = SalaForm(instance=sala, user=request.user)
     return render(request, "users/salas/editar.html", {"form": form, "sala": sala})
+
 
 
 

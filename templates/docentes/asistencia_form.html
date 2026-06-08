@@ -43,7 +43,7 @@
   <div class="col-12">
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
-        <form method="post">
+        <form method="post" onsubmit="return confirm('¿Está seguro de que desea guardar el registro de asistencia para la fecha seleccionada?');">
           {% csrf_token %}
           <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
           <div class="table-responsive">

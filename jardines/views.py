@@ -369,8 +369,8 @@ def registrar_asistencia_docente(request):
         return JsonResponse({"status": "error", "message": "Las coordenadas de ubicación son requeridas al fichar."}, status=400)
         
     try:
-        latitude = Decimal(latitude_str)
-        longitude = Decimal(longitude_str)
+        latitude = Decimal(latitude_str).quantize(Decimal('.000001'))
+        longitude = Decimal(longitude_str).quantize(Decimal('.000001'))
     except (InvalidOperation, ValueError, TypeError):
         return JsonResponse({"status": "error", "message": "Formato de coordenadas no válido."}, status=400)
         
@@ -380,6 +380,7 @@ def registrar_asistencia_docente(request):
     
     from .models import AsistenciaDocente, inicializar_asistencia_diaria
     from users.models import AccionAuditoria
+    from django.core.exceptions import ValidationError
     
     asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     if not asistencias.exists():
@@ -393,16 +394,20 @@ def registrar_asistencia_docente(request):
     if asistencias.filter(fichado=True).exists():
         return JsonResponse({"status": "success", "message": "La asistencia ya fue registrada hoy."})
         
-    # Guardar
-    for asist in asistencias:
-        asist.fichado = True
-        asist.estado = 'P'
-        asist.hora_ingreso = hora
-        asist.ip_address = ip
-        asist.latitude = latitude
-        asist.longitude = longitude
-        asist.observaciones = f"Fichado manual por el docente el {hoy} a las {hora.strftime('%H:%M')} hs."
-        asist.save()
+    try:
+        # Guardar
+        for asist in asistencias:
+            asist.fichado = True
+            asist.estado = 'P'
+            asist.hora_ingreso = hora
+            asist.ip_address = ip
+            asist.latitude = latitude
+            asist.longitude = longitude
+            asist.observaciones = f"Fichado manual por el docente el {hoy} a las {hora.strftime('%H:%M')} hs."
+            asist.save()
+    except ValidationError as e:
+        error_msg = ", ".join(e.messages) if hasattr(e, "messages") else str(e)
+        return JsonResponse({"status": "error", "message": f"Error de validación al guardar: {error_msg}"}, status=400)
         
     # Registrar log
     AccionAuditoria.objects.create(
@@ -414,4 +419,5 @@ def registrar_asistencia_docente(request):
     )
     
     return JsonResponse({"status": "success", "message": "Asistencia registrada correctamente."})
+
 
