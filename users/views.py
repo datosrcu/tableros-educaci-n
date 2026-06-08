@@ -818,10 +818,29 @@ def reporte_asistencia_mensual(request):
     dias_mes = [date(anio, mes, d) for d in range(1, ultimo_dia_mes + 1)]
     
     user = request.user
+    programa_id = request.GET.get('programa')
+    
     if user.es_admin() or not user.programas_asignados.exists():
-        jardines = Jardin.objects.all().order_by('nombre')
+        programas = Programa.objects.all().order_by('nombre')
+        if programa_id:
+            jardines = Jardin.objects.filter(programa_id=programa_id)
+        else:
+            jardines = Jardin.objects.all()
     else:
-        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all()).order_by('nombre')
+        programas = user.programas_asignados.all().order_by('nombre')
+        if programa_id:
+            jardines = Jardin.objects.filter(programa__in=programas, programa_id=programa_id)
+        else:
+            jardines = Jardin.objects.filter(programa__in=programas)
+            
+    jardines = jardines.order_by('nombre')
+
+    programa_seleccionado = None
+    if programa_id:
+        try:
+            programa_seleccionado = next((p for p in programas if p.id == int(programa_id)), None)
+        except (ValueError, TypeError):
+            pass
     
     # Data para la matriz
     # { jardin_id: { dia: count } }
@@ -873,6 +892,8 @@ def reporte_asistencia_mensual(request):
         'total_general_alumnos': total_general_alumnos,
         'anios_rango': range(ahora.year - 2, ahora.year + 1),
         'meses_rango': range(1, 13),
+        'programas': programas,
+        'programa_seleccionado': programa_seleccionado,
     }
     
     if 'export' in request.GET:

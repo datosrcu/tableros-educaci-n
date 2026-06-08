@@ -23,6 +23,8 @@ class BaseAdmin(admin.ModelAdmin):
 @admin.register(Programa)
 class ProgramaAdmin(BaseAdmin):
     list_display = ('id', 'nombre', 'prefijo_comprobante', 'usa_formulario_ampliado', 'activo')
+    list_display_links = ('id', 'nombre')
+    list_editable = ('prefijo_comprobante', 'activo')
     search_fields = ('nombre',)
     list_filter = ('usa_formulario_ampliado','activo',)
     ordering = ('nombre',)
@@ -42,6 +44,7 @@ class ProgramaAdmin(BaseAdmin):
 @admin.register(Subprograma)
 class SubprogramaAdmin(BaseAdmin):
     list_display = ('id', 'nombre', 'usa_formulario_ampliado', 'programa')
+    list_display_links = ('id', 'nombre')
     list_filter = ('programa', 'usa_formulario_ampliado')
     search_fields = ('nombre',)
     ordering = ('programa__nombre', 'nombre')
@@ -69,6 +72,7 @@ class EspacioAdmin(BaseAdmin):
         'subprograma',
         'direccion',
     )
+    list_display_links = ('id', 'nombre')
 
     list_filter = ('programa', 'subprograma')
     search_fields = ('nombre', 'direccion')
@@ -107,6 +111,7 @@ class SalaAdmin(BaseAdmin):
         'turno',
         'docentes_count',
     )
+    list_display_links = ('id', 'nombre')
 
     list_filter = ('turno', 'jardin')
     search_fields = ('nombre', 'jardin__nombre')

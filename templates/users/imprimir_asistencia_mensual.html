@@ -20,7 +20,7 @@
         <div>
             <h4 class="mb-0">Sistema Presente GRCU</h4>
             <h2 class="mb-0 fw-bold">Reporte de Asistencia Mensual</h2>
-            <p class="mb-0 text-muted">{{ mes_nombre }} / {{ anio }}</p>
+            <p class="mb-0 text-muted">{{ mes_nombre }} / {{ anio }}{% if programa_seleccionado %} - Programa: {{ programa_seleccionado.nombre }}{% endif %}</p>
         </div>
         <div class="text-end">
             <p class="mb-0 small">Generado el: {% now "d/m/Y H:i" %}</p>
