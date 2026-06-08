@@ -9,6 +9,7 @@ from users.models import Usuario
 from datetime import date
 import calendar
 import csv
+from django.utils import timezone
 
 @login_required
 @rol_requerido("coordinador", "administrador")
@@ -70,7 +71,7 @@ def cargar_asistencia_docente(request, jardin_id):
     if not request.user.es_admin() and jardin.programa not in request.user.programas_asignados.all():
         raise PermissionDenied("No tiene permiso para cargar asistencia en este espacio.")
 
-    fecha_str = request.GET.get("fecha", str(date.today()))
+    fecha_str = request.GET.get("fecha", str(timezone.localtime(timezone.now()).date()))
     fecha = date.fromisoformat(fecha_str)
 
     # Obtenemos los docentes vinculados a las salas de este jardín
@@ -163,7 +164,7 @@ def reporte_asistencia_docente_mensual(request):
     """
     Genera una matriz mensual de asistencia para todos los docentes de un jardín.
     """
-    ahora = date.today()
+    ahora = timezone.localtime(timezone.now()).date()
     mes = int(request.GET.get('mes', ahora.month))
     anio = int(request.GET.get('anio', ahora.year))
     jardin_id = request.GET.get('jardin')
@@ -279,9 +280,9 @@ def resumen_actividad_docente(request):
         try:
             hoy = date.fromisoformat(fecha_str)
         except (ValueError, TypeError):
-            hoy = date.today()
+            hoy = timezone.localtime(timezone.now()).date()
     else:
-        hoy = date.today()
+        hoy = timezone.localtime(timezone.now()).date()
         
     user = request.user
 
@@ -374,8 +375,9 @@ def registrar_asistencia_docente(request):
     except (InvalidOperation, ValueError, TypeError):
         return JsonResponse({"status": "error", "message": "Formato de coordenadas no válido."}, status=400)
         
-    hoy = timezone.now().date()
-    hora = timezone.now().time()
+    ahora_local = timezone.localtime(timezone.now())
+    hoy = ahora_local.date()
+    hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR')
     
     from .models import AsistenciaDocente, inicializar_asistencia_diaria
