@@ -264,8 +264,9 @@ def inicializar_asistencia_diaria(user, request=None):
     from django.utils import timezone
     from datetime import datetime, timedelta
     
-    hoy = timezone.now().date()
-    hora = timezone.now().time()
+    ahora_local = timezone.localtime(timezone.now())
+    hoy = ahora_local.date()
+    hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR') if request else None
     
     # Obtenemos los jardines asociados al docente a través de sus salas
