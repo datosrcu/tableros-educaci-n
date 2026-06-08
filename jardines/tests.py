@@ -100,3 +100,25 @@ class AsistenciaDocenteTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["status"], "error")
 
+    def test_registrar_asistencia_docente_high_precision_coords(self):
+        self.client.login(username="docentetested", password="testpassword")
+        inicializar_asistencia_diaria(self.docente)
+        
+        # Enviar coordenadas con alta precisión (>6 decimales)
+        post_data = {
+            "latitude": "-35.123456789012",
+            "longitude": "-65.654321098765"
+        }
+        
+        response = self.client.post(reverse("jardines:registrar_asistencia_docente"), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "success")
+        
+        # Verificar que las coordenadas se redondearon a 6 decimales al guardarse
+        hoy = timezone.now().date()
+        asistencia = AsistenciaDocente.objects.get(docente=self.docente, fecha=hoy)
+        self.assertTrue(asistencia.fichado)
+        self.assertEqual(asistencia.latitude, Decimal("-35.123457"))  # Redondea .123456789... a .123457
+        self.assertEqual(asistencia.longitude, Decimal("-65.654321")) # Redondea .654321098... a .654321
+
+

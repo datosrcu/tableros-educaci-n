@@ -162,6 +162,36 @@ def dashboard_cobros(request):
         estado="pagado"
     ).aggregate(total=Sum("importe"))["total"] or 0
 
+    # 🚀 Optimización Bulk:
+    alumno_ids = [asn.alumno_id for asn in assignments]
+    
+    # Consultar todos los pagos realizados ('pagado') para estos alumnos y programas
+    pagos_realizados_list = Pago.objects.filter(
+        alumno_id__in=alumno_ids,
+        programa__in=authorized_programs,
+        estado="pagado"
+    ).values_list("alumno_id", "programa_id", "anio_pagado", "mes_pagado")
+    
+    # Agrupar pagos realizados por (alumno_id, programa_id)
+    pagos_realizados_map = {}
+    for alum_id, prog_id, y, m in pagos_realizados_list:
+        key = (alum_id, prog_id)
+        if key not in pagos_realizados_map:
+            pagos_realizados_map[key] = set()
+        pagos_realizados_map[key].add((y, m))
+        
+    # Consultar los pagos del período actual seleccionado
+    current_payments = Pago.objects.filter(
+        alumno_id__in=alumno_ids,
+        programa__in=authorized_programs,
+        anio_pagado=selected_year,
+        mes_pagado=selected_month
+    )
+    current_payments_map = {(p.alumno_id, p.programa_id): p for p in current_payments}
+    
+    # Mapear fecha de ingreso por (alumno_id, programa_id)
+    fecha_ingreso_map = {(asn.alumno_id, asn.sala.jardin.programa_id): asn.fecha_ingreso for asn in assignments}
+
     for asn in assignments:
         alumno = asn.alumno
         programa = asn.sala.jardin.programa
@@ -169,17 +199,27 @@ def dashboard_cobros(request):
         sala = asn.sala
         importe_mensual = prog_cobro_map.get(programa.id, 0)
         
-        # Obtener el registro de pago para este alumno y programa en el período seleccionado
-        payment = Pago.objects.filter(
-            alumno=alumno,
-            programa=programa,
-            anio_pagado=selected_year,
-            mes_pagado=selected_month
-        ).first()
+        key = (alumno.id, programa.id)
+        payment = current_payments_map.get(key)
         
-        # Obtener adeudos históricos hasta el mes actual real
-        adeudos = obtener_meses_adeudados(alumno, programa, today.year, today.month)
-        adeuda_list = [a["nombre"] for a in adeudos]
+        # Calcular adeudos históricos en memoria
+        start_date = fecha_ingreso_map.get(key)
+        adeuda_list = []
+        if start_date:
+            start_year = start_date.year
+            start_month = start_date.month
+            
+            pagos_set = pagos_realizados_map.get(key, set())
+            
+            y, m = start_year, start_month
+            while (y < today.year) or (y == today.year and m <= today.month):
+                if (y, m) not in pagos_set:
+                    adeuda_list.append(f"{MESES_NOMBRES[m]} {y}")
+                m += 1
+                if m > 12:
+                    m = 1
+                    y += 1
+                    
         adeuda_str = ", ".join(adeuda_list) if adeuda_list else ""
         
         # Buscar ID del pago en este periodo si existe para descargar comprobante directamente
