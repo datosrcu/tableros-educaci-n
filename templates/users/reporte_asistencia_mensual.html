@@ -1,30 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-7">
-        <h2 class="fw-bold"><i class="fas fa-table me-2 text-primary"></i>Asistencia Mensual por Jardín</h2>
-        <p class="text-muted">Consolidado mensual de alumnos registrados por día.</p>
+<div class="row mb-4 align-items-center">
+    <div class="col-xl-4 col-md-12 text-center text-md-start">
+        <h2 class="fw-bold mb-1"><i class="fas fa-table me-2 text-primary"></i>Asistencia Mensual por Jardín</h2>
+        <p class="text-muted mb-0">Consolidado mensual de alumnos registrados por día.</p>
     </div>
-    <div class="col-md-5">
+    <div class="col-xl-8 col-md-12 mt-3 mt-xl-0">
         <form method="GET" class="bg-white p-3 rounded shadow-sm border">
-            <div class="row g-2">
-                <div class="col-5">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 col-12">
+                    <label class="small text-muted mb-1 d-block fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Programa</label>
+                    <select name="programa" class="form-select form-select-sm shadow-none">
+                        <option value="">Todos los programas</option>
+                        {% for p in programas %}
+                        <option value="{{ p.id }}" {% if p.id == programa_seleccionado.id %}selected{% endif %}>{{ p.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="small text-muted mb-1 d-block fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Mes</label>
                     <select name="mes" class="form-select form-select-sm shadow-none">
                         {% for m in meses_rango %}
                         <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ m }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-4">
+                <div class="col-md-2 col-6">
+                    <label class="small text-muted mb-1 d-block fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Año</label>
                     <select name="anio" class="form-select form-select-sm shadow-none">
                         {% for a in anios_rango %}
                         <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-3">
-                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Ver</button>
+                <div class="col-md-2 col-12 mt-3 mt-md-0 pt-md-4">
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Filtrar</button>
                 </div>
             </div>
         </form>
@@ -33,12 +44,14 @@
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold text-uppercase micro-text">{{ mes_nombre }} {{ anio }}</h6>
+        <h6 class="mb-0 fw-bold text-uppercase micro-text">
+            {{ mes_nombre }} {{ anio }}{% if programa_seleccionado %} - PROGRAMA: {{ programa_seleccionado.nombre }}{% endif %}
+        </h6>
         <div>
-            <a href="?mes={{ mes }}&anio={{ anio }}&export=1" class="btn btn-outline-success btn-sm me-2">
+            <a href="?mes={{ mes }}&anio={{ anio }}{% if programa_seleccionado %}&programa={{ programa_seleccionado.id }}{% endif %}&export=1" class="btn btn-outline-success btn-sm me-2">
                 <i class="fas fa-file-excel me-1"></i> Excel
             </a>
-            <a href="?mes={{ mes }}&anio={{ anio }}&print=1" target="_blank" class="btn btn-outline-primary btn-sm">
+            <a href="?mes={{ mes }}&anio={{ anio }}{% if programa_seleccionado %}&programa={{ programa_seleccionado.id }}{% endif %}&print=1" target="_blank" class="btn btn-outline-primary btn-sm">
                 <i class="fas fa-print me-1"></i> Imprimir / PDF
             </a>
         </div>
