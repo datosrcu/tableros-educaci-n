@@ -19,7 +19,7 @@ class DynamicFormIntegrationTest(TestCase):
         )
         
         # Estructura jerárquica
-        self.programa = Programa.objects.create(nombre="Test Program")
+        self.programa = Programa.objects.create(nombre="Test Program", usa_formulario_ampliado=True)
         self.jardin = Jardin.objects.create(
             nombre="Test Jardin", 
             programa=self.programa,
@@ -84,9 +84,10 @@ class DynamicFormIntegrationTest(TestCase):
             nombre="Maria", 
             apellido="Gomez", 
             dni="87654321", 
-            sala=self.sala,
             fecha_nacimiento="2016-05-05"
         )
+        from alumnos.models import AsignacionSala
+        AsignacionSala.objects.create(alumno=alumno, sala=self.sala, activo=True)
         FichaProgramaAlumno.objects.create(alumno=alumno)
         RespuestaFormulario.objects.create(
             alumno=alumno, 
