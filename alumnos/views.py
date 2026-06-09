@@ -27,10 +27,32 @@ from jardines.models import Sala
 from users.decorators import rol_requerido
 from users.models import AccionAuditoria
 
+def ver_asistencias(request, sala_id):
+    # CÓDIGO DE DEPURACIÓN - Agrega esto al inicio
+    print(f"=== DEPURACIÓN ===")
+    print(f" Sala ID: {sala_id}")
+    print(f" Usuario rol: {request.user.rol}")
+    
+    # Verificar qué URLs está intentando resolver el template
+    from django.urls import reverse
+    try:
+        url_docente = reverse('alumnos:imprimir_asistencias_sala_docente', args=[sala_id])
+        print(f" URL docente encontrada: {url_docente}")
+    except Exception as e:
+        print(f" ERROR en URL docente: {e}")
+    
+    try:
+        url_generica = reverse('alumnos:imprimir_asistencias_sala', args=[sala_id])
+        print(f" URL genérica encontrada: {url_generica}")
+    except Exception as e:
+        print(f" ERROR en URL genérica: {e}")
+    
+    # Resto de tu código original...
 
 # =========================================================
 # 🔐 UTILIDADES DE SEGURIDAD
 # =========================================================
+
 
 def docente_tiene_sala(user, sala_id):
     """Verifica si un docente tiene permiso (asignación) sobre una sala específica."""

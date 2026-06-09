@@ -76,18 +76,27 @@ urlpatterns = [
         name="exportar_asistencias_csv",
     ),
 
-    # URL para DOCENTE - imprime asistencias de una sala específica
+    # === MÚLTIPLES ALIAS PARA LA MISMA VISTA ===
+    
+    # Alias 1: Para docente (nombre específico)
     path(
         "docente/sala/<int:sala_id>/asistencias/imprimir/",
         views.imprimir_asistencias_sala,
-        name="imprimir_asistencias_sala_docente",  # ← Nombre específico para docente
+        name="imprimir_asistencias_sala_docente",
     ),
     
-    # URL para COORDINADOR - imprime asistencias de una sala específica
+    # Alias 2: Mismo nombre para docente (para compatibilidad)
+    path(
+        "docente/sala/<int:sala_id>/asistencias/imprimir/",
+        views.imprimir_asistencias_sala,
+        name="imprimir_asistencias_sala",  # ← Este alias capturará las llamadas sin _docente
+    ),
+    
+    # Alias 3: Para coordinador
     path(
         "coordinador/asistencias/imprimir/<int:sala_id>/",
         views.imprimir_asistencias_sala,
-        name="imprimir_asistencias_sala",  # ← Nombre para coordinador
+        name="imprimir_asistencias_sala_coordinador",
     ),
 
     # Listado General (para coordinador)
