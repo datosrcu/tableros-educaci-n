@@ -15,10 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, reverse_lazy
 from django.shortcuts import redirect
 from django.contrib.auth import views as auth_views, logout as django_logout
-from users.views import crear_docente
+from users.views import crear_docente, RedirectView
 
 def logout_view(request):
     django_logout(request)
@@ -58,4 +58,9 @@ urlpatterns = [
     path("usuarios/", include("users.urls")),
     path("formularios/", include("formularios.urls")),
     path("cobros/", include("cobros.urls")),
+    path(
+        'imprimir-asistencias-sala/<int:sala_id>/',
+        RedirectView.as_view(url=reverse_lazy('alumnos:imprimir_asistencias_sala_docente', args=[0])),
+        name='imprimir_asistencias_sala',
+    ),
 ]
