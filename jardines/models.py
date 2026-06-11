@@ -285,8 +285,8 @@ def inicializar_asistencia_diaria(user, request=None):
             break
             
     for jardin in jardines:
-        # Solo creamos el registro si no existe uno para hoy
-        AsistenciaDocente.objects.get_or_create(
+        # Usar update_or_create en lugar de get_or_create para mayor control
+        asistencia, created = AsistenciaDocente.objects.update_or_create(
             docente=user,
             jardin=jardin,
             fecha=hoy,
@@ -295,8 +295,7 @@ def inicializar_asistencia_diaria(user, request=None):
                 'ip_address': ip,
                 'fuera_de_jornada': es_fuera_de_jornada,
                 'estado': 'A',  # Empieza en Ausente hasta que fiche
-                'fichado': False,
+                'fichado': False,  # Asegurar que está incluido
                 'observaciones': 'Registro inicializado por el sistema.'
             }
         )
-

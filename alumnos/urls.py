@@ -44,53 +44,68 @@ urlpatterns = [
         views.agregar_alumno,
         name="agregar_alumno",
     ),
+    
     path(
         "tutor/nuevo/ajax/",
         views.crear_tutor_ajax,
         name="crear_tutor_ajax",
     ),
+    
     path(
         "docente/sala/<int:sala_id>/asistencias/",
         views.ver_asistencias,
         name="ver_asistencias",
     ),
 
-   # Exportación e Impresión
+    # Exportación e Impresión
     path(
         "docente/sala/<int:sala_id>/alumnos/csv/",
         views.exportar_alumnos_csv,
         name="exportar_alumnos_csv",
     ),
+    
     path(
         "docente/sala/<int:sala_id>/alumnos/imprimir/",
         views.imprimir_alumnos_sala,
         name="imprimir_alumnos_sala",
     ),
+    
     path(
         "docente/sala/<int:sala_id>/asistencias/csv/",
         views.exportar_asistencias_csv,
         name="exportar_asistencias_csv",
     ),
-    # URL para docente
+
+    # === MÚLTIPLES ALIAS PARA LA MISMA VISTA ===
+    
+    # Alias 1: Para docente (nombre específico)
     path(
         "docente/sala/<int:sala_id>/asistencias/imprimir/",
         views.imprimir_asistencias_sala,
-        name="imprimir_asistencias_sala_docente",  # ← Nombre cambiado
+        name="imprimir_asistencias_sala_docente",
     ),
-    # URL para coordinador
+    
+    # Alias 2: Mismo nombre para docente (para compatibilidad)
+    path(
+        "docente/sala/<int:sala_id>/asistencias/imprimir/",
+        views.imprimir_asistencias_sala,
+        name="imprimir_asistencias_sala",  # ← Este alias capturará las llamadas sin _docente
+    ),
+    
+    # Alias 3: Para coordinador
     path(
         "coordinador/asistencias/imprimir/<int:sala_id>/",
         views.imprimir_asistencias_sala,
-        name="imprimir_asistencias_sala",  # ← Mantiene el nombre original
+        name="imprimir_asistencias_sala_coordinador",
     ),
 
-
-    # Listado General
+    # Listado General (para coordinador)
     path(
         "coordinador/listado-general/",
         views.lista_alumnos,
         name="lista_alumnos",
     ),
+    
     path(
         "coordinador/exportar-alumnos-completo/",
         views.exportar_alumnos_completo_csv,
