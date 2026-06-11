@@ -33,12 +33,12 @@ class Alumno(models.Model):
         if not self.dni.isdigit():
             raise ValidationError({"dni": "El DNI debe contener solo números."})
 
-        # 🔹 Edad razonable (ejemplo: 45 días a 18 años para incluir maternales)
+        # 🔹 Edad razonable (desde 45 días hasta 100 años para incluir talleres de adultos)
         dias_vividos = (date.today() - self.fecha_nacimiento).days
         edad_anios = dias_vividos / 365.25
-        if edad_anios < 0.12 or edad_anios > 18:
+        if edad_anios < 0.12 or edad_anios > 100:
             raise ValidationError({
-                "fecha_nacimiento": "La edad del alumno no es válida para este sistema (debe tener entre 45 días y 18 años)."
+                "fecha_nacimiento": "La edad del alumno no es válida para este sistema (debe tener entre 45 días y 100 años)."
             })
 
     def save(self, *args, **kwargs):
