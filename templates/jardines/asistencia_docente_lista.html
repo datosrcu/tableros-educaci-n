@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold text-dark mb-1">Asistencia de Docentes</h2>
-            <p class="text-muted mb-0">Seleccione un Espacio (Jardín) para registrar la asistencia del día.</p>
+            <p class="text-muted mb-0">Seleccione un Espacio para registrar la asistencia del día.</p>
         </div>
         <a href="{% url 'jardines:historial_asistencia_docente' %}" class="btn btn-outline-primary rounded-pill px-4">
             <i class="fas fa-history me-2"></i>Ver Historial
@@ -46,7 +46,7 @@
             <div class="bg-light p-5 rounded-4 d-inline-block shadow-sm">
                 <i class="fas fa-exclamation-circle text-muted fa-3x mb-3"></i>
                 <h4 class="text-dark fw-bold">No hay espacios asignados</h4>
-                <p class="text-muted">No se encontraron jardines bajo su coordinación.</p>
+                <p class="text-muted">No se encontraron espacios bajo su coordinación.</p>
             </div>
         </div>
         {% endfor %}
