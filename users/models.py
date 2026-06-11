@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 
 class Usuario(AbstractUser):
     """
-    Modelo de usuario extendido con roles específicos para el Sistema Jardines.
+    Modelo de usuario extendido con roles específicos para el Sistema Presente.
     Roles disponibles: administrador, coordinador, docente.
     """
     ROLES = (

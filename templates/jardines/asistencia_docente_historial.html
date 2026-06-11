@@ -19,9 +19,9 @@
         <div class="card-body p-4">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label micro-text uppercase fw-bold text-muted">Espacio (Jardín)</label>
+                    <label class="form-label micro-text uppercase fw-bold text-muted">Espacio</label>
                     <select name="jardin" class="form-select rounded-pill">
-                        <option value="">Todos los jardines</option>
+                        <option value="">Todos los espacios</option>
                         {% for j in jardines %}
                         <option value="{{ j.id }}" {% if request.GET.jardin == j.id|stringformat:"i" %}selected{% endif %}>{{ j.nombre }}</option>
                         {% endfor %}
