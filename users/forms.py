@@ -283,12 +283,20 @@ class SalaForm(forms.ModelForm):
         model = Sala
         fields = (
             "jardin",
+            "subprograma",
             "nombre",
             "turno",
             "horario_inicio",
             "horario_fin",
             "docentes",
             "responsable",
+            "lunes",
+            "martes",
+            "miercoles",
+            "jueves",
+            "viernes",
+            "sabado",
+            "domingo",
         )
 
     def __init__(self, *args, **kwargs):
@@ -298,6 +306,8 @@ class SalaForm(forms.ModelForm):
             programas = user.programas_asignados.all()
             if "jardin" in self.fields:
                 self.fields["jardin"].queryset = Jardin.objects.filter(programa__in=programas)
+            if "subprograma" in self.fields:
+                self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
             # Filtrar docentes y responsables a los de la jurisdicción del coordinador
             from django.db.models import Q as Qlocal
             self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente").filter(
