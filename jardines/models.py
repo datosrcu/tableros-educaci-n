@@ -150,6 +150,24 @@ class Sala(models.Model):
         related_name="salas_responsables",
     )
 
+    subprograma = models.ForeignKey(
+        "Subprograma",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="salas",
+        verbose_name="Subprograma"
+    )
+
+    # Días activos de la semana
+    lunes = models.BooleanField(default=True, verbose_name="Lunes")
+    martes = models.BooleanField(default=True, verbose_name="Martes")
+    miercoles = models.BooleanField(default=True, verbose_name="Miércoles")
+    jueves = models.BooleanField(default=True, verbose_name="Jueves")
+    viernes = models.BooleanField(default=True, verbose_name="Viernes")
+    sabado = models.BooleanField(default=False, verbose_name="Sábado")
+    domingo = models.BooleanField(default=False, verbose_name="Domingo")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

@@ -6,7 +6,11 @@ from django.db.models import Sum, Q
 from django.utils import timezone
 from django.template.loader import get_template
 from django.http import HttpResponse
-from xhtml2pdf import pisa
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
+
 
 from alumnos.models import Alumno, AsignacionSala
 from jardines.models import Programa, Subprograma, Sala, Jardin
@@ -419,6 +423,8 @@ def descargar_comprobante(request, pago_id):
     html = template.render(context)
     
     # Generar el PDF usando xhtml2pdf
+    if not pisa:
+        return HttpResponse('La librería xhtml2pdf no está instalada en este entorno.', status=500)
     pisa_status = pisa.CreatePDF(html, dest=response)
     if pisa_status.err:
         return HttpResponse('Hubo un error al generar el PDF', status=500)
@@ -468,7 +474,10 @@ def exportar_cobros_excel(rows, month, year):
 
 def exportar_cobros_pdf(rows, month, year):
     from django.template.loader import get_template
-    from xhtml2pdf import pisa
+    try:
+        from xhtml2pdf import pisa
+    except ImportError:
+        pisa = None
     from django.http import HttpResponse
     from django.utils import timezone
     
@@ -495,6 +504,8 @@ def exportar_cobros_pdf(rows, month, year):
     template = get_template(template_path)
     html = template.render(context)
     
+    if not pisa:
+        return HttpResponse('La librería xhtml2pdf no está instalada en este entorno.', status=500)
     pisa_status = pisa.CreatePDF(html, dest=response)
     if pisa_status.err:
         return HttpResponse('Hubo un error al generar el PDF', status=500)
