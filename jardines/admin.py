@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Programa, Subprograma, Jardin, Sala
+from .models import Programa, Subprograma, Jardin, Sala, AsignacionDocenteSala
 from .forms import SalaAdminForm, JardinAdminForm
 from users.admin_permissions import es_admin, es_directivo
 
@@ -101,6 +101,10 @@ class EspacioAdmin(BaseAdmin):
     class Media:
         js = ("jardines/subprogramas_admin.js",)
 
+class AsignacionDocenteSalaInline(admin.TabularInline):
+    model = AsignacionDocenteSala
+    extra = 1
+
 @admin.register(Sala)
 class SalaAdmin(BaseAdmin):
     form = SalaAdminForm
@@ -115,7 +119,7 @@ class SalaAdmin(BaseAdmin):
 
     list_filter = ('turno', 'jardin')
     search_fields = ('nombre', 'jardin__nombre')
-    filter_horizontal = ('docentes',)
+    inlines = [AsignacionDocenteSalaInline]
 
     def docentes_count(self, obj):
         return obj.docentes.count()

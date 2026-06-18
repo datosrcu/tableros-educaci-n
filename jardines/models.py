@@ -112,6 +112,33 @@ class Jardin(models.Model):
     def __str__(self):
         return self.nombre
 
+class AsignacionDocenteSala(models.Model):
+    docente = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="asignaciones_salas"
+    )
+    sala = models.ForeignKey(
+        "Sala",
+        on_delete=models.CASCADE,
+        related_name="asignaciones_docentes"
+    )
+    lunes = models.BooleanField(default=True, verbose_name="Lunes")
+    martes = models.BooleanField(default=True, verbose_name="Martes")
+    miercoles = models.BooleanField(default=True, verbose_name="Miércoles")
+    jueves = models.BooleanField(default=True, verbose_name="Jueves")
+    viernes = models.BooleanField(default=True, verbose_name="Viernes")
+    sabado = models.BooleanField(default=False, verbose_name="Sábado")
+    domingo = models.BooleanField(default=False, verbose_name="Domingo")
+
+    class Meta:
+        unique_together = ("docente", "sala")
+        verbose_name = "Asignación de Docente a Sala"
+        verbose_name_plural = "Asignaciones de Docentes a Salas"
+
+    def __str__(self):
+        return f"{self.docente} en {self.sala}"
+
 class Sala(models.Model):
     """
     Unidad educativa mínima dentro de un Jardín. 
@@ -138,6 +165,7 @@ class Sala(models.Model):
 
     docentes = models.ManyToManyField(
         "users.Usuario",
+        through="AsignacionDocenteSala",
         related_name="salas_asignadas",
         blank=True,
     )
@@ -184,7 +212,7 @@ class Sala(models.Model):
 
         errors = {}
 
-        if not self.jardin:
+        if not self.jardin_id:
             errors["jardin"] = "La sala debe pertenecer a un jardín."
 
         if self.horario_inicio and self.horario_fin:
@@ -303,17 +331,18 @@ def inicializar_asistencia_diaria(user, request=None):
             break
             
     for jardin in jardines:
-        # Usar update_or_create en lugar de get_or_create para mayor control
-        asistencia, created = AsistenciaDocente.objects.update_or_create(
+        # Si ya existe asistencia para este docente en este jardin hoy, no la inicializamos/pisamos
+        if AsistenciaDocente.objects.filter(docente=user, jardin=jardin, fecha=hoy).exists():
+            continue
+            
+        AsistenciaDocente.objects.create(
             docente=user,
             jardin=jardin,
             fecha=hoy,
-            defaults={
-                'hora_ingreso': None,
-                'ip_address': ip,
-                'fuera_de_jornada': es_fuera_de_jornada,
-                'estado': 'A',  # Empieza en Ausente hasta que fiche
-                'fichado': False,  # Asegurar que está incluido
-                'observaciones': 'Registro inicializado por el sistema.'
-            }
+            hora_ingreso=None,
+            ip_address=ip,
+            fuera_de_jornada=es_fuera_de_jornada,
+            estado='A',  # Empieza en Ausente hasta que fiche
+            fichado=False,
+            observaciones='Registro inicializado por el sistema.'
         )

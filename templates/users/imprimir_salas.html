@@ -45,8 +45,9 @@
                 <td>{{ sala.get_turno_display }}</td>
                 <td>{{ sala.horario_inicio|time:"H:i" }} a {{ sala.horario_fin|time:"H:i" }}</td>
                 <td>
-                    {% for d in sala.docentes.all %}
-                        {{ d.last_name }}, {{ d.first_name }}{% if not forloop.last %} - {% endif %}
+                    {% for asignacion in sala.asignaciones_docentes.all %}
+                        {{ asignacion.docente.last_name }}, {{ asignacion.docente.first_name }}
+                        ({% if asignacion.lunes %}L{% endif %}{% if asignacion.martes %}M{% endif %}{% if asignacion.miercoles %}M{% endif %}{% if asignacion.jueves %}J{% endif %}{% if asignacion.viernes %}V{% endif %}{% if asignacion.sabado %}S{% endif %}{% if asignacion.domingo %}D{% endif %}){% if not forloop.last %} - {% endif %}
                     {% empty %}
                         <em style="color:#777;">Sin asignar</em>
                     {% endfor %}

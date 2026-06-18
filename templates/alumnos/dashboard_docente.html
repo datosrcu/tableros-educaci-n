@@ -156,6 +156,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     .then(response => response.json().then(data => ({ status: response.status, body: data })))
                     .then(res => {
                         if (res.status === 200 && res.body.status === "success") {
+                            alert("Asistencia registrada correctamente.");
                             window.location.reload();
                         } else {
                             btn.disabled = false;

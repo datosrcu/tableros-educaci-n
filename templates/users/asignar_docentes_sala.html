@@ -37,31 +37,91 @@
           {% csrf_token %}
 
           <div class="mb-4">
-            <label class="form-label small fw-bold text-muted text-uppercase mb-2 uppercase">
-              {{ form.docentes.label }}
+            <label class="form-label small fw-bold text-muted text-uppercase mb-3 uppercase">
+              Docentes y Días de Asistencia
             </label>
-            <div class="bg-light p-3 rounded border border-light-subtle" style="max-height: 300px; overflow-y: auto;">
-              {% for checkbox in form.docentes %}
-              <div class="form-check mb-2">
-                {{ checkbox.tag }}
-                <label class="form-check-label ms-2" for="{{ checkbox.id_for_label }}">
-                  {{ checkbox.choice_label }}
-                </label>
-              </div>
-              {% endfor %}
+            <div class="table-responsive border rounded-4 bg-white overflow-hidden">
+              <table class="table align-middle mb-0">
+                <thead class="table-light">
+                  <tr class="small text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                    <th class="border-0 ps-4 py-3">Docente</th>
+                    <th class="border-0 py-3 text-center" style="width: 300px;">Días de Asistencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in docente_list %}
+                  <tr class="tutor-item">
+                    <td class="ps-4">
+                      <span class="fw-bold text-dark d-block">
+                        {{ item.docente.last_name }}, {{ item.docente.first_name }}
+                      </span>
+                      <span class="text-muted micro-text">DNI: {{ item.docente.dni|default:"-" }}</span>
+                    </td>
+                    <td>
+                      <div class="d-flex justify-content-center gap-1 days-selector" id="days_{{ item.docente.id }}">
+                        
+                        <!-- Lunes -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="lunes_{{ item.docente.id }}" id="lunes_{{ item.docente.id }}" class="day-checkbox-input" {% if item.lunes %}checked{% endif %}>
+                          <label for="lunes_{{ item.docente.id }}" class="day-checkbox-label">L</label>
+                        </div>
+                        
+                        <!-- Martes -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="martes_{{ item.docente.id }}" id="martes_{{ item.docente.id }}" class="day-checkbox-input" {% if item.martes %}checked{% endif %}>
+                          <label for="martes_{{ item.docente.id }}" class="day-checkbox-label">M</label>
+                        </div>
+                        
+                        <!-- Miércoles -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="miercoles_{{ item.docente.id }}" id="miercoles_{{ item.docente.id }}" class="day-checkbox-input" {% if item.miercoles %}checked{% endif %}>
+                          <label for="miercoles_{{ item.docente.id }}" class="day-checkbox-label">M</label>
+                        </div>
+                        
+                        <!-- Jueves -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="jueves_{{ item.docente.id }}" id="jueves_{{ item.docente.id }}" class="day-checkbox-input" {% if item.jueves %}checked{% endif %}>
+                          <label for="jueves_{{ item.docente.id }}" class="day-checkbox-label">J</label>
+                        </div>
+                        
+                        <!-- Viernes -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="viernes_{{ item.docente.id }}" id="viernes_{{ item.docente.id }}" class="day-checkbox-input" {% if item.viernes %}checked{% endif %}>
+                          <label for="viernes_{{ item.docente.id }}" class="day-checkbox-label">V</label>
+                        </div>
+                        
+                        <!-- Sábado -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="sabado_{{ item.docente.id }}" id="sabado_{{ item.docente.id }}" class="day-checkbox-input" {% if item.sabado %}checked{% endif %}>
+                          <label for="sabado_{{ item.docente.id }}" class="day-checkbox-label">S</label>
+                        </div>
+                        
+                        <!-- Domingo -->
+                        <div class="day-checkbox-wrapper">
+                          <input type="checkbox" name="domingo_{{ item.docente.id }}" id="domingo_{{ item.docente.id }}" class="day-checkbox-input" {% if item.domingo %}checked{% endif %}>
+                          <label for="domingo_{{ item.docente.id }}" class="day-checkbox-label">D</label>
+                        </div>
+
+                      </div>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="2" class="text-center py-4 text-muted small">
+                      <i class="fas fa-info-circle me-1"></i> No se encontraron docentes asignados a esta sala.
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
-            {% if form.docentes.errors %}
-            <div class="text-danger small mt-2">
-              {{ form.docentes.errors }}
-            </div>
-            {% endif %}
           </div>
 
           <div class="mt-4 pt-3 border-top d-flex gap-2">
-            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm fw-bold hover-lift">
               <i class="fas fa-check me-1"></i>Actualizar Asignaciones
             </button>
-            <a href="{% url 'users:lista_salas' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+            <a href="{% url 'users:lista_salas' %}" class="btn btn-light border px-4 rounded-pill fw-semibold text-muted">
               Volver
             </a>
           </div>
@@ -73,13 +133,17 @@
   <div class="col-lg-4">
     <div class="card shadow-sm border-0 bg-primary bg-opacity-10 border-start border-4 border-primary">
       <div class="card-body p-4">
-        <h6 class="fw-bold text-primary text-uppercase mb-3 small"><i class="fas fa-users me-1"></i> Multi-Docente</h6>
-        <p class="text-muted small mb-0">Podés asignar uno o más docentes a una misma sala. Todos los docentes asignados
-          podrán gestionar la asistencia y los alumnos de esta sala.</p>
+        <h6 class="fw-bold text-primary text-uppercase mb-3 small"><i class="fas fa-users me-1"></i> Gestión de Docentes</h6>
+        <p class="text-muted small mb-2">Aquí podés especificar qué días de la semana asiste cada docente que previamente fue asignado a esta sala.</p>
+        <p class="text-muted small mb-0">Los días desmarcados se desactivarán para el registro de asistencia del docente correspondiente.</p>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  // No JS logic needed as teachers are pre-assigned in the general room form.
+</script>
 
 <style>
   .border-light-subtle {
@@ -91,9 +155,67 @@
     letter-spacing: 0.5px;
   }
 
-  .form-check-input:checked {
+  .micro-text {
+    font-size: 0.7rem;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  .day-checkbox-wrapper {
+    position: relative;
+    width: 28px;
+    height: 28px;
+  }
+
+  .day-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 2;
+    margin: 0;
+  }
+
+  .day-checkbox-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-color: #f8fafc;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    user-select: none;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  .day-checkbox-input:checked + .day-checkbox-label {
     background-color: #3b82f6;
+    color: #ffffff;
     border-color: #3b82f6;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  }
+
+  .days-disabled {
+    pointer-events: none;
+    opacity: 0.3;
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   }
 </style>
 {% endblock %}

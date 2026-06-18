@@ -39,6 +39,30 @@
                     {% endif %}
                     <div class="row g-4">
                         {% for field in form %}
+                        {% if field.name == 'docentes' %}
+                        <div class="col-12 mb-3">
+                            <label for="{{ field.id_for_label }}"
+                                class="form-label small fw-bold text-muted text-uppercase mb-1 uppercase">
+                                {{ field.label }}
+                            </label>
+                            <input type="text" id="search-docentes" class="form-control mb-2 rounded-pill shadow-none border-light-subtle" placeholder="🔍 Buscar docente por nombre o DNI...">
+                            <div class="docentes-select-container">
+                                {{ field }}
+                            </div>
+                            {% if field.errors %}
+                            <div class="text-danger micro-text mt-1">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if field.help_text %}
+                            <div class="form-text small text-muted mt-1 micro-text">
+                                {{ field.help_text }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
                         <div class="col-md-6 mb-2">
                             {% if field.field.widget.input_type == 'checkbox' %}
                             <div class="form-check form-switch mt-4">
@@ -68,6 +92,7 @@
                             </div>
                             {% endif %}
                         </div>
+                        {% endif %}
                         {% endfor %}
                     </div>
                     <div class="mt-4 pt-3 border-top d-flex gap-2">
@@ -84,6 +109,35 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('search-docentes');
+        const docentesContainer = document.getElementById('id_docentes');
+        if (docentesContainer) {
+            // Apply standard Bootstrap styles to checkboxes
+            const checkboxes = docentesContainer.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.classList.add('form-check-input');
+            });
+
+            if (searchInput) {
+                const items = docentesContainer.querySelectorAll('#id_docentes > div, #id_docentes > li, #id_docentes > label');
+                searchInput.addEventListener('input', function () {
+                    const query = searchInput.value.toLowerCase().trim();
+                    items.forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        if (text.includes(query)) {
+                            item.style.setProperty('display', 'flex', 'important');
+                        } else {
+                            item.style.setProperty('display', 'none', 'important');
+                        }
+                    });
+                });
+            }
+        }
+    });
+</script>
+
 <style>
     .border-light-subtle {
         border-color: #e2e8f0 !important;
@@ -96,6 +150,46 @@
 
     .micro-text {
         font-size: 0.75rem;
+    }
+
+    #id_docentes {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1rem;
+        background-color: #f8fafc;
+    }
+
+    #id_docentes > div, #id_docentes > li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s;
+    }
+
+    #id_docentes > div:hover, #id_docentes > li:hover {
+        background-color: #f1f5f9;
+    }
+
+    #id_docentes input[type="checkbox"] {
+        width: 1.15rem;
+        height: 1.15rem;
+        margin-top: 0;
+        border-radius: 0.25rem;
+        cursor: pointer;
+    }
+
+    #id_docentes label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #334155;
+        cursor: pointer;
+        margin-left: 0.75rem;
+        width: 100%;
+        margin-bottom: 0;
     }
 </style>
 {% endblock %}

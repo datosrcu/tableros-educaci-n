@@ -45,7 +45,11 @@ class AlumnoTutorTest(TestCase):
         self.assertEqual(alumno.tutores.count(), 1)
         self.assertEqual(alumno.tutores.first(), self.tutor)
 
-    def test_cargar_asistencia(self):
+    def test_cargar_asistencia_coordinador(self):
+        # Cambiar el rol del usuario a coordinador para permitir la fecha libre
+        self.docente.rol = 'coordinador'
+        self.docente.save()
+        
         alumno = Alumno.objects.create(
             nombre='Maria',
             apellido='Lopez',
@@ -66,5 +70,33 @@ class AlumnoTutorTest(TestCase):
         self.assertEqual(response.status_code, 302)
         
         asistencia = Asistencia.objects.get(alumno=alumno, fecha='2026-02-18')
+        self.assertEqual(asistencia.estado, 'J')
+        self.assertEqual(asistencia.motivo, motivo)
+
+    def test_cargar_asistencia_docente_restricted_to_today(self):
+        alumno = Alumno.objects.create(
+            nombre='Maria',
+            apellido='Lopez',
+            dni='11222333',
+            fecha_nacimiento='2016-05-05'
+        )
+        from alumnos.models import AsignacionSala
+        from datetime import date
+        AsignacionSala.objects.create(alumno=alumno, sala=self.sala, activo=True)
+        url = reverse('alumnos:cargar_asistencia', kwargs={'sala_id': self.sala.id})
+        motivo = MotivoJustificacion.objects.create(nombre="Medico")
+        
+        # Docente intenta registrar asistencia en una fecha pasada
+        data = {
+            f'estado_{alumno.id}': 'J',
+            f'motivo_{alumno.id}': motivo.id,
+            'fecha': '2026-02-18'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        
+        # Debe haberse registrado con la fecha de hoy, no la enviada en el formulario
+        hoy = date.today()
+        asistencia = Asistencia.objects.get(alumno=alumno, fecha=hoy)
         self.assertEqual(asistencia.estado, 'J')
         self.assertEqual(asistencia.motivo, motivo)
