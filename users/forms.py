@@ -362,8 +362,10 @@ class SalaForm(forms.ModelForm):
 
     def save_docentes(self, sala):
         new_docentes = self.cleaned_data.get("docentes", [])
-        # Eliminar docentes desasignados
-        sala.asignaciones_docentes.exclude(docente__in=new_docentes).delete()
+        # Eliminar docentes desasignados (evaluando los IDs en memoria para evitar el error 1093 de MySQL)
+        ids_a_eliminar = list(sala.asignaciones_docentes.exclude(docente__in=new_docentes).values_list('id', flat=True))
+        if ids_a_eliminar:
+            sala.asignaciones_docentes.filter(id__in=ids_a_eliminar).delete()
         # Crear asignaciones para nuevos docentes (con días por defecto basados en la sala)
         for docente in new_docentes:
             AsignacionDocenteSala.objects.get_or_create(
