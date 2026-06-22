@@ -81,9 +81,16 @@ def cargar_asistencia_docente(request, jardin_id):
     ).distinct().order_by("last_name")
 
     if request.method == "POST":
+        from .models import LicenciaDocente
         for docente in docentes:
             estado = request.POST.get(f"estado_{docente.id}")
             observaciones = request.POST.get(f"obs_{docente.id}", "")
+            
+            # Si tiene licencia activa para esta fecha, se fuerza el estado 'L'
+            licencia = LicenciaDocente.obtener_licencia_activa(docente, fecha)
+            if licencia:
+                estado = 'L'
+                observaciones = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
             
             if estado:
                 AsistenciaDocente.objects.update_or_create(
@@ -107,11 +114,14 @@ def cargar_asistencia_docente(request, jardin_id):
     )
     asistencias_dict = {a.docente_id: a for a in asistencias_existentes}
 
+    from .models import LicenciaDocente
     docente_data = []
     for d in docentes:
+        lic = LicenciaDocente.obtener_licencia_activa(d, fecha)
         docente_data.append({
             "docente": d,
-            "asistencia": asistencias_dict.get(d.id)
+            "asistencia": asistencias_dict.get(d.id),
+            "licencia": lic
         })
 
     return render(request, "jardines/asistencia_docente_form.html", {
@@ -218,17 +228,20 @@ def reporte_asistencia_docente_mensual(request):
         celdas = []
         presentes = 0
         ausentes = 0
+        licencias = 0
         for dia in range(1, ultimo_dia_mes + 1):
             estado = mapa_asistencia.get(d.id, {}).get(dia, '-')
             celdas.append(estado)
             if estado == 'P': presentes += 1
             if estado == 'A': ausentes += 1
+            if estado == 'L': licencias += 1
         
         filas.append({
             'docente': d,
             'celdas': celdas,
             'presentes': presentes,
-            'ausentes': ausentes
+            'ausentes': ausentes,
+            'licencias': licencias
         })
 
     context = {
@@ -257,11 +270,15 @@ def exportar_asistencia_docente_csv(context):
     writer = csv.writer(response, delimiter=';')
     
     # Encabezado
-    header = ['Docente'] + [str(d) for d in context['dias']] + ['P', 'A']
+    header = ['Docente'] + [str(d) for d in context['dias']] + ['P', 'A', 'L']
     writer.writerow(header)
     
     for fila in context['filas']:
-        row = [f"{fila['docente'].last_name}, {fila['docente'].first_name}"] + fila['celdas'] + [fila['presentes'], fila['ausentes']]
+        row = (
+            [f"{fila['docente'].last_name}, {fila['docente'].first_name}"]
+            + fila['celdas']
+            + [fila['presentes'], fila['ausentes'], fila.get('licencias', 0)]
+        )
         writer.writerow(row)
         
     return response
@@ -389,11 +406,18 @@ def registrar_asistencia_docente(request):
     hoy = ahora_local.date()
     hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR')
-    
-    from .models import AsistenciaDocente, inicializar_asistencia_diaria
+    from .models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente
     from users.models import AccionAuditoria
     from django.core.exceptions import ValidationError
     
+    # Check if there is an active license today
+    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
+    if licencia:
+        return JsonResponse({
+            "status": "error",
+            "message": f"No puede registrar asistencia porque se encuentra de licencia ({licencia.get_tipo_licencia_display()})."
+        }, status=400)
+
     asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     if not asistencias.exists():
         inicializar_asistencia_diaria(request.user, request)

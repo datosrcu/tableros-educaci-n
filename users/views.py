@@ -104,11 +104,26 @@ def lista_subprogramas(request):
 @solo_coordinador
 def lista_salas(request):
     user = request.user
+    q = request.GET.get("q", "").strip()
+    
     if user.es_admin() or not user.programas_asignados.exists():
-        salas = Sala.objects.select_related("jardin").all()
+        salas = Sala.objects.select_related("jardin", "subprograma", "responsable").all()
     else:
-        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related("jardin")
-    return render(request, "users/lista_salas.html", {"salas": salas})
+        salas = Sala.objects.filter(
+            jardin__programa__in=user.programas_asignados.all()
+        ).select_related("jardin", "subprograma", "responsable")
+        
+    if q:
+        salas = salas.filter(
+            Q(nombre__icontains=q) |
+            Q(jardin__nombre__icontains=q) |
+            Q(subprograma__nombre__icontains=q) |
+            Q(responsable__first_name__icontains=q) |
+            Q(responsable__last_name__icontains=q) |
+            Q(responsable__username__icontains=q)
+        ).distinct()
+        
+    return render(request, "users/lista_salas.html", {"salas": salas, "q": q})
 
 
 @login_required

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:dashboard_coordinador' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'jardines:lista_licencias' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Licencias</a>
+                </li>
+                <li class="breadcrumb-item active small text-uppercase fw-bold text-primary uppercase"
+                    aria-current="page">Detalle de Licencia</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold"><i class="fas fa-info-circle me-2 text-primary"></i>Detalle de Licencia</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark">Información General</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Docente con Licencia</label>
+                        <span class="fs-5 fw-bold text-dark">{{ licencia.docente.last_name }}, {{ licencia.docente.first_name }}</span>
+                        <small class="text-muted d-block">Usuario: {{ licencia.docente.username }}</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Tipo de Licencia</label>
+                        <span class="badge bg-primary bg-opacity-10 text-primary fs-6 fw-semibold border border-primary border-opacity-25 py-2 px-3">
+                            {{ licencia.get_tipo_licencia_display }}
+                        </span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Fecha Desde</label>
+                        <span class="fw-semibold text-dark"><i class="far fa-calendar-alt me-1 text-muted"></i>{{ licencia.fecha_desde|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Fecha Hasta</label>
+                        <span class="fw-semibold text-dark"><i class="far fa-calendar-alt me-1 text-muted"></i>{{ licencia.fecha_hasta|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Duración Total</label>
+                        <span class="badge bg-secondary-subtle text-secondary fs-6 fw-semibold py-2 px-3">{{ licencia.dias }} días</span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Docente Reemplazante</label>
+                        {% if licencia.reemplazante %}
+                        <span class="fw-semibold text-dark"><i class="fas fa-user-friends me-2 text-muted"></i>{{ licencia.reemplazante.get_full_name|default:licencia.reemplazante.username }}</span>
+                        {% else %}
+                        <span class="text-muted italic">Sin docente reemplazante asignado</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Motivo / Descripción</label>
+                        <div class="p-3 bg-light rounded border border-light-subtle text-dark" style="white-space: pre-line;">
+                            {{ licencia.motivo|default:"Sin descripción detallada." }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top border-light py-3 d-flex justify-content-between">
+                <div>
+                    <a href="{% url 'jardines:editar_licencia' licencia.id %}" class="btn btn-warning rounded-pill px-4 me-2">
+                        <i class="fas fa-edit me-1"></i>Editar
+                    </a>
+                    <a href="{% url 'jardines:eliminar_licencia' licencia.id %}" class="btn btn-outline-danger rounded-pill px-4">
+                        <i class="fas fa-trash-alt me-1"></i>Eliminar
+                    </a>
+                </div>
+                <a href="{% url 'jardines:lista_licencias' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    Volver al Listado
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark">Información de Auditoría</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Registrado por</label>
+                    <span class="fw-semibold text-dark">{{ licencia.creado_por.get_full_name|default:licencia.creado_por.username|default:"Sistema" }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Fecha de Registro</label>
+                    <span class="text-dark">{{ licencia.created_at|date:"d/m/Y H:i" }} hs.</span>
+                </div>
+                <div>
+                    <label class="text-muted small text-uppercase fw-bold d-block mb-1">Última Modificación</label>
+                    <span class="text-dark">{{ licencia.updated_at|date:"d/m/Y H:i" }} hs.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

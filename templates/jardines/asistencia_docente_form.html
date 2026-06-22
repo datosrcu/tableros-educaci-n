@@ -50,25 +50,42 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-center" style="min-width: 450px;">
-                                <div class="btn-group w-100" role="group">
-                                    {% for val, label in ESTADO_CHOICES %}
-                                    <input type="radio" class="btn-check" name="estado_{{ item.docente.id }}" 
-                                           id="btn_{{ item.docente.id }}_{{ val }}" value="{{ val }}"
-                                           {% if item.asistencia and item.asistencia.estado == val %}checked{% endif %} required>
-                                    <label class="btn btn-outline-{% if val == 'P' %}success{% elif val == 'A' %}danger{% elif val == 'J' %}warning{% elif val == 'T' %}info{% else %}secondary{% endif %} py-2 px-1 text-center" 
-                                           for="btn_{{ item.docente.id }}_{{ val }}" style="flex: 1; font-size: 0.8rem;">
-                                        {{ label }}
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            <td>
-                                <input type="text" name="obs_{{ item.docente.id }}" 
-                                       class="form-control form-control-sm rounded-pill border-light bg-light" 
-                                       placeholder="Anotar motivo de demora o retiro..."
-                                       value="{{ item.asistencia.observaciones|default:'' }}">
-                            </td>
+                             <td class="text-center" style="min-width: 450px;">
+                                 {% if item.licencia or item.asistencia.estado == 'L' %}
+                                 <div class="d-flex align-items-center justify-content-center h-100">
+                                     <span class="badge bg-primary bg-opacity-15 text-primary fw-bold fs-6 py-2 px-4 rounded-pill border border-primary border-opacity-25 w-100">
+                                         <i class="fas fa-id-card-alt me-2"></i>Ausente por licencia {% if item.licencia %}({{ item.licencia.get_tipo_licencia_display }}){% endif %}
+                                     </span>
+                                     <input type="hidden" name="estado_{{ item.docente.id }}" value="L">
+                                 </div>
+                                 {% else %}
+                                 <div class="btn-group w-100" role="group">
+                                     {% for val, label in ESTADO_CHOICES %}
+                                     {% if val != 'L' %}
+                                     <input type="radio" class="btn-check" name="estado_{{ item.docente.id }}" 
+                                            id="btn_{{ item.docente.id }}_{{ val }}" value="{{ val }}"
+                                            {% if item.asistencia and item.asistencia.estado == val %}checked{% endif %} required>
+                                     <label class="btn btn-outline-{% if val == 'P' %}success{% elif val == 'A' %}danger{% elif val == 'J' %}warning{% elif val == 'T' %}info{% else %}secondary{% endif %} py-2 px-1 text-center" 
+                                            for="btn_{{ item.docente.id }}_{{ val }}" style="flex: 1; font-size: 0.8rem;">
+                                         {{ label }}
+                                     </label>
+                                     {% endif %}
+                                     {% endfor %}
+                                 </div>
+                                 {% endif %}
+                             </td>
+                             <td>
+                                 {% if item.licencia or item.asistencia.estado == 'L' %}
+                                 <input type="text" name="obs_{{ item.docente.id }}" 
+                                        class="form-control form-control-sm rounded-pill border-light bg-light text-muted" 
+                                        value="Ausente por licencia {% if item.licencia %}({{ item.licencia.get_tipo_licencia_display }}){% endif %}." readonly>
+                                 {% else %}
+                                 <input type="text" name="obs_{{ item.docente.id }}" 
+                                        class="form-control form-control-sm rounded-pill border-light bg-light" 
+                                        placeholder="Anotar motivo de demora o retiro..."
+                                        value="{{ item.asistencia.observaciones|default:'' }}">
+                                 {% endif %}
+                             </td>
                         </tr>
                         {% empty %}
                         <tr>

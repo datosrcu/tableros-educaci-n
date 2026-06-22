@@ -18,8 +18,24 @@
 <div style="display:none;">{% csrf_token %}</div>
 <div class="row mb-4">
   <div class="col-12">
-    <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 5px solid {% if fichado_hoy %}#10b981{% else %}#3b82f6{% endif %} !important;">
+    <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 5px solid {% if licencia_activa %}#8b5cf6{% elif fichado_hoy %}#10b981{% else %}#3b82f6{% endif %} !important;">
       <div class="card-body p-4">
+        {% if licencia_activa %}
+        <div class="d-flex align-items-center gap-4">
+          <div class="p-3 rounded-circle bg-purple bg-opacity-10 text-purple" style="background-color: #ede9fe; color: #7c3aed;">
+            <i class="fas fa-id-card-alt fa-2x"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h4 class="fw-bold mb-1 text-dark">Registro de Asistencia Diaria</h4>
+            <p class="mb-0" style="color: #7c3aed; font-weight: 600;">
+              <i class="fas fa-ban me-1"></i>Estás de licencia hoy &mdash; no podés registrar asistencia.
+            </p>
+          </div>
+          <span class="badge fs-6 py-2 px-4 rounded-pill" style="background-color: #ede9fe; color: #7c3aed; border: 1px solid #c4b5fd;">
+            <i class="fas fa-id-card-alt me-1"></i>Ausente por licencia
+          </span>
+        </div>
+        {% else %}
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
           <div class="d-flex align-items-center">
             <div class="p-3 rounded-circle me-3 {% if fichado_hoy %}bg-success bg-opacity-10 text-success{% else %}bg-primary bg-opacity-10 text-primary{% endif %}">
@@ -47,6 +63,7 @@
           <i class="fas fa-exclamation-triangle me-2"></i>
           <span></span>
         </div>
+        {% endif %}
       </div>
     </div>
   </div>
