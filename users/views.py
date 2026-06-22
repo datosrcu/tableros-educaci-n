@@ -23,7 +23,7 @@ from .forms import (
     RestablecerPasswordForm,
 )
 
-from jardines.models import Jardin, Programa, Subprograma, Sala
+from jardines.models import Jardin, Programa, Subprograma, Sala, AsignacionDocenteSala
 from alumnos.models import Alumno, Asistencia
 from users.models import Usuario, AccionAuditoria
 
@@ -107,11 +107,11 @@ def lista_salas(request):
     q = request.GET.get("q", "").strip()
     
     if user.es_admin() or not user.programas_asignados.exists():
-        salas = Sala.objects.select_related("jardin", "subprograma", "responsable").all()
+        salas = Sala.objects.select_related("jardin").prefetch_related("asignaciones_docentes__docente", "subprograma", "responsable").all()
     else:
         salas = Sala.objects.filter(
             jardin__programa__in=user.programas_asignados.all()
-        ).select_related("jardin", "subprograma", "responsable")
+        ).select_related("jardin", "subprograma", "responsable").prefetch_related("asignaciones_docentes__docente")
         
     if q:
         salas = salas.filter(
@@ -371,6 +371,7 @@ def asignar_docentes_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
     user = request.user
 
+    # 🔒 Validación de permisos
     if not user.es_admin() and user.programas_asignados.exists():
         if sala.jardin.programa not in user.programas_asignados.all():
             raise PermissionDenied("No tiene permiso para asignar docentes en esta sala.")
@@ -379,26 +380,74 @@ def asignar_docentes_sala(request, sala_id):
     if not request.user.es_admin() and sala.jardin.programa not in request.user.programas_asignados.all():
         raise PermissionDenied("No tiene permiso para gestionar esta sala.")
 
-    if request.method == "POST":
-        form = AsignarDocentesSalaForm(request.POST, instance=sala, user=request.user)
-        if form.is_valid():
-            # 🔒 Validación defensiva
-            docentes = form.cleaned_data["docentes"]
-            for docente in docentes:
-                if docente.rol != "docente":
-                    raise PermissionDenied("Solo se pueden asignar usuarios con rol docente.")
+    # Obtener docentes asignados a esta sala
+    docentes_asignados = sala.docentes.all().order_by("last_name", "first_name")
+    
+    # Obtener asignaciones actuales (con días)
+    asignaciones = sala.asignaciones_docentes.select_related("docente")
+    docentes_asignados_dict = {a.docente_id: a for a in asignaciones}
 
-            form.save()
-            return redirect("users:lista_salas")
-    else:
-        form = AsignarDocentesSalaForm(instance=sala, user=request.user)
+    if request.method == "POST":
+        # Crear o actualizar las asignaciones marcadas
+        for docente in docentes_asignados:
+            lunes = request.POST.get(f"lunes_{docente.id}") == "on"
+            martes = request.POST.get(f"martes_{docente.id}") == "on"
+            miercoles = request.POST.get(f"miercoles_{docente.id}") == "on"
+            jueves = request.POST.get(f"jueves_{docente.id}") == "on"
+            viernes = request.POST.get(f"viernes_{docente.id}") == "on"
+            sabado = request.POST.get(f"sabado_{docente.id}") == "on"
+            domingo = request.POST.get(f"domingo_{docente.id}") == "on"
+
+            AsignacionDocenteSala.objects.update_or_create(
+                sala=sala,
+                docente=docente,
+                defaults={
+                    "lunes": lunes,
+                    "martes": martes,
+                    "miercoles": miercoles,
+                    "jueves": jueves,
+                    "viernes": viernes,
+                    "sabado": sabado,
+                    "domingo": domingo,
+                }
+            )
+
+        # Registrar acción en auditoría
+        nombres = ", ".join([f"{u.first_name} {u.last_name}" for u in docentes_asignados])
+        desc = f"Docentes asignados a la sala '{sala.nombre}': [{nombres}] con días específicos."
+        AccionAuditoria.objects.create(
+            usuario=request.user,
+            accion="asignacion",
+            modelo="Sala",
+            objeto_id=sala.id,
+            descripcion=desc
+        )
+
+        messages.success(request, f"Las asignaciones de docentes para la sala '{sala.nombre}' fueron actualizadas.")
+        return redirect("users:lista_salas")
+
+    # Preparar datos para el listado en la plantilla (solo los docentes de la sala)
+    docente_list = []
+    for docente in docentes_asignados:
+        asignacion = docentes_asignados_dict.get(docente.id)
+        docente_list.append({
+            'docente': docente,
+            'asignado': True,
+            'lunes': asignacion.lunes if asignacion else True,
+            'martes': asignacion.martes if asignacion else True,
+            'miercoles': asignacion.miercoles if asignacion else True,
+            'jueves': asignacion.jueves if asignacion else True,
+            'viernes': asignacion.viernes if asignacion else True,
+            'sabado': asignacion.sabado if asignacion else False,
+            'domingo': asignacion.domingo if asignacion else False,
+        })
 
     return render(
         request,
         "users/asignar_docentes_sala.html",
         {
-            "form": form,
             "sala": sala,
+            "docente_list": docente_list,
         },
     )
 
@@ -536,13 +585,28 @@ def exportar_salas_csv(request):
 
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+        salas = Sala.objects.all().select_related('jardin').prefetch_related('asignaciones_docentes__docente').order_by('jardin__nombre', 'nombre')
     else:
-        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related('jardin').prefetch_related('asignaciones_docentes__docente').order_by('jardin__nombre', 'nombre')
 
     for sala in salas:
         horario = f"{sala.horario_inicio.strftime('%H:%M')} a {sala.horario_fin.strftime('%H:%M')}"
-        docentes = " - ".join([f"{d.last_name}, {d.first_name}" for d in sala.docentes.all()])
+        
+        docentes_list = []
+        for asignacion in sala.asignaciones_docentes.all():
+            d = asignacion.docente
+            dias = []
+            if asignacion.lunes: dias.append("L")
+            if asignacion.martes: dias.append("M")
+            if asignacion.miercoles: dias.append("M")
+            if asignacion.jueves: dias.append("J")
+            if asignacion.viernes: dias.append("V")
+            if asignacion.sabado: dias.append("S")
+            if asignacion.domingo: dias.append("D")
+            dias_str = "".join(dias)
+            docentes_list.append(f"{d.last_name}, {d.first_name} ({dias_str})")
+        docentes = " - ".join(docentes_list)
+        
         writer.writerow([sala.nombre, sala.get_turno_display(), horario, sala.jardin.nombre, docentes])
     return response
 
@@ -551,9 +615,9 @@ def exportar_salas_csv(request):
 def imprimir_salas(request):
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        salas = Sala.objects.all().select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+        salas = Sala.objects.all().select_related('jardin').prefetch_related('asignaciones_docentes__docente').order_by('jardin__nombre', 'nombre')
     else:
-        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related('jardin').prefetch_related('docentes').order_by('jardin__nombre', 'nombre')
+        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related('jardin').prefetch_related('asignaciones_docentes__docente').order_by('jardin__nombre', 'nombre')
     return render(request, "users/imprimir_salas.html", {
         "salas": salas,
         "fecha": date.today()

@@ -162,5 +162,24 @@ class AsistenciaDocenteTestCase(TestCase):
         self.assertIn(self.docente, docentes_en_resumen)
         self.assertIn(docente_sin_sala, docentes_en_resumen)
 
+    def test_inicializar_asistencia_diaria_does_not_overwrite(self):
+        # 1. Inicializar la asistencia del docente hoy
+        inicializar_asistencia_diaria(self.docente)
+        hoy = timezone.now().date()
+        asistencia = AsistenciaDocente.objects.get(docente=self.docente, fecha=hoy)
+        
+        # 2. Simular el fichaje del docente
+        asistencia.fichado = True
+        asistencia.estado = 'P'
+        asistencia.save()
+        
+        # 3. Llamar a inicializar de nuevo (lo que ocurre cuando el dashboard recarga)
+        inicializar_asistencia_diaria(self.docente)
+        
+        # 4. Verificar que no se ha sobrescrito el fichaje
+        asistencia_despues = AsistenciaDocente.objects.get(docente=self.docente, fecha=hoy)
+        self.assertTrue(asistencia_despues.fichado)
+        self.assertEqual(asistencia_despues.estado, 'P')
+
 
 

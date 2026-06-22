@@ -603,12 +603,14 @@ def cargar_asistencia(request, sala_id):
         raise PermissionDenied
 
     # Determinar la fecha de carga (default hoy)
-    fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
-
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
+    if user.rol == "docente":
         fecha = date.today()
+    else:
+        fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = date.today()
 
     alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
     motivos = MotivoJustificacion.objects.all()

@@ -112,6 +112,33 @@ class Jardin(models.Model):
     def __str__(self):
         return self.nombre
 
+class AsignacionDocenteSala(models.Model):
+    docente = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="asignaciones_salas"
+    )
+    sala = models.ForeignKey(
+        "Sala",
+        on_delete=models.CASCADE,
+        related_name="asignaciones_docentes"
+    )
+    lunes = models.BooleanField(default=True, verbose_name="Lunes")
+    martes = models.BooleanField(default=True, verbose_name="Martes")
+    miercoles = models.BooleanField(default=True, verbose_name="Miércoles")
+    jueves = models.BooleanField(default=True, verbose_name="Jueves")
+    viernes = models.BooleanField(default=True, verbose_name="Viernes")
+    sabado = models.BooleanField(default=False, verbose_name="Sábado")
+    domingo = models.BooleanField(default=False, verbose_name="Domingo")
+
+    class Meta:
+        unique_together = ("docente", "sala")
+        verbose_name = "Asignación de Docente a Sala"
+        verbose_name_plural = "Asignaciones de Docentes a Salas"
+
+    def __str__(self):
+        return f"{self.docente} en {self.sala}"
+
 class Sala(models.Model):
     """
     Unidad educativa mínima dentro de un Jardín. 
@@ -138,6 +165,7 @@ class Sala(models.Model):
 
     docentes = models.ManyToManyField(
         "users.Usuario",
+        through="AsignacionDocenteSala",
         related_name="salas_asignadas",
         blank=True,
     )
@@ -184,7 +212,7 @@ class Sala(models.Model):
 
         errors = {}
 
-        if not self.jardin:
+        if not self.jardin_id:
             errors["jardin"] = "La sala debe pertenecer a un jardín."
 
         if self.horario_inicio and self.horario_fin:
@@ -313,104 +341,18 @@ def inicializar_asistencia_diaria(user, request=None):
         obs_inicial = 'Registro inicializado por el sistema.'
 
     for jardin in jardines:
-        # Usar update_or_create en lugar de get_or_create para mayor control
-        asistencia, created = AsistenciaDocente.objects.update_or_create(
+        # Si ya existe asistencia para este docente en este jardin hoy, no la inicializamos/pisamos
+        if AsistenciaDocente.objects.filter(docente=user, jardin=jardin, fecha=hoy).exists():
+            continue
+            
+        AsistenciaDocente.objects.create(
             docente=user,
             jardin=jardin,
             fecha=hoy,
-            defaults={
-                'hora_ingreso': None,
-                'ip_address': ip,
-                'fuera_de_jornada': es_fuera_de_jornada,
-                'estado': estado_inicial,
-                'fichado': False,  # Asegurar que está incluido
-                'observaciones': obs_inicial
-            }
+            hora_ingreso=None,
+            ip_address=ip,
+            fuera_de_jornada=es_fuera_de_jornada,
+            estado='A',  # Empieza en Ausente hasta que fiche
+            fichado=False,
+            observaciones='Registro inicializado por el sistema.'
         )
-
-
-class LicenciaDocente(models.Model):
-    TIPO_CHOICES = [
-        ('enfermedad', 'Enfermedad'),
-        ('maternidad_paternidad', 'Maternidad / Paternidad'),
-        ('familiar_cargo', 'Familiar a cargo'),
-        ('estudio_capacitacion', 'Estudio y capacitación'),
-        ('razones_particulares', 'Razones particulares'),
-        ('duelo', 'Duelo'),
-        ('matrimonio', 'Matrimonio'),
-        ('sangre_organos', 'Donación de sangre u órganos'),
-        ('gremial', 'Gremial'),
-        ('otro', 'Otro'),
-    ]
-
-    docente = models.ForeignKey(
-        "users.Usuario",
-        on_delete=models.CASCADE,
-        related_name="licencias",
-        verbose_name="Docente"
-    )
-    tipo_licencia = models.CharField(
-        max_length=50,
-        choices=TIPO_CHOICES,
-        verbose_name="Tipo de licencia"
-    )
-    motivo = models.TextField(
-        verbose_name="Motivo / Descripción"
-    )
-    fecha_desde = models.DateField(
-        verbose_name="Fecha desde"
-    )
-    fecha_hasta = models.DateField(
-        verbose_name="Fecha hasta"
-    )
-    reemplazante = models.ForeignKey(
-        "users.Usuario",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="reemplazos",
-        verbose_name="Docente reemplazante"
-    )
-    creado_por = models.ForeignKey(
-        "users.Usuario",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="licencias_creadas"
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Licencia de Docente"
-        verbose_name_plural = "Licencias de Docentes"
-        ordering = ["-fecha_desde", "docente__last_name"]
-
-    def clean(self):
-        super().clean()
-        if self.fecha_desde and self.fecha_hasta:
-            if self.fecha_hasta < self.fecha_desde:
-                raise ValidationError({
-                    "fecha_hasta": "La fecha hasta debe ser posterior o igual a la fecha desde."
-                })
-        
-        # Validar que docente y reemplazante no sean el mismo
-        if self.docente and self.reemplazante and self.docente == self.reemplazante:
-            raise ValidationError({
-                "reemplazante": "El docente reemplazante no puede ser la misma persona con licencia."
-            })
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
-
-    @classmethod
-    def obtener_licencia_activa(cls, docente, fecha):
-        return cls.objects.filter(
-            docente=docente,
-            fecha_desde__lte=fecha,
-            fecha_hasta__gte=fecha
-        ).first()
-
-    def __str__(self):
-        return f"Licencia de {self.docente} ({self.fecha_desde} al {self.fecha_hasta})"

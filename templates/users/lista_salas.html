@@ -81,24 +81,26 @@
                                 {{ s.horario_inicio|time:"H:i" }} - {{ s.horario_fin|time:"H:i" }}
                             </small>
                         </div>
-                        <div class="mt-2 d-flex gap-1">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.lunes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Lunes">L</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.martes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Martes">M</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.miercoles %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Miércoles">M</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.jueves %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Jueves">J</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.viernes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Viernes">V</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.sabado %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Sábado">S</span>
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if s.domingo %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 18px; height: 18px; font-size: 0.65rem;" title="Domingo">D</span>
-                        </div>
                     </td>
                     <td>
-                        {% if s.responsable %}
-                        <div class="small fw-semibold">
-                            {{ s.responsable.get_full_name|default:s.responsable.username }}
+                        {% for asignacion in s.asignaciones_docentes.all %}
+                        <div class="mb-2">
+                            <span class="small fw-semibold text-dark d-block">
+                                {{ asignacion.docente.last_name }}, {{ asignacion.docente.first_name }}
+                            </span>
+                            <div class="d-flex gap-1 mt-1">
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.lunes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Lunes">L</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.martes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Martes">M</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.miercoles %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Miércoles">M</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.jueves %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Jueves">J</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.viernes %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Viernes">V</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.sabado %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Sábado">S</span>
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold {% if asignacion.domingo %}bg-primary text-white{% else %}bg-light text-muted border{% endif %}" style="width: 16px; height: 16px; font-size: 0.6rem;" title="Domingo">D</span>
+                            </div>
                         </div>
-                        {% else %}
+                        {% empty %}
                         <span class="text-muted small italic">Sin asignar</span>
-                        {% endif %}
+                        {% endfor %}
                     </td>
                     <td class="text-end pe-4">
                         <div class="btn-group">

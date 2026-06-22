@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import Usuario
-from jardines.models import Jardin, Programa, Subprograma, Sala
+from jardines.models import Jardin, Programa, Subprograma, Sala, AsignacionDocenteSala
 
 
 # =====================================================
@@ -278,6 +278,12 @@ class SubprogramaForm(forms.ModelForm):
 # =====================================================
 
 class SalaForm(forms.ModelForm):
+    docentes = forms.ModelMultipleChoiceField(
+        queryset=Usuario.objects.filter(rol="docente", is_active=True),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Docentes"
+    )
 
     class Meta:
         model = Sala
@@ -288,15 +294,7 @@ class SalaForm(forms.ModelForm):
             "turno",
             "horario_inicio",
             "horario_fin",
-            "docentes",
             "responsable",
-            "lunes",
-            "martes",
-            "miercoles",
-            "jueves",
-            "viernes",
-            "sabado",
-            "domingo",
         )
         labels = {
             "responsable": "Docente",
@@ -305,18 +303,20 @@ class SalaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        
+        # Cargar docentes asignados inicialmente
+        if self.instance and self.instance.pk:
+            self.initial["docentes"] = self.instance.docentes.all()
+
+        # Filtrar responsables y docentes a los de la jurisdicción del coordinador
         if user and not user.es_admin() and user.programas_asignados.exists():
             programas = user.programas_asignados.all()
             if "jardin" in self.fields:
                 self.fields["jardin"].queryset = Jardin.objects.filter(programa__in=programas)
             if "subprograma" in self.fields:
                 self.fields["subprograma"].queryset = Subprograma.objects.filter(programa__in=programas)
-            # Filtrar docentes y responsables a los de la jurisdicción del coordinador
+            
             from django.db.models import Q as Qlocal
-            self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente").filter(
-                Qlocal(salas_asignadas__jardin__programa__in=programas) |
-                Qlocal(salas_asignadas__isnull=True)
-            ).distinct()
             self.fields["responsable"].queryset = Usuario.objects.filter(
                 rol__in=["docente", "coordinador"]
             ).filter(
@@ -324,17 +324,20 @@ class SalaForm(forms.ModelForm):
                 Qlocal(programas_asignados__in=programas) |
                 Qlocal(rol="docente", salas_asignadas__isnull=True)
             ).distinct()
-
+            
+            self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente", is_active=True).filter(
+                Qlocal(salas_asignadas__jardin__programa__in=programas) |
+                Qlocal(salas_asignadas__isnull=True)
+            ).distinct()
 
     def clean_docentes(self):
         docentes = self.cleaned_data.get("docentes")
-
-        for docente in docentes:
-            if docente.rol != "docente":
-                raise ValidationError(
-                    "Solo usuarios con rol docente pueden asignarse."
-                )
-
+        if docentes:
+            for docente in docentes:
+                if docente.rol != "docente":
+                    raise ValidationError(
+                        "Solo usuarios con rol docente pueden asignarse."
+                    )
         return docentes
 
     def clean_responsable(self):
@@ -346,6 +349,41 @@ class SalaForm(forms.ModelForm):
             )
 
         return responsable
+
+    def save(self, commit=True):
+        sala = super().save(commit=False)
+        if commit:
+            sala.save()
+            self.save_docentes(sala)
+        else:
+            original_save_m2m = self.save_m2m
+            def custom_save_m2m():
+                original_save_m2m()
+                self.save_docentes(sala)
+            self.save_m2m = custom_save_m2m
+        return sala
+
+    def save_docentes(self, sala):
+        new_docentes = self.cleaned_data.get("docentes", [])
+        # Eliminar docentes desasignados (evaluando los IDs en memoria para evitar el error 1093 de MySQL)
+        ids_a_eliminar = list(sala.asignaciones_docentes.exclude(docente__in=new_docentes).values_list('id', flat=True))
+        if ids_a_eliminar:
+            sala.asignaciones_docentes.filter(id__in=ids_a_eliminar).delete()
+        # Crear asignaciones para nuevos docentes (con días por defecto basados en la sala)
+        for docente in new_docentes:
+            AsignacionDocenteSala.objects.get_or_create(
+                sala=sala,
+                docente=docente,
+                defaults={
+                    "lunes": sala.lunes,
+                    "martes": sala.martes,
+                    "miercoles": sala.miercoles,
+                    "jueves": sala.jueves,
+                    "viernes": sala.viernes,
+                    "sabado": sala.sabado,
+                    "domingo": sala.domingo,
+                }
+            )
 
 
 # =====================================================
