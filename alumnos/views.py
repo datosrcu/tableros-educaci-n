@@ -6,6 +6,7 @@ el registro de asistencia diaria y la exportación de reportes.
 import csv
 import calendar
 from datetime import date, datetime
+from django.utils import timezone
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -615,24 +616,26 @@ def cargar_asistencia(request, sala_id):
     else:
         raise PermissionDenied
 
-    # Determinar la fecha de carga (default hoy)
-    if user.rol == "docente":
-        fecha = date.today()
-    else:
-        fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
+    # Determinar la fecha de carga (default hoy local)
+    fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
+    if fecha_str:
         try:
             fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
         except Exception:
-            fecha = date.today()
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
-    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True).order_by("apellido", "nombre")
     motivos = MotivoJustificacion.objects.all()
 
     if request.method == "POST":
         from django.contrib import messages
         try:
             for alumno in alumnos:
-                estado = request.POST.get(f"estado_{alumno.id}", "P")
+                estado = request.POST.get(f"estado_{alumno.id}")
+                if not estado:
+                    continue
                 motivo_id = request.POST.get(f"motivo_{alumno.id}")
                 observaciones = request.POST.get(f"observaciones_{alumno.id}", "").strip()
                 
@@ -653,7 +656,7 @@ def cargar_asistencia(request, sala_id):
                         "docente": request.user
                     }
                 )
-            messages.success(request, f"Asistencia del {fecha} guardada correctamente.")
+            messages.success(request, f"Asistencia del {fecha.strftime('%d/%m/%Y')} guardada correctamente.")
             from django.urls import reverse
             return redirect(f"{reverse('alumnos:cargar_asistencia', args=[sala.id])}?fecha={fecha.strftime('%Y-%m-%d')}")
         except ValidationError as e:
@@ -696,12 +699,17 @@ def ver_asistencias(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
-    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos_base = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos_con_asistencia = Alumno.objects.filter(asistencias__sala=sala, asistencias__fecha=fecha)
+    alumnos = (alumnos_base | alumnos_con_asistencia).distinct().order_by("apellido", "nombre")
 
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos,
@@ -892,10 +900,13 @@ def exportar_asistencias_csv(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="asistencias_{sala.nombre}_{fecha}.csv"'
@@ -930,10 +941,13 @@ def imprimir_asistencias_sala(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
     alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True).order_by('apellido')
     asistencias = Asistencia.objects.filter(alumno__in=alumnos, fecha=fecha, sala=sala).select_related('motivo')

@@ -72,12 +72,12 @@
                   </td>
                   <td>{{ item.alumno.dni }}</td>
                   <td>
-                    <select name="estado_{{ item.alumno.id }}" id="estado_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill estado-select" data-alumno="{{ item.alumno.id }}">
-                      <option value="P" {% if item.asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
-                      <option value="A" {% if item.asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
-                      <option value="T" {% if item.asistencia.estado == 'T' %}selected{% endif %}>Llegada Tarde</option>
-                      <option value="R" {% if item.asistencia.estado == 'R' %}selected{% endif %}>Retiro Temprano</option>
-                      <option value="J" {% if item.asistencia.estado == 'J' %}selected{% endif %}>Justificado</option>
+                    <select name="estado_{{ item.alumno.id }}" id="estado_{{ item.alumno.id }}" class="form-select form-select-sm shadow-none border-light-subtle rounded-pill estado-select" data-alumno="{{ item.alumno.id }}" required>
+                      <option value="P" {% if not item.asistencia or item.asistencia.estado == 'P' %}selected{% endif %}>Presente</option>
+                      <option value="A" {% if item.asistencia and item.asistencia.estado == 'A' %}selected{% endif %}>Ausente</option>
+                      <option value="T" {% if item.asistencia and item.asistencia.estado == 'T' %}selected{% endif %}>Llegada Tarde</option>
+                      <option value="R" {% if item.asistencia and item.asistencia.estado == 'R' %}selected{% endif %}>Retiro Temprano</option>
+                      <option value="J" {% if item.asistencia and item.asistencia.estado == 'J' %}selected{% endif %}>Justificado</option>
                     </select>
                   </td>
                   <td>

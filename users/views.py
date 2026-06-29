@@ -1,6 +1,7 @@
 import csv
 import calendar
 from datetime import date, datetime, timedelta
+from django.utils import timezone
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -847,9 +848,9 @@ def reporte_asistencia_diaria(request):
         try:
             fecha_consulta = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         except ValueError:
-            fecha_consulta = date.today()
+            fecha_consulta = timezone.localdate()
     else:
-        fecha_consulta = date.today()
+        fecha_consulta = timezone.localdate()
 
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
@@ -887,7 +888,7 @@ def reporte_asistencia_mensual(request):
     """
     Genera la matriz de asistencia mensual por jardín.
     """
-    ahora = date.today()
+    ahora = timezone.localdate()
     mes = int(request.GET.get('mes', ahora.month))
     anio = int(request.GET.get('anio', ahora.year))
     
@@ -921,11 +922,12 @@ def reporte_asistencia_mensual(request):
         except (ValueError, TypeError):
             pass
     
-    # Data para la matriz
+    # Data para la matriz de presencias efectivas (excluye ausencias 'A')
     # { jardin_id: { dia: count } }
     asistencias = Asistencia.objects.filter(
         fecha__year=anio,
-        fecha__month=mes
+        fecha__month=mes,
+        estado__in=['P', 'T', 'R', 'J']
     ).values('sala__jardin_id', 'fecha').annotate(count=Count('id'))
     
     data_asistencia = {}
