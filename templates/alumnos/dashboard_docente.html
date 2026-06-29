@@ -36,27 +36,52 @@
           </span>
         </div>
         {% else %}
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-          <div class="d-flex align-items-center">
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex align-items-center mb-2">
             <div class="p-3 rounded-circle me-3 {% if fichado_hoy %}bg-success bg-opacity-10 text-success{% else %}bg-primary bg-opacity-10 text-primary{% endif %}">
               <i class="fas {% if fichado_hoy %}fa-calendar-check fa-2x{% else %}fa-map-marker-alt fa-2x{% endif %}"></i>
             </div>
             <div>
               <h4 class="fw-bold mb-1 text-dark">Registro de Asistencia Diaria</h4>
-              {% if fichado_hoy %}
-                <p class="text-success mb-0 fw-semibold"><i class="fas fa-check-circle me-1"></i> Asistencia registrada con éxito hoy a las {{ hora_fichada|time:"H:i" }} hs.</p>
-              {% else %}
-                <p class="text-muted mb-0">Para habilitar tu jornada de hoy, debés registrar tu asistencia usando tu ubicación actual.</p>
-              {% endif %}
+              <p class="text-muted mb-0">Registrá tu asistencia utilizando tu ubicación actual para cada turno asignado hoy.</p>
             </div>
           </div>
-          {% if not fichado_hoy %}
-            <div>
-              <button id="btn-registrar-asistencia" class="btn btn-primary btn-lg fw-bold px-4 py-2.5 transition-hover" style="border-radius: 12px; background-color: #3b82f6; border: none; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);">
-                <i class="fas fa-user-check me-2"></i> Registrar Asistencia
-              </button>
+
+          <div class="row g-3">
+            {% for t in turnos_hoy %}
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 border bg-white d-flex align-items-center justify-content-between">
+                <div>
+                  <span class="badge rounded-pill {% if t.turno == 'mañana' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} px-3 py-1 mb-1">
+                    <i class="fas {% if t.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
+                    Turno {{ t.turno_label }}
+                  </span>
+                  {% if t.fichado %}
+                    <div class="text-success small fw-semibold mt-1">
+                      <i class="fas fa-check-circle me-1"></i> Fichado a las {{ t.hora_fichada|time:"H:i" }} hs.
+                    </div>
+                  {% else %}
+                    <div class="text-muted small mt-1">Pendiente de fichada</div>
+                  {% endif %}
+                </div>
+
+                <div>
+                  {% if t.fichado %}
+                    <button class="btn btn-sm btn-outline-success rounded-pill px-3" disabled>
+                      <i class="fas fa-check me-1"></i> Registrado
+                    </button>
+                  {% else %}
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 btn-fichar-turno" data-turno="{{ t.turno }}">
+                      <i class="fas fa-user-check me-1"></i> Fichar {{ t.turno_label }}
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
             </div>
-          {% endif %}
+            {% empty %}
+            <div class="col-12 text-muted small">No hay turnos registrados para hoy.</div>
+            {% endfor %}
+          </div>
         </div>
         
         <div id="geolocation-error" class="alert alert-danger border-0 mt-3 d-none" role="alert" style="border-radius: 8px;">
@@ -134,12 +159,13 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    const btn = document.getElementById('btn-registrar-asistencia');
-    if (btn) {
+    const btns = document.querySelectorAll('.btn-fichar-turno');
+    btns.forEach(function(btn) {
         btn.addEventListener('click', function() {
+            const turno = btn.getAttribute('data-turno');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Obteniendo ubicación...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Ubicación...';
             
             const errorAlert = document.getElementById('geolocation-error');
             const errorText = errorAlert.querySelector('span');
@@ -148,7 +174,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!navigator.geolocation) {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                errorText.textContent = "Tu navegador no soporta la geolocalización o esta función está desactivada.";
+                errorText.textContent = "Tu navegador no soporta geolocalización o esta función está desactivada.";
                 errorAlert.classList.remove('d-none');
                 return;
             }
@@ -164,6 +190,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     const formData = new FormData();
                     formData.append('latitude', lat);
                     formData.append('longitude', lon);
+                    formData.append('turno', turno);
                     formData.append('csrfmiddlewaretoken', csrfToken);
                     
                     fetch("{% url 'jardines:registrar_asistencia_docente' %}", {
@@ -172,8 +199,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     })
                     .then(response => response.json().then(data => ({ status: response.status, body: data })))
                     .then(res => {
-                        if (res.status === 200 && res.body.status === "success") {
-                            alert("Asistencia registrada correctamente.");
+                        if (res.status === 200 && (res.body.status === "success" || res.body.status === "already")) {
+                            alert(res.body.message);
                             window.location.reload();
                         } else {
                             btn.disabled = false;
@@ -194,9 +221,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     btn.innerHTML = originalText;
                     let msg = "Para poder registrar la asistencia, debes permitir el acceso a tu ubicación.";
                     if (error.code === error.PERMISSION_DENIED) {
-                        msg = "Permiso de ubicación denegado. Para poder registrar asistencia (fichar) es obligatorio que habilites los permisos de ubicación en tu navegador para este sitio.";
+                        msg = "Permiso de ubicación denegado. Es obligatorio que habilites los permisos de ubicación en tu navegador.";
                     } else if (error.code === error.POSITION_UNAVAILABLE) {
-                        msg = "La ubicación no está disponible en este momento. Inténtalo de nuevo.";
+                        msg = "La ubicación no está disponible en este momento.";
                     } else if (error.code === error.TIMEOUT) {
                         msg = "Se agotó el tiempo de espera para obtener la ubicación.";
                     }
@@ -210,7 +237,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             );
         });
-    }
+    });
 });
 </script>
 <style>

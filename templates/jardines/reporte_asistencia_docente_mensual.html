@@ -37,7 +37,8 @@
             <table class="table table-bordered align-middle mb-0 text-center" style="font-size: 0.85rem;">
                 <thead class="bg-light">
                     <tr>
-                        <th class="text-start ps-4 py-3 bg-light position-sticky start-0 z-1" style="min-width: 250px;">Docente</th>
+                        <th class="text-start ps-4 py-3 bg-light position-sticky start-0 z-1" style="min-width: 220px;">Docente</th>
+                        <th class="py-3 bg-light" style="min-width: 100px;">Turno</th>
                         {% for dia in dias %}
                         <th class="py-2" style="min-width: 35px;">{{ dia }}</th>
                         {% endfor %}
@@ -51,6 +52,11 @@
                     <tr>
                         <td class="text-start ps-4 fw-bold text-dark bg-white position-sticky start-0 z-1 border-end shadow-sm-end">
                             {{ fila.docente.last_name }}, {{ fila.docente.first_name }}
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill {% if fila.turno == 'mañana' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} px-2 py-1">
+                                {{ fila.turno_str }}
+                            </span>
                         </td>
                         {% for celda in fila.celdas %}
                         <td class="p-1">

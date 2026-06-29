@@ -76,8 +76,8 @@ def validar_alumno_para_docente(user, alumno):
 @rol_requerido("docente")
 def dashboard_docente(request):
     """
-    Vista principal para el rol Docente. 
-    Muestra el listado de salas que tiene bajo su responsabilidad.
+    Vista principal para el rol Docente.
+    Muestra el listado de salas y un botón de fichada por cada turno que tiene hoy.
     """
     from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente
     from django.utils import timezone
@@ -85,7 +85,6 @@ def dashboard_docente(request):
     # Inicializar registros de asistencia de hoy si no existen
     inicializar_asistencia_diaria(request.user, request)
     
-    # Obtener registros de asistencia de hoy
     hoy = timezone.now().date()
     asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     
@@ -93,20 +92,24 @@ def dashboard_docente(request):
     licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
     licencia_activa = licencia is not None
     
-    fichado_hoy = False
-    hora_fichada = None
-    if asistencias_hoy.exists():
-        fichado_hoy = asistencias_hoy.filter(fichado=True).exists()
-        if fichado_hoy:
-            hora_fichada = asistencias_hoy.filter(fichado=True).first().hora_ingreso
+    # Construir lista de turnos del docente hoy con su estado de fichada
+    turnos_hoy = []
+    for asist in asistencias_hoy.order_by("turno"):
+        turnos_hoy.append({
+            "turno": asist.turno,
+            "turno_label": asist.get_turno_display() if asist.turno else "—",
+            "fichado": asist.fichado,
+            "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+            "estado": asist.estado,
+        })
+    
+    # Backwards-compat: fichado_hoy = True solo si fichó en TODOS los turnos
+    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     salas = (
         request.user.salas_asignadas
-        .select_related(
-            "jardin",
-            "jardin__programa",
-            "jardin__subprograma",
-        )
+        .select_related("jardin", "jardin__programa", "jardin__subprograma")
         .all()
     )
 
@@ -115,7 +118,8 @@ def dashboard_docente(request):
         "fichado_hoy": fichado_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
-        "tiene_jardines": asistencias_hoy.exists()
+        "tiene_jardines": asistencias_hoy.exists(),
+        "turnos_hoy": turnos_hoy,
     })
 
 
