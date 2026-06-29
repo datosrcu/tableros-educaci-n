@@ -437,38 +437,49 @@ def registrar_asistencia_docente(request):
             "message": f"No puede registrar asistencia porque se encuentra de licencia ({licencia.get_tipo_licencia_display()})."
         }, status=400)
 
-    # Turno: el docente puede enviarlo o se auto-detecta por hora (antes 13:00 → mañana, después → tarde)
+    # Turno, asistencia_id, jardin_id
+    asistencia_id = request.POST.get("asistencia_id")
+    jardin_id = request.POST.get("jardin_id")
     turno = request.POST.get("turno") or _turno_por_hora(hora)
 
     # Inicializar todos los registros del día si aún no existen
     inicializar_asistencia_diaria(request.user, request)
 
-    # Buscar el registro del turno que está fichando
-    try:
-        asist = AsistenciaDocente.objects.get(
-            docente=request.user, fecha=hoy, turno=turno
-        )
-    except AsistenciaDocente.DoesNotExist:
+    # Buscar los registros del turno / espacio que está fichando
+    asist_qs = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+    if asistencia_id:
+        asist_qs = asist_qs.filter(id=asistencia_id)
+    elif jardin_id:
+        asist_qs = asist_qs.filter(jardin_id=jardin_id, turno=turno)
+    else:
+        asist_qs = asist_qs.filter(turno=turno)
+
+    if not asist_qs.exists():
         return JsonResponse({
             "status": "error",
             "message": f"No tiene salas asignadas en el turno '{turno}' para registrar asistencia."
         }, status=400)
 
-    if asist.fichado:
+    # Si todos los registros encontrados ya fueron fichados
+    if not asist_qs.filter(fichado=False).exists():
+        asist_first = asist_qs.first()
+        turno_disp = asist_first.get_turno_display() if (asist_first and asist_first.turno) else turno
         return JsonResponse({
             "status": "already",
-            "message": f"Ya registraste tu asistencia del turno {asist.get_turno_display()} hoy."
+            "message": f"Ya registraste tu asistencia del turno {turno_disp} hoy."
         })
 
     try:
-        asist.fichado = True
-        asist.estado = 'P'
-        asist.hora_ingreso = hora
-        asist.ip_address = ip
-        asist.latitude = latitude
-        asist.longitude = longitude
-        asist.observaciones = f"Fichado por el docente el {hoy} a las {hora.strftime('%H:%M')} hs. (turno {asist.get_turno_display()})."
-        asist.save()
+        for asist in asist_qs.filter(fichado=False):
+            asist.fichado = True
+            asist.estado = 'P'
+            asist.hora_ingreso = hora
+            asist.ip_address = ip
+            asist.latitude = latitude
+            asist.longitude = longitude
+            turno_disp = asist.get_turno_display() if asist.turno else turno
+            asist.observaciones = f"Fichado por el docente el {hoy} a las {hora.strftime('%H:%M')} hs. (turno {turno_disp})."
+            asist.save()
     except ValidationError as e:
         error_msg = ", ".join(e.messages) if hasattr(e, "messages") else str(e)
         return JsonResponse({"status": "error", "message": f"Error de validación: {error_msg}"}, status=400)
@@ -481,8 +492,10 @@ def registrar_asistencia_docente(request):
         descripcion=f"Fichó asistencia ({turno}) el {hoy.strftime('%d/%m/%Y')} a las {hora.strftime('%H:%M:%S')} hs. IP: {ip}"
     )
     
+    asist_ref = asist_qs.first()
+    turno_final = asist_ref.get_turno_display() if (asist_ref and asist_ref.turno) else turno
     return JsonResponse({
         "status": "success",
-        "message": f"Asistencia del turno {asist.get_turno_display()} registrada correctamente.",
+        "message": f"Asistencia del turno {turno_final} registrada correctamente.",
         "turno": turno
     })

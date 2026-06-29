@@ -107,6 +107,8 @@ def dashboard_docente(request):
         salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
         
         turnos_hoy.append({
+            "asistencia_id": asist.id,
+            "jardin_id": asist.jardin_id,
             "turno": asist.turno,
             "turno_label": asist.get_turno_display() if asist.turno else "—",
             "fichado": asist.fichado,
