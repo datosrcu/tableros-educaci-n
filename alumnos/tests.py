@@ -95,8 +95,7 @@ class AlumnoTutorTest(TestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 302)
         
-        # Debe haberse registrado con la fecha de hoy, no la enviada en el formulario
-        hoy = date.today()
-        asistencia = Asistencia.objects.get(alumno=alumno, fecha=hoy)
+        # Debe haberse registrado con la fecha enviada en el formulario
+        asistencia = Asistencia.objects.get(alumno=alumno, fecha='2026-02-18')
         self.assertEqual(asistencia.estado, 'J')
         self.assertEqual(asistencia.motivo, motivo)

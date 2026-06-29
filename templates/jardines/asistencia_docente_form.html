@@ -32,6 +32,7 @@
                     <thead class="bg-light">
                         <tr class="micro-text uppercase fw-bold text-muted border-0">
                             <th class="ps-4 py-3">Docente</th>
+                            <th class="py-3">Turno</th>
                             <th class="py-3 text-center">Estado</th>
                             <th class="py-3">Observaciones / Aclaraciones</th>
                         </tr>
@@ -50,29 +51,52 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-center" style="min-width: 450px;">
+                            <td>
+                                <span class="badge rounded-pill {% if item.turno == 'mañana' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} px-3 py-2">
+                                    <i class="fas {% if item.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
+                                    {{ item.turno_label }}
+                                </span>
+                            </td>
+                            <td class="text-center" style="min-width: 400px;">
+                                {% if item.licencia or item.asistencia.estado == 'L' %}
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <span class="badge bg-primary bg-opacity-15 text-primary fw-bold fs-6 py-2 px-4 rounded-pill border border-primary border-opacity-25 w-100">
+                                        <i class="fas fa-id-card-alt me-2"></i>Ausente por licencia {% if item.licencia %}({{ item.licencia.get_tipo_licencia_display }}){% endif %}
+                                    </span>
+                                    <input type="hidden" name="estado_{{ item.docente.id }}_{{ item.turno }}" value="L">
+                                </div>
+                                {% else %}
                                 <div class="btn-group w-100" role="group">
                                     {% for val, label in ESTADO_CHOICES %}
-                                    <input type="radio" class="btn-check" name="estado_{{ item.docente.id }}" 
-                                           id="btn_{{ item.docente.id }}_{{ val }}" value="{{ val }}"
+                                    {% if val != 'L' %}
+                                    <input type="radio" class="btn-check" name="estado_{{ item.docente.id }}_{{ item.turno }}"
+                                           id="btn_{{ item.docente.id }}_{{ item.turno }}_{{ val }}" value="{{ val }}"
                                            {% if item.asistencia and item.asistencia.estado == val %}checked{% endif %} required>
-                                    <label class="btn btn-outline-{% if val == 'P' %}success{% elif val == 'A' %}danger{% elif val == 'J' %}warning{% elif val == 'T' %}info{% else %}secondary{% endif %} py-2 px-1 text-center" 
-                                           for="btn_{{ item.docente.id }}_{{ val }}" style="flex: 1; font-size: 0.8rem;">
+                                    <label class="btn btn-outline-{% if val == 'P' %}success{% elif val == 'A' %}danger{% elif val == 'J' %}warning{% elif val == 'T' %}info{% else %}secondary{% endif %} py-2 px-1 text-center"
+                                           for="btn_{{ item.docente.id }}_{{ item.turno }}_{{ val }}" style="flex: 1; font-size: 0.8rem;">
                                         {{ label }}
                                     </label>
+                                    {% endif %}
                                     {% endfor %}
                                 </div>
+                                {% endif %}
                             </td>
                             <td>
-                                <input type="text" name="obs_{{ item.docente.id }}" 
-                                       class="form-control form-control-sm rounded-pill border-light bg-light" 
+                                {% if item.licencia or item.asistencia.estado == 'L' %}
+                                <input type="text" name="obs_{{ item.docente.id }}_{{ item.turno }}"
+                                       class="form-control form-control-sm rounded-pill border-light bg-light text-muted"
+                                       value="Ausente por licencia {% if item.licencia %}({{ item.licencia.get_tipo_licencia_display }}){% endif %}." readonly>
+                                {% else %}
+                                <input type="text" name="obs_{{ item.docente.id }}_{{ item.turno }}"
+                                       class="form-control form-control-sm rounded-pill border-light bg-light"
                                        placeholder="Anotar motivo de demora o retiro..."
                                        value="{{ item.asistencia.observaciones|default:'' }}">
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-center py-5 text-muted">
+                            <td colspan="4" class="text-center py-5 text-muted">
                                 <i class="fas fa-user-slash fa-2x mb-3 opacity-25"></i>
                                 <p>No hay docentes asignados a las salas de este espacio.</p>
                             </td>
@@ -93,13 +117,13 @@
 </div>
 
 <style>
-    .btn-group .btn {
-        border-width: 1px;
-    }
+    .btn-group .btn { border-width: 1px; }
     .btn-check:checked + .btn-outline-success { background-color: #198754; color: white; }
-    .btn-check:checked + .btn-outline-danger { background-color: #dc3545; color: white; }
+    .btn-check:checked + .btn-outline-danger  { background-color: #dc3545; color: white; }
     .btn-check:checked + .btn-outline-warning { background-color: #ffc107; color: #000; }
-    .btn-check:checked + .btn-outline-info { background-color: #0dcaf0; color: #000; }
+    .btn-check:checked + .btn-outline-info    { background-color: #0dcaf0; color: #000; }
     .btn-check:checked + .btn-outline-secondary { background-color: #6c757d; color: white; }
+    .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+    .micro-text { font-size: 0.75rem; }
 </style>
 {% endblock %}

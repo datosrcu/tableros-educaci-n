@@ -1,4 +1,6 @@
-#!/home/usuario/sistema-jardines/env/bin/python3
+#!/bin/sh
+'''exec' "/home/usuario/Documentos/control asistencia educacion/control_asistencia_educacion/env/bin/python3" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys

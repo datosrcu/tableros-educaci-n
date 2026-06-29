@@ -76,7 +76,7 @@ class AsistenciaDocenteTestCase(TestCase):
         # Verificar que se creó la auditoría
         audits = AccionAuditoria.objects.filter(usuario=self.docente, modelo="AsistenciaDocente")
         self.assertEqual(audits.count(), 1)
-        self.assertIn("Registró asistencia docente", audits.first().descripcion)
+        self.assertIn("Fichó asistencia", audits.first().descripcion)
 
     def test_registrar_asistencia_docente_missing_coords(self):
         self.client.login(username="docentetested", password="testpassword")

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_licencias
 
 app_name = "jardines"
 
@@ -16,5 +17,14 @@ urlpatterns = [
     path("asistencia/reporte-mensual/", views.reporte_asistencia_docente_mensual, name="reporte_asistencia_docente_mensual"),
     path("asistencia/resumen-diario/", views.resumen_actividad_docente, name="resumen_actividad_docente"),
     path("asistencia/registrar-fichada/", views.registrar_asistencia_docente, name="registrar_asistencia_docente"),
+
+    # Licencias Docentes
+    path("licencias/", views_licencias.lista_licencias, name="lista_licencias"),
+    path("licencias/crear/", views_licencias.crear_licencia, name="crear_licencia"),
+    path("licencias/<int:pk>/", views_licencias.ver_detalle_licencia, name="ver_detalle_licencia"),
+    path("licencias/<int:pk>/editar/", views_licencias.editar_licencia, name="editar_licencia"),
+    path("licencias/<int:pk>/eliminar/", views_licencias.eliminar_licencia, name="eliminar_licencia"),
+    path("licencias/exportar/", views_licencias.exportar_licencias_excel, name="exportar_licencias"),
+    path("licencias/reporte/", views_licencias.reporte_licencias, name="reporte_licencias"),
 ]
 

@@ -63,7 +63,8 @@ def lista_jardines_asistencia(request):
 @rol_requerido("coordinador", "administrador")
 def cargar_asistencia_docente(request, jardin_id):
     """
-    Carga masiva de asistencia para los docentes de un jardín específico.
+    Carga masiva de asistencia para los docentes de un jardín.
+    Muestra una fila por (docente, turno) para que cada turno tenga su propio estado.
     """
     jardin = get_object_or_404(Jardin, id=jardin_id)
 
@@ -74,21 +75,37 @@ def cargar_asistencia_docente(request, jardin_id):
     fecha_str = request.GET.get("fecha", str(timezone.localtime(timezone.now()).date()))
     fecha = date.fromisoformat(fecha_str)
 
-    # Obtenemos los docentes vinculados a las salas de este jardín
-    docentes = Usuario.objects.filter(
-        salas_asignadas__jardin=jardin, 
-        rol="docente"
-    ).distinct().order_by("last_name")
+    # Obtener todos los pares únicos (docente, turno) asignados a salas de este jardín
+    from .models import LicenciaDocente
+    salas = Sala.objects.filter(jardin=jardin).prefetch_related("docentes")
+    
+    # Construir lista de (docente, turno) únicos ordenada por docente y turno
+    pares = {}  # { (docente_id, turno): docente_obj }
+    for sala in salas:
+        for docente in sala.docentes.filter(rol="docente"):
+            key = (docente.id, sala.turno)
+            if key not in pares:
+                pares[key] = (docente, sala.turno)
+    pares_lista = sorted(pares.values(), key=lambda x: (x[0].last_name, x[0].first_name, x[1] or ""))
 
     if request.method == "POST":
-        for docente in docentes:
-            estado = request.POST.get(f"estado_{docente.id}")
-            observaciones = request.POST.get(f"obs_{docente.id}", "")
+        for docente, turno in pares_lista:
+            campo = f"estado_{docente.id}_{turno}"
+            obs_campo = f"obs_{docente.id}_{turno}"
+            estado = request.POST.get(campo)
+            observaciones = request.POST.get(obs_campo, "")
+            
+            # Forzar 'L' si tiene licencia activa
+            licencia = LicenciaDocente.obtener_licencia_activa(docente, fecha)
+            if licencia:
+                estado = 'L'
+                observaciones = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
             
             if estado:
                 AsistenciaDocente.objects.update_or_create(
                     docente=docente,
                     jardin=jardin,
+                    turno=turno,
                     fecha=fecha,
                     defaults={
                         "estado": estado,
@@ -97,21 +114,22 @@ def cargar_asistencia_docente(request, jardin_id):
                     }
                 )
         
-        messages.success(request, f"Asistencia docente del {fecha} guardada correctamente.")
+        messages.success(request, f"Asistencia docente del {fecha.strftime('%d/%m/%Y')} guardada correctamente.")
         return redirect("jardines:cargar_asistencia_docente", jardin_id=jardin.id)
 
     # Buscar asistencias ya cargadas para esta fecha
-    asistencias_existentes = AsistenciaDocente.objects.filter(
-        jardin=jardin, 
-        fecha=fecha
-    )
-    asistencias_dict = {a.docente_id: a for a in asistencias_existentes}
+    asistencias_existentes = AsistenciaDocente.objects.filter(jardin=jardin, fecha=fecha)
+    asistencias_dict = {(a.docente_id, a.turno): a for a in asistencias_existentes}
 
     docente_data = []
-    for d in docentes:
+    for docente, turno in pares_lista:
+        lic = LicenciaDocente.obtener_licencia_activa(docente, fecha)
         docente_data.append({
-            "docente": d,
-            "asistencia": asistencias_dict.get(d.id)
+            "docente": docente,
+            "turno": turno,
+            "turno_label": dict(AsistenciaDocente.TURNO_CHOICES).get(turno, turno or "—"),
+            "asistencia": asistencias_dict.get((docente.id, turno)),
+            "licencia": lic,
         })
 
     return render(request, "jardines/asistencia_docente_form.html", {
@@ -163,6 +181,7 @@ def historial_asistencia_docente(request):
 def reporte_asistencia_docente_mensual(request):
     """
     Genera una matriz mensual de asistencia para todos los docentes de un jardín.
+    Muestra una fila por (docente, turno) en lugar de una fila global por docente.
     """
     ahora = timezone.localtime(timezone.now()).date()
     mes = int(request.GET.get('mes', ahora.month))
@@ -170,7 +189,6 @@ def reporte_asistencia_docente_mensual(request):
     jardin_id = request.GET.get('jardin')
 
     if not jardin_id:
-        # Si no hay jardín seleccionado, mostrar lista para elegir
         if request.user.es_admin():
             jardines = Jardin.objects.all().order_by("nombre")
         else:
@@ -193,11 +211,15 @@ def reporte_asistencia_docente_mensual(request):
         raise PermissionDenied("No tiene permiso para ver el reporte de este espacio.")
     ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
     
-    # Docentes del jardín
-    docentes = Usuario.objects.filter(
-        salas_asignadas__jardin=jardin, 
-        rol="docente"
-    ).distinct().order_by("last_name")
+    # Obtener pares únicos (docente, turno) asignados a salas de este jardín
+    salas = Sala.objects.filter(jardin=jardin).prefetch_related("docentes")
+    pares = {}
+    for sala in salas:
+        for docente in sala.docentes.filter(rol="docente"):
+            key = (docente.id, sala.turno)
+            if key not in pares:
+                pares[key] = (docente, sala.turno)
+    pares_lista = sorted(pares.values(), key=lambda x: (x[0].last_name, x[0].first_name, x[1] or ""))
 
     # Obtener todas las asistencias del mes
     asistencias = AsistenciaDocente.objects.filter(
@@ -206,29 +228,39 @@ def reporte_asistencia_docente_mensual(request):
         fecha__month=mes
     )
     
-    # Mapear asistencias: { docente_id: { dia: estado } }
+    # Mapear asistencias: { (docente_id, turno): { dia: estado } }
     mapa_asistencia = {}
     for a in asistencias:
-        if a.docente_id not in mapa_asistencia:
-            mapa_asistencia[a.docente_id] = {}
-        mapa_asistencia[a.docente_id][a.fecha.day] = a.estado
+        key = (a.docente_id, a.turno)
+        if key not in mapa_asistencia:
+            mapa_asistencia[key] = {}
+        mapa_asistencia[key][a.fecha.day] = a.estado
 
     filas = []
-    for d in docentes:
+    turno_dict = dict(AsistenciaDocente.TURNO_CHOICES)
+    for docente, turno in pares_lista:
         celdas = []
         presentes = 0
         ausentes = 0
+        licencias = 0
+        key = (docente.id, turno)
+        turno_str = turno_dict.get(turno, turno or "")
+        
         for dia in range(1, ultimo_dia_mes + 1):
-            estado = mapa_asistencia.get(d.id, {}).get(dia, '-')
+            estado = mapa_asistencia.get(key, {}).get(dia, '-')
             celdas.append(estado)
             if estado == 'P': presentes += 1
             if estado == 'A': ausentes += 1
+            if estado == 'L': licencias += 1
         
         filas.append({
-            'docente': d,
+            'docente': docente,
+            'turno': turno,
+            'turno_str': turno_str,
             'celdas': celdas,
             'presentes': presentes,
-            'ausentes': ausentes
+            'ausentes': ausentes,
+            'licencias': licencias
         })
 
     context = {
@@ -257,11 +289,15 @@ def exportar_asistencia_docente_csv(context):
     writer = csv.writer(response, delimiter=';')
     
     # Encabezado
-    header = ['Docente'] + [str(d) for d in context['dias']] + ['P', 'A']
+    header = ['Docente', 'Turno'] + [str(d) for d in context['dias']] + ['P', 'A', 'L']
     writer.writerow(header)
     
     for fila in context['filas']:
-        row = [f"{fila['docente'].last_name}, {fila['docente'].first_name}"] + fila['celdas'] + [fila['presentes'], fila['ausentes']]
+        row = (
+            [f"{fila['docente'].last_name}, {fila['docente'].first_name}", fila['turno_str']]
+            + fila['celdas']
+            + [fila['presentes'], fila['ausentes'], fila.get('licencias', 0)]
+        )
         writer.writerow(row)
         
     return response
@@ -389,47 +425,77 @@ def registrar_asistencia_docente(request):
     hoy = ahora_local.date()
     hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR')
-    
-    from .models import AsistenciaDocente, inicializar_asistencia_diaria
+    from .models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, _turno_por_hora
     from users.models import AccionAuditoria
     from django.core.exceptions import ValidationError
     
-    asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
-    if not asistencias.exists():
-        inicializar_asistencia_diaria(request.user, request)
-        asistencias = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
-        
-    if not asistencias.exists():
-        return JsonResponse({"status": "error", "message": "No tiene salas o espacios asignados para registrar asistencia."}, status=400)
-        
-    # Validar si ya fichó hoy
-    if asistencias.filter(fichado=True).exists():
-        return JsonResponse({"status": "success", "message": "La asistencia ya fue registrada hoy."})
-        
+    # Verificar licencia activa
+    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
+    if licencia:
+        return JsonResponse({
+            "status": "error",
+            "message": f"No puede registrar asistencia porque se encuentra de licencia ({licencia.get_tipo_licencia_display()})."
+        }, status=400)
+
+    # Turno, asistencia_id, jardin_id
+    asistencia_id = request.POST.get("asistencia_id")
+    jardin_id = request.POST.get("jardin_id")
+    turno = request.POST.get("turno") or _turno_por_hora(hora)
+
+    # Inicializar todos los registros del día si aún no existen
+    inicializar_asistencia_diaria(request.user, request)
+
+    # Buscar los registros del turno / espacio que está fichando
+    asist_qs = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+    if asistencia_id:
+        asist_qs = asist_qs.filter(id=asistencia_id)
+    elif jardin_id:
+        asist_qs = asist_qs.filter(jardin_id=jardin_id, turno=turno)
+    else:
+        asist_qs = asist_qs.filter(turno=turno)
+
+    if not asist_qs.exists():
+        return JsonResponse({
+            "status": "error",
+            "message": f"No tiene salas asignadas en el turno '{turno}' para registrar asistencia."
+        }, status=400)
+
+    # Si todos los registros encontrados ya fueron fichados
+    if not asist_qs.filter(fichado=False).exists():
+        asist_first = asist_qs.first()
+        turno_disp = asist_first.get_turno_display() if (asist_first and asist_first.turno) else turno
+        return JsonResponse({
+            "status": "already",
+            "message": f"Ya registraste tu asistencia del turno {turno_disp} hoy."
+        })
+
     try:
-        # Guardar
-        for asist in asistencias:
+        for asist in asist_qs.filter(fichado=False):
             asist.fichado = True
             asist.estado = 'P'
             asist.hora_ingreso = hora
             asist.ip_address = ip
             asist.latitude = latitude
             asist.longitude = longitude
-            asist.observaciones = f"Fichado manual por el docente el {hoy} a las {hora.strftime('%H:%M')} hs."
+            turno_disp = asist.get_turno_display() if asist.turno else turno
+            asist.observaciones = f"Fichado por el docente el {hoy} a las {hora.strftime('%H:%M')} hs. (turno {turno_disp})."
             asist.save()
     except ValidationError as e:
         error_msg = ", ".join(e.messages) if hasattr(e, "messages") else str(e)
-        return JsonResponse({"status": "error", "message": f"Error de validación al guardar: {error_msg}"}, status=400)
+        return JsonResponse({"status": "error", "message": f"Error de validación: {error_msg}"}, status=400)
         
-    # Registrar log
     AccionAuditoria.objects.create(
         usuario=request.user,
         accion="modificacion",
         modelo="AsistenciaDocente",
         objeto_id=request.user.id,
-        descripcion=f"Registró asistencia docente (Fichó) el día {hoy.strftime('%d/%m/%Y')} a las {hora.strftime('%H:%M:%S')} hs. Coordenadas: {latitude}, {longitude} - IP: {ip}"
+        descripcion=f"Fichó asistencia ({turno}) el {hoy.strftime('%d/%m/%Y')} a las {hora.strftime('%H:%M:%S')} hs. IP: {ip}"
     )
     
-    return JsonResponse({"status": "success", "message": "Asistencia registrada correctamente."})
-
-
+    asist_ref = asist_qs.first()
+    turno_final = asist_ref.get_turno_display() if (asist_ref and asist_ref.turno) else turno
+    return JsonResponse({
+        "status": "success",
+        "message": f"Asistencia del turno {turno_final} registrada correctamente.",
+        "turno": turno
+    })

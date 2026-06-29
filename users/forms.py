@@ -296,6 +296,9 @@ class SalaForm(forms.ModelForm):
             "horario_fin",
             "responsable",
         )
+        labels = {
+            "responsable": "Docente",
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)

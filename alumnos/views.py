@@ -6,6 +6,7 @@ el registro de asistencia diaria y la exportación de reportes.
 import csv
 import calendar
 from datetime import date, datetime
+from django.utils import timezone
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
@@ -76,41 +77,59 @@ def validar_alumno_para_docente(user, alumno):
 @rol_requerido("docente")
 def dashboard_docente(request):
     """
-    Vista principal para el rol Docente. 
-    Muestra el listado de salas que tiene bajo su responsabilidad.
+    Vista principal para el rol Docente.
+    Muestra el listado de salas y un botón de fichada por cada turno que tiene hoy.
     """
-    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria
+    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente
     from django.utils import timezone
     
     # Inicializar registros de asistencia de hoy si no existen
     inicializar_asistencia_diaria(request.user, request)
     
-    # Obtener registros de asistencia de hoy
     hoy = timezone.now().date()
     asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     
-    fichado_hoy = False
-    hora_fichada = None
-    if asistencias_hoy.exists():
-        fichado_hoy = asistencias_hoy.filter(fichado=True).exists()
-        if fichado_hoy:
-            hora_fichada = asistencias_hoy.filter(fichado=True).first().hora_ingreso
+    # Verificar si está de licencia hoy
+    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
+    licencia_activa = licencia is not None
 
+    # Obtener todas las salas asignadas al docente con sus jardines pre-cargados
     salas = (
         request.user.salas_asignadas
-        .select_related(
-            "jardin",
-            "jardin__programa",
-            "jardin__subprograma",
-        )
+        .select_related("jardin", "jardin__programa", "jardin__subprograma")
         .all()
     )
+
+    # Construir lista de turnos del docente hoy con su estado de fichada, jardín y salas
+    turnos_hoy = []
+    for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
+        # Filtrar salas del docente que corresponden a este jardín y turno
+        salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
+        salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+        
+        turnos_hoy.append({
+            "asistencia_id": asist.id,
+            "jardin_id": asist.jardin_id,
+            "turno": asist.turno,
+            "turno_label": asist.get_turno_display() if asist.turno else "—",
+            "fichado": asist.fichado,
+            "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+            "estado": asist.estado,
+            "jardin_nombre": asist.jardin.nombre,
+            "salas_nombres": salas_nombres,
+        })
+    
+    # Backwards-compat: fichado_hoy = True solo si fichó en TODOS los turnos
+    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
         "fichado_hoy": fichado_hoy,
         "hora_fichada": hora_fichada,
-        "tiene_jardines": asistencias_hoy.exists()
+        "licencia_activa": licencia_activa,
+        "tiene_jardines": asistencias_hoy.exists(),
+        "turnos_hoy": turnos_hoy,
     })
 
 
@@ -597,24 +616,26 @@ def cargar_asistencia(request, sala_id):
     else:
         raise PermissionDenied
 
-    # Determinar la fecha de carga (default hoy)
-    if user.rol == "docente":
-        fecha = date.today()
-    else:
-        fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
+    # Determinar la fecha de carga (default hoy local)
+    fecha_str = request.GET.get("fecha") or request.POST.get("fecha")
+    if fecha_str:
         try:
             fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
         except Exception:
-            fecha = date.today()
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
-    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True).order_by("apellido", "nombre")
     motivos = MotivoJustificacion.objects.all()
 
     if request.method == "POST":
         from django.contrib import messages
         try:
             for alumno in alumnos:
-                estado = request.POST.get(f"estado_{alumno.id}", "P")
+                estado = request.POST.get(f"estado_{alumno.id}")
+                if not estado:
+                    continue
                 motivo_id = request.POST.get(f"motivo_{alumno.id}")
                 observaciones = request.POST.get(f"observaciones_{alumno.id}", "").strip()
                 
@@ -635,7 +656,7 @@ def cargar_asistencia(request, sala_id):
                         "docente": request.user
                     }
                 )
-            messages.success(request, f"Asistencia del {fecha} guardada correctamente.")
+            messages.success(request, f"Asistencia del {fecha.strftime('%d/%m/%Y')} guardada correctamente.")
             from django.urls import reverse
             return redirect(f"{reverse('alumnos:cargar_asistencia', args=[sala.id])}?fecha={fecha.strftime('%Y-%m-%d')}")
         except ValidationError as e:
@@ -678,12 +699,17 @@ def ver_asistencias(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
-    alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos_base = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True)
+    alumnos_con_asistencia = Alumno.objects.filter(asistencias__sala=sala, asistencias__fecha=fecha)
+    alumnos = (alumnos_base | alumnos_con_asistencia).distinct().order_by("apellido", "nombre")
 
     asistencias_existentes = Asistencia.objects.filter(
         alumno__in=alumnos,
@@ -874,10 +900,13 @@ def exportar_asistencias_csv(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="asistencias_{sala.nombre}_{fecha}.csv"'
@@ -912,10 +941,13 @@ def imprimir_asistencias_sala(request, sala_id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
-    try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    except Exception:
-        fecha = date.today()
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            fecha = timezone.localdate()
+    else:
+        fecha = timezone.localdate()
 
     alumnos = Alumno.objects.filter(asignaciones__sala=sala, asignaciones__activo=True).order_by('apellido')
     asistencias = Asistencia.objects.filter(alumno__in=alumnos, fecha=fecha, sala=sala).select_related('motivo')

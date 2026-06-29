@@ -241,14 +241,23 @@ class Sala(models.Model):
 
 class AsistenciaDocente(models.Model):
     """
-    Registro de asistencia diaria de los docentes en un Jardín específico.
+    Registro de asistencia diaria de los docentes en un Jardín/turno específico.
+    La clave de unicidad es (docente, jardín, turno, fecha) para admitir
+    que un mismo docente pueda tener dos fichadas en el mismo espacio si
+    trabaja en distintos turnos.
     """
+    TURNO_CHOICES = [
+        ('mañana', 'Mañana'),
+        ('tarde', 'Tarde'),
+    ]
+
     ESTADO_CHOICES = [
         ('P', 'Presente'),
         ('A', 'Ausente'),
         ('J', 'Justificado'),
         ('T', 'Llegada Tarde'),
         ('R', 'Retiro Temprano'),
+        ('L', 'Ausente por licencia'),
     ]
     
     docente = models.ForeignKey(
@@ -261,6 +270,14 @@ class AsistenciaDocente(models.Model):
         on_delete=models.CASCADE,
         related_name="asistencias_docentes"
     )
+    # Turno al que corresponde este registro (null = registros históricos pre-migración)
+    turno = models.CharField(
+        max_length=20,
+        choices=TURNO_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Turno"
+    )
     fecha = models.DateField()
     hora_ingreso = models.TimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -271,7 +288,6 @@ class AsistenciaDocente(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud")
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud")
 
-    
     # Usuario que registró la asistencia (null si fue automático)
     registrado_por = models.ForeignKey(
         "users.Usuario",
@@ -287,8 +303,9 @@ class AsistenciaDocente(models.Model):
     class Meta:
         verbose_name = "Asistencia de Docente"
         verbose_name_plural = "Asistencias de Docentes"
-        unique_together = ("docente", "jardin", "fecha")
-        ordering = ["-fecha", "-hora_ingreso", "docente__last_name"]
+        # Nueva clave: docente + espacio + TURNO + fecha
+        unique_together = ("docente", "jardin", "turno", "fecha")
+        ordering = ["-fecha", "turno", "docente__last_name"]
 
     def clean(self):
         """Valida que la fecha no sea futura y que el usuario sea docente."""
@@ -306,7 +323,19 @@ class AsistenciaDocente(models.Model):
         return f"{self.docente} - {self.jardin} - {self.fecha} ({self.get_estado_display()})"
 
 
+def _turno_por_hora(hora):
+    """Determina el turno según la hora actual: antes de las 13:00 → mañana, después → tarde."""
+    from datetime import time as dtime
+    return 'mañana' if hora < dtime(13, 0) else 'tarde'
+
+
 def inicializar_asistencia_diaria(user, request=None):
+    """
+    Crea los registros de AsistenciaDocente del día para el docente.
+    Un registro por cada combinación única (jardín, turno) en las salas asignadas.
+    Si el docente trabaja mañana y tarde en el mismo espacio → 2 registros.
+    Si trabaja en 2 espacios distintos → 2 registros (uno por espacio).
+    """
     from django.utils import timezone
     from datetime import datetime, timedelta
     
@@ -315,34 +344,133 @@ def inicializar_asistencia_diaria(user, request=None):
     hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR') if request else None
     
-    # Obtenemos los jardines asociados al docente a través de sus salas
-    salas = user.salas_asignadas.all()
-    jardines = Jardin.objects.filter(salas__in=salas).distinct()
-    
-    # Verificar si está fuera de jornada (comparamos con todas sus salas)
-    es_fuera_de_jornada = True
+    # Licencia activa
+    licencia = LicenciaDocente.obtener_licencia_activa(user, hoy)
+    if licencia:
+        estado_inicial = 'L'
+        obs_inicial = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
+    else:
+        estado_inicial = 'A'
+        obs_inicial = 'Registro inicializado por el sistema.'
+
+    # Agrupar salas por (jardin, turno) — cada par es un registro distinto
+    salas = user.salas_asignadas.select_related('jardin').all()
+    pares_vistos = set()
+
     for sala in salas:
-        # Margen de 30 minutos antes y después
+        par = (sala.jardin_id, sala.turno)
+        if par in pares_vistos:
+            continue
+        pares_vistos.add(par)
+
+        jardin = sala.jardin
+        turno = sala.turno  # 'mañana' o 'tarde'
+
+        # Verificar si ya existe el registro para este par hoy
+        if AsistenciaDocente.objects.filter(
+            docente=user, jardin=jardin, turno=turno, fecha=hoy
+        ).exists():
+            continue
+
+        # Verificar fuera de jornada para esta sala específica
         h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
         h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
-        
-        if h_inicio <= hora <= h_fin:
-            es_fuera_de_jornada = False
-            break
-            
-    for jardin in jardines:
-        # Si ya existe asistencia para este docente en este jardin hoy, no la inicializamos/pisamos
-        if AsistenciaDocente.objects.filter(docente=user, jardin=jardin, fecha=hoy).exists():
-            continue
-            
+        fuera = not (h_inicio <= hora <= h_fin)
+
         AsistenciaDocente.objects.create(
             docente=user,
             jardin=jardin,
+            turno=turno,
             fecha=hoy,
             hora_ingreso=None,
             ip_address=ip,
-            fuera_de_jornada=es_fuera_de_jornada,
-            estado='A',  # Empieza en Ausente hasta que fiche
+            fuera_de_jornada=fuera,
+            estado=estado_inicial,
             fichado=False,
-            observaciones='Registro inicializado por el sistema.'
+            observaciones=obs_inicial
         )
+
+class LicenciaDocente(models.Model):
+    TIPO_CHOICES = [
+        ('enfermedad', 'Enfermedad'),
+        ('maternidad_paternidad', 'Maternidad / Paternidad'),
+        ('familiar_cargo', 'Familiar a cargo'),
+        ('estudio_capacitacion', 'Estudio y capacitación'),
+        ('razones_particulares', 'Razones particulares'),
+        ('duelo', 'Duelo'),
+        ('matrimonio', 'Matrimonio'),
+        ('sangre_organos', 'Donación de sangre u órganos'),
+        ('gremial', 'Gremial'),
+        ('otro', 'Otro'),
+    ]
+
+    docente = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.CASCADE,
+        related_name="licencias",
+        verbose_name="Docente"
+    )
+    tipo_licencia = models.CharField(
+        max_length=50,
+        choices=TIPO_CHOICES,
+        verbose_name="Tipo de licencia"
+    )
+    motivo = models.TextField(
+        verbose_name="Motivo / Descripción"
+    )
+    fecha_desde = models.DateField(
+        verbose_name="Fecha desde"
+    )
+    fecha_hasta = models.DateField(
+        verbose_name="Fecha hasta"
+    )
+    reemplazante = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reemplazos",
+        verbose_name="Docente reemplazante"
+    )
+    creado_por = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="licencias_creadas"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Licencia de Docente"
+        verbose_name_plural = "Licencias de Docentes"
+        ordering = ["-fecha_desde", "docente__last_name"]
+
+    def clean(self):
+        super().clean()
+        if self.fecha_desde and self.fecha_hasta:
+            if self.fecha_hasta < self.fecha_desde:
+                raise ValidationError({
+                    "fecha_hasta": "La fecha hasta debe ser posterior o igual a la fecha desde."
+                })
+        
+        if self.docente and self.reemplazante and self.docente == self.reemplazante:
+            raise ValidationError({
+                "reemplazante": "El docente reemplazante no puede ser la misma persona con licencia."
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def obtener_licencia_activa(cls, docente, fecha):
+        return cls.objects.filter(
+            docente=docente,
+            fecha_desde__lte=fecha,
+            fecha_hasta__gte=fecha
+        ).first()
+
+    def __str__(self):
+        return f"Licencia de {self.docente} ({self.fecha_desde} al {self.fecha_hasta})"

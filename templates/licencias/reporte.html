@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center no-print">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:dashboard_coordinador' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'jardines:lista_licencias' %}"
+                        class="text-decoration-none text-muted small text-uppercase uppercase">Licencias</a>
+                </li>
+                <li class="breadcrumb-item active small text-uppercase fw-bold text-primary uppercase"
+                    aria-current="page">Indicadores de Licencias</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold"><i class="fas fa-chart-pie me-2 text-primary"></i>Reporte e Indicadores de Licencias</h2>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <button onclick="window.print()" class="btn btn-outline-dark rounded-pill px-4 shadow-sm">
+            <i class="fas fa-print me-2"></i>Imprimir Reporte
+        </button>
+    </div>
+</div>
+
+<!-- Cabecera de Impresión -->
+<div class="d-none d-print-block text-center mb-5">
+    <h2 class="fw-bold">Reporte Estadístico de Licencias Docentes</h2>
+    <p class="text-muted">Generado el {% now "d/m/Y H:i" %}</p>
+    <hr>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6 col-lg-6">
+        <div class="card shadow-sm border-0 bg-primary text-white p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-white-50 text-uppercase fw-bold uppercase mb-2">Total de Licencias Registradas</h6>
+                    <h1 class="fw-bold mb-0 display-4">{{ total_licencias }}</h1>
+                </div>
+                <div class="bg-white bg-opacity-20 p-3 rounded-circle">
+                    <i class="fas fa-file-signature fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-6">
+        <div class="card shadow-sm border-0 bg-success text-white p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-white-50 text-uppercase fw-bold uppercase mb-2">Total de Días de Licencia</h6>
+                    <h1 class="fw-bold mb-0 display-4">{{ total_dias }}</h1>
+                </div>
+                <div class="bg-white bg-opacity-20 p-3 rounded-circle">
+                    <i class="fas fa-calendar-day fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- Ranking Docentes -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-trophy text-warning me-2"></i>Docentes con mayor cantidad de días de licencia</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Docente</th>
+                                <th class="text-center">Licencias</th>
+                                <th class="text-end">Días Totales</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in docentes_ranking %}
+                            <tr>
+                                <td>
+                                    <span class="fw-bold text-dark">{{ d.nombre }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border">{{ d.cantidad }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge bg-danger bg-opacity-10 text-danger fw-bold fs-6">{{ d.dias }}</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">No hay datos suficientes para generar el ranking.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Licencias por Tipo -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list-ul text-primary me-2"></i>Distribución por Tipo de Licencia</h5>
+            </div>
+            <div class="card-body p-4">
+                {% for tipo, cant in tipo_data %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold text-dark small">{{ tipo }}</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold">{{ cant }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: {% widthratio cant total_licencias 100 %}%"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-4">No hay licencias registradas aún.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Licencias por Programa -->
+    <div class="col-lg-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-project-diagram text-success me-2"></i>Licencias por Programa Educativo</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    {% for prog, cant in programa_data %}
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark small">{{ prog }}</span>
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ cant }} licencias</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio cant total_licencias 100 %}%"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center py-4">
+                        <p class="text-muted mb-0">No hay licencias registradas en los programas correspondientes.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="no-print mt-4">
+    <a href="{% url 'jardines:lista_licencias' %}" class="btn btn-outline-secondary rounded-pill px-4">
+        <i class="fas fa-arrow-left me-1"></i>Volver al Listado
+    </a>
+</div>
+
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+        body { background: white !important; }
+    }
+    .uppercase {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+{% endblock %}

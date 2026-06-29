@@ -1,6 +1,7 @@
 import csv
 import calendar
 from datetime import date, datetime, timedelta
+from django.utils import timezone
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -104,11 +105,26 @@ def lista_subprogramas(request):
 @solo_coordinador
 def lista_salas(request):
     user = request.user
+    q = request.GET.get("q", "").strip()
+    
     if user.es_admin() or not user.programas_asignados.exists():
-        salas = Sala.objects.select_related("jardin").prefetch_related("asignaciones_docentes__docente").all()
+        salas = Sala.objects.select_related("jardin").prefetch_related("asignaciones_docentes__docente", "subprograma", "responsable").all()
     else:
-        salas = Sala.objects.filter(jardin__programa__in=user.programas_asignados.all()).select_related("jardin").prefetch_related("asignaciones_docentes__docente")
-    return render(request, "users/lista_salas.html", {"salas": salas})
+        salas = Sala.objects.filter(
+            jardin__programa__in=user.programas_asignados.all()
+        ).select_related("jardin", "subprograma", "responsable").prefetch_related("asignaciones_docentes__docente")
+        
+    if q:
+        salas = salas.filter(
+            Q(nombre__icontains=q) |
+            Q(jardin__nombre__icontains=q) |
+            Q(subprograma__nombre__icontains=q) |
+            Q(responsable__first_name__icontains=q) |
+            Q(responsable__last_name__icontains=q) |
+            Q(responsable__username__icontains=q)
+        ).distinct()
+        
+    return render(request, "users/lista_salas.html", {"salas": salas, "q": q})
 
 
 @login_required
@@ -832,9 +848,9 @@ def reporte_asistencia_diaria(request):
         try:
             fecha_consulta = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         except ValueError:
-            fecha_consulta = date.today()
+            fecha_consulta = timezone.localdate()
     else:
-        fecha_consulta = date.today()
+        fecha_consulta = timezone.localdate()
 
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
@@ -872,7 +888,7 @@ def reporte_asistencia_mensual(request):
     """
     Genera la matriz de asistencia mensual por jardín.
     """
-    ahora = date.today()
+    ahora = timezone.localdate()
     mes = int(request.GET.get('mes', ahora.month))
     anio = int(request.GET.get('anio', ahora.year))
     
@@ -906,11 +922,12 @@ def reporte_asistencia_mensual(request):
         except (ValueError, TypeError):
             pass
     
-    # Data para la matriz
+    # Data para la matriz de presencias efectivas (excluye ausencias 'A')
     # { jardin_id: { dia: count } }
     asistencias = Asistencia.objects.filter(
         fecha__year=anio,
-        fecha__month=mes
+        fecha__month=mes,
+        estado__in=['P', 'T', 'R', 'J']
     ).values('sala__jardin_id', 'fecha').annotate(count=Count('id'))
     
     data_asistencia = {}
