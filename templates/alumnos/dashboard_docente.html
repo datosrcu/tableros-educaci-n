@@ -52,16 +52,24 @@
             <div class="col-md-6">
               <div class="p-3 rounded-3 border bg-white d-flex align-items-center justify-content-between">
                 <div>
-                  <span class="badge rounded-pill {% if t.turno == 'mañana' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} px-3 py-1 mb-1">
-                    <i class="fas {% if t.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
-                    Turno {{ t.turno_label }}
-                  </span>
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge rounded-pill {% if t.turno == 'mañana' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} px-2.5 py-1">
+                      <i class="fas {% if t.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
+                      Turno {{ t.turno_label }}
+                    </span>
+                  </div>
+                  <div class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
+                    <i class="fas fa-building text-secondary me-1"></i>{{ t.jardin_nombre }}
+                  </div>
+                  <div class="text-muted small mb-1">
+                    <i class="fas fa-door-open me-1"></i>Sala: <strong>{{ t.salas_nombres }}</strong>
+                  </div>
                   {% if t.fichado %}
-                    <div class="text-success small fw-semibold mt-1">
+                    <div class="text-success small fw-semibold">
                       <i class="fas fa-check-circle me-1"></i> Fichado a las {{ t.hora_fichada|time:"H:i" }} hs.
                     </div>
                   {% else %}
-                    <div class="text-muted small mt-1">Pendiente de fichada</div>
+                    <div class="text-muted small">Pendiente de fichada</div>
                   {% endif %}
                 </div>
 

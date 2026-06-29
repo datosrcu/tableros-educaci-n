@@ -91,27 +91,34 @@ def dashboard_docente(request):
     # Verificar si está de licencia hoy
     licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
     licencia_activa = licencia is not None
-    
-    # Construir lista de turnos del docente hoy con su estado de fichada
+
+    # Obtener todas las salas asignadas al docente con sus jardines pre-cargados
+    salas = (
+        request.user.salas_asignadas
+        .select_related("jardin", "jardin__programa", "jardin__subprograma")
+        .all()
+    )
+
+    # Construir lista de turnos del docente hoy con su estado de fichada, jardín y salas
     turnos_hoy = []
-    for asist in asistencias_hoy.order_by("turno"):
+    for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
+        # Filtrar salas del docente que corresponden a este jardín y turno
+        salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
+        salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+        
         turnos_hoy.append({
             "turno": asist.turno,
             "turno_label": asist.get_turno_display() if asist.turno else "—",
             "fichado": asist.fichado,
             "hora_fichada": asist.hora_ingreso if asist.fichado else None,
             "estado": asist.estado,
+            "jardin_nombre": asist.jardin.nombre,
+            "salas_nombres": salas_nombres,
         })
     
     # Backwards-compat: fichado_hoy = True solo si fichó en TODOS los turnos
     fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
     hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
-
-    salas = (
-        request.user.salas_asignadas
-        .select_related("jardin", "jardin__programa", "jardin__subprograma")
-        .all()
-    )
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
