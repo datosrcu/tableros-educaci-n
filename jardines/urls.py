@@ -9,6 +9,8 @@ urlpatterns = [
     path("ajax/jardines/", views.cargar_jardines),
     path("ajax/validar-docente-turno/", views.validar_docente_turno),
     path("ajax/subprogramas-por-programa/", views.subprogramas_por_programa, name="subprogramas_por_programa"),
+    # Dashboard Espacios Lúdicos
+    path("dashboard-espacios-ludicos/", views.DashboardEspaciosLudicosView.as_view(), name="dashboard_espacios_ludicos"),
     
     # Asistencia Docente
     path("asistencia/", views.lista_jardines_asistencia, name="lista_jardines_asistencia"),
