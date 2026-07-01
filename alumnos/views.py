@@ -86,7 +86,7 @@ def dashboard_docente(request):
     # Inicializar registros de asistencia de hoy si no existen
     inicializar_asistencia_diaria(request.user, request)
     
-    hoy = timezone.now().date()
+    hoy = timezone.localtime(timezone.now()).date()
     asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     
     # Verificar si está de licencia hoy
