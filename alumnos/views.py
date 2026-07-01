@@ -416,6 +416,9 @@ def agregar_alumno(request, sala_id):
                 messages.success(request, f"Alumno {alumno.nombre} {alumno.apellido} registrado correctamente.")
 
                 return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
+            else:
+                from django.contrib import messages
+                messages.error(request, "Por favor revise los errores marcados en rojo en el formulario.")
 
     else:
         alumno_form = AlumnoForm()
@@ -508,6 +511,9 @@ def editar_alumno(request, alumno_id):
                     )
 
             return redirect("alumnos:detalle_alumno", alumno_id=alumno.id)
+        else:
+            from django.contrib import messages
+            messages.error(request, "Por favor revise los errores marcados en rojo en el formulario.")
 
     else:
         alumno_form = AlumnoForm(instance=alumno)

@@ -251,7 +251,13 @@
       searchInput.addEventListener('input', function () {
         const term = this.value.toLowerCase();
         items.forEach(item => {
-          item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+          if (item.textContent.toLowerCase().includes(term)) {
+            item.classList.remove('d-none');
+            item.classList.add('d-flex');
+          } else {
+            item.classList.remove('d-flex');
+            item.classList.add('d-none');
+          }
         });
       });
     }
