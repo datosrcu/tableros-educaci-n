@@ -131,4 +131,33 @@ class SalaAdmin(BaseAdmin):
     class Media:
         js = ("jardines/admin/sala.js",)
 
-# Register your models here.
+
+from .models import AsistenciaDocente
+from django.utils.translation import gettext_lazy as _
+
+@admin.action(description=_("Desfichar (Restablecer botón de asistencia)"))
+def restablecer_fichada(modeladmin, request, queryset):
+    # Reset fichado to False, clear coordinates and hora_ingreso
+    updated = queryset.update(fichado=False, hora_ingreso=None, latitude=None, longitude=None, estado='A', observaciones='Restablecido por administrador.')
+    modeladmin.message_user(request, f"Se restablecieron {updated} registros de asistencia.")
+
+@admin.register(AsistenciaDocente)
+class AsistenciaDocenteAdmin(BaseAdmin):
+    list_display = ('id', 'docente', 'jardin', 'turno', 'fecha', 'fichado', 'estado', 'hora_ingreso')
+    list_display_links = ('id', 'docente')
+    list_filter = ('fecha', 'fichado', 'estado', 'turno', 'jardin')
+    search_fields = ('docente__username', 'docente__first_name', 'docente__last_name', 'jardin__nombre')
+    ordering = ('-fecha', 'docente__last_name')
+    actions = [restablecer_fichada]
+    
+    def has_module_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_add_permission(self, request):
+        return request.user.rol in ["administrador", "coordinador"]
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.rol == "administrador"
