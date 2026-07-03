@@ -968,7 +968,7 @@ def imprimir_asistencias_sala(request, sala_id):
 
 
 @login_required
-@solo_docente
+@rol_requerido("docente")
 def resumen_mensual_docente(request):
     """
     Vista de solo lectura que muestra la tabla mensual de asistencias de los alumnos
