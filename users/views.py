@@ -134,16 +134,21 @@ def lista_docentes(request):
     if user.es_admin() or not user.programas_asignados.exists():
         docentes = Usuario.objects.filter(rol="docente")
     else:
-        # Filtrar docentes que estén asignados a salas de los programas del coordinador
-        # También mostramos docentes sin salas para que puedan ser asignados, pero esto
-        # puede ser un problema si otros coordinadores los ven. Lo más seguro es solo los de la jurisdicción.
-        # Para ser flexibles, podemos mostrar los que están en la jurisdicción o los que no tienen sala.
         programas = user.programas_asignados.all()
         docentes = Usuario.objects.filter(
             Q(rol="docente") &
-            (Q(salas_asignadas__jardin__programa__in=programas) | Q(salas_asignadas__isnull=True))
+            (Q(salas_asignadas__jardin__programa__in=programas) | Q(programas_asignados__in=programas) | Q(salas_asignadas__isnull=True))
         ).distinct()
-    return render(request, "users/lista_docentes.html", {"docentes": docentes})
+        
+    q = request.GET.get('q', '').strip()
+    if q:
+        docentes = docentes.filter(
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(dni__icontains=q)
+        )
+        
+    return render(request, "users/lista_docentes.html", {"docentes": docentes, "q": q})
 
 
 
