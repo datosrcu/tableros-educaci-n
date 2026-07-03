@@ -327,6 +327,7 @@ class SalaForm(forms.ModelForm):
             
             self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente", is_active=True).filter(
                 Qlocal(salas_asignadas__jardin__programa__in=programas) |
+                Qlocal(programas_asignados__in=programas) |
                 Qlocal(salas_asignadas__isnull=True)
             ).distinct()
 
