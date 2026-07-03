@@ -998,11 +998,13 @@ def resumen_mensual_docente(request):
     else:
         salas_filtro = salas
         
-    alumnos = Alumno.objects.filter(sala__in=salas_filtro, activo=True).select_related('sala').order_by('sala__nombre', 'apellido', 'nombre')
+    asignaciones = AsignacionSala.objects.filter(sala__in=salas_filtro, activo=True).select_related('alumno', 'sala').order_by('sala__nombre', 'alumno__apellido', 'alumno__nombre')
+    
+    alumnos_ids = [asig.alumno_id for asig in asignaciones]
     
     # Obtener todas las asistencias del mes para estos alumnos
     asistencias = Asistencia.objects.filter(
-        alumno__in=alumnos,
+        alumno_id__in=alumnos_ids,
         fecha__year=anio,
         fecha__month=mes
     ).values('alumno_id', 'fecha', 'estado')
@@ -1025,7 +1027,8 @@ def resumen_mensual_docente(request):
             'alumnos': []
         }
         
-    for alumno in alumnos:
+    for asig in asignaciones:
+        alumno = asig.alumno
         fila_alumno = {
             'alumno': alumno,
             'dias': []
@@ -1034,8 +1037,8 @@ def resumen_mensual_docente(request):
             estado = data_asistencia.get(alumno.id, {}).get(dia, '-')
             fila_alumno['dias'].append(estado)
             
-        if alumno.sala_id in datos_por_sala:
-            datos_por_sala[alumno.sala_id]['alumnos'].append(fila_alumno)
+        if asig.sala_id in datos_por_sala:
+            datos_por_sala[asig.sala_id]['alumnos'].append(fila_alumno)
             
     # Filtrar salas que no tienen alumnos (opcional, pero deja el reporte mas limpio)
     datos_por_sala_list = [d for d in datos_por_sala.values() if d['alumnos']]
