@@ -11,6 +11,12 @@ urlpatterns = [
         views.dashboard_docente,
         name="dashboard_docente",
     ),
+    
+    path(
+        "docente/resumen-mensual/",
+        views.resumen_mensual_docente,
+        name="resumen_mensual_docente",
+    ),
 
     # Sala
     path(

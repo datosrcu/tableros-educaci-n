@@ -103,7 +103,12 @@
 </div>
 {% endif %}
 
-<h3 class="fw-bold mb-4"><i class="fas fa-door-open me-2 text-primary"></i>Mis Salas Asignadas</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold m-0"><i class="fas fa-door-open me-2 text-primary"></i>Mis Salas Asignadas</h3>
+  <a href="{% url 'alumnos:resumen_mensual_docente' %}" class="btn btn-outline-primary">
+    <i class="fas fa-calendar-alt me-2"></i>Ver Resumen Mensual
+  </a>
+</div>
 
 
 {% if salas %}
