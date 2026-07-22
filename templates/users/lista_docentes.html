@@ -36,6 +36,7 @@
                 <tr>
                     <th class="ps-4">Nombre y Apellido</th>
                     <th>DNI</th>
+                    <th>Rol</th>
                     <th>Contacto</th>
                     <th>Usuario</th>
                     <th class="text-end pe-4">Acciones</th>
@@ -56,6 +57,13 @@
                         <span class="badge bg-light text-dark fw-normal border">
                             {{ d.dni|default:"-" }}
                         </span>
+                    </td>
+                    <td>
+                        {% if d.rol == 'auxiliar' %}
+                        <span class="badge bg-info-subtle text-info rounded-pill px-3 py-1 text-uppercase small" style="font-size: 0.75rem;">Auxiliar</span>
+                        {% else %}
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 text-uppercase small" style="font-size: 0.75rem;">Docente</span>
+                        {% endif %}
                     </td>
                     <td>
                         <div class="small"><i class="fas fa-phone me-1 text-muted"></i>
@@ -90,7 +98,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
+                    <td colspan="6" class="text-center py-5 text-muted">
                         <i class="fas fa-info-circle me-1"></i>No hay docentes registrados.
                     </td>
                 </tr>
