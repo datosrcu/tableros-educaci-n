@@ -7,6 +7,10 @@ __pycache__/
 .Python
 env/
 venv/
+venv*/
+venv_new/
+venv_sys/
+venv_dev/
 .env
 .venv
 pip-log.txt
