@@ -217,32 +217,37 @@ class CobrosTestCase(TestCase):
         self.assertEqual(pagos[0].importe, Decimal("15000.00"))
 
     def test_historical_debt_calculation(self):
+        from unittest.mock import patch
+        from datetime import datetime
         # Forzar fecha de ingreso en Abril 2026
         AsignacionSala.objects.filter(id=self.asignacion_arte.id).update(
             fecha_ingreso=date(2026, 4, 15)
         )
         self.asignacion_arte.refresh_from_db()
         
-        # Consultar Junio 2026
-        self.client.login(username="coordinador1", password="coordpassword")
-        response = self.client.get(reverse("cobros:dashboard") + "?mes=6&anio=2026")
-        self.assertEqual(response.status_code, 200)
+        with patch("django.utils.timezone.now") as mock_now:
+            mock_now.return_value = timezone.make_aware(datetime(2026, 6, 15, 12, 0, 0))
+
+            # Consultar Junio 2026
+            self.client.login(username="coordinador1", password="coordpassword")
+            response = self.client.get(reverse("cobros:dashboard") + "?mes=6&anio=2026")
+            self.assertEqual(response.status_code, 200)
+            
+            rows = response.context["rows"]
+            row_arte = next(r for r in rows if r["alumno"] == self.alumno_arte)
+            
+            # Debe adeudar Abril, Mayo y Junio
+            self.assertEqual(len(row_arte["meses_adeudados_list"]), 3)
+            self.assertIn("Abril 2026", row_arte["meses_adeudados_list"])
+            self.assertIn("Mayo 2026", row_arte["meses_adeudados_list"])
+            self.assertIn("Junio 2026", row_arte["meses_adeudados_list"])
         
-        rows = response.context["rows"]
-        row_arte = next(r for r in rows if r["alumno"] == self.alumno_arte)
-        
-        # Debe adeudar Abril, Mayo y Junio
-        self.assertEqual(len(row_arte["meses_adeudados_list"]), 3)
-        self.assertIn("Abril 2026", row_arte["meses_adeudados_list"])
-        self.assertIn("Mayo 2026", row_arte["meses_adeudados_list"])
-        self.assertIn("Junio 2026", row_arte["meses_adeudados_list"])
-        
-        # Verificar que el formulario de pago preselecciona el mes más antiguo (Abril = 4)
-        response_form = self.client.get(reverse("cobros:registrar_pago", args=[self.asignacion_arte.id]))
-        self.assertEqual(response_form.status_code, 200)
-        form = response_form.context["form"]
-        self.assertEqual(form.initial["mes_pagado"], 4)
-        self.assertEqual(form.initial["anio_pagado"], 2026)
+            # Verificar que el formulario de pago preselecciona el mes más antiguo (Abril = 4)
+            response_form = self.client.get(reverse("cobros:registrar_pago", args=[self.asignacion_arte.id]))
+            self.assertEqual(response_form.status_code, 200)
+            form = response_form.context["form"]
+            self.assertEqual(form.initial["mes_pagado"], 4)
+            self.assertEqual(form.initial["anio_pagado"], 2026)
 
     def test_descargar_comprobante_success(self):
         # Crear un pago

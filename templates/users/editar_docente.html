@@ -62,6 +62,8 @@
                             </label>
                             {% if field.name == "telefono" or field.name == "email" or field.name == "username" %}
                             {{ field|add_class:"form-control shadow-none border-light-subtle bg-light-subtle" }}
+                            {% elif field|is_select %}
+                            {{ field|add_class:"form-select shadow-none border-light-subtle" }}
                             {% else %}
                             {{ field|add_class:"form-control shadow-none border-light-subtle" }}
                             {% endif %}

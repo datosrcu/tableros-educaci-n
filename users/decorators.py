@@ -11,7 +11,11 @@ def rol_requerido(*roles):
             if request.user.is_superuser or request.user.rol == "administrador":
                 return view_func(request, *args, **kwargs)
 
-            if request.user.rol not in roles:
+            allowed_roles = list(roles)
+            if "docente" in roles:
+                allowed_roles.append("auxiliar")
+
+            if request.user.rol not in allowed_roles:
                 raise PermissionDenied
 
             return view_func(request, *args, **kwargs)
