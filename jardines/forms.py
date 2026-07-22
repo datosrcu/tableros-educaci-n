@@ -81,7 +81,7 @@ class LicenciaDocenteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from users.models import Usuario
         
-        docentes_qs = Usuario.objects.filter(rol="docente")
+        docentes_qs = Usuario.objects.filter(rol__in=["docente", "auxiliar"])
         
         if user and not user.es_admin() and user.programas_asignados.exists():
             programas = user.programas_asignados.all()

@@ -157,7 +157,7 @@
             <a class="nav-link text-white-50" href="{% url 'cobros:dashboard' %}">Cobros</a>
           </li>
           {% endif %}
-          {% if user.rol == "docente" %}
+          {% if user.rol == "docente" or user.rol == "auxiliar" %}
           <li class="nav-item">
             <a class="nav-link text-white-50" href="{% url 'alumnos:dashboard_docente' %}">Mi Panel</a>
           </li>

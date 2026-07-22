@@ -29,19 +29,20 @@ class UsuarioAdmin(UserAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
 
-        # Coordinador NO ve administradores ni otros coordinadores
+        # Coordinador NO ve administradores ni otros coordinadores, ve docentes y auxiliares
         if request.user.rol == "coordinador":
-            return qs.filter(rol="docente")
+            return qs.filter(rol__in=["docente", "auxiliar"])
 
         return qs
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
 
-        # Coordinador SOLO puede crear docentes
+        # Coordinador SOLO puede crear/editar docentes y auxiliares
         if request.user.rol == "coordinador":
             form.base_fields["rol"].choices = [
                 ("docente", "Docente"),
+                ("auxiliar", "Auxiliar"),
             ]
 
         return form

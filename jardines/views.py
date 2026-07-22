@@ -88,7 +88,7 @@ def cargar_asistencia_docente(request, jardin_id):
     # Construir lista de (docente, turno) únicos ordenada por docente y turno
     pares = {}  # { (docente_id, turno): docente_obj }
     for sala in salas:
-        for docente in sala.docentes.filter(rol="docente"):
+        for docente in sala.docentes.filter(rol__in=["docente", "auxiliar"]):
             key = (docente.id, sala.turno)
             if key not in pares:
                 pares[key] = (docente, sala.turno)
@@ -221,7 +221,7 @@ def reporte_asistencia_docente_mensual(request):
     salas = Sala.objects.filter(jardin=jardin).prefetch_related("docentes")
     pares = {}
     for sala in salas:
-        for docente in sala.docentes.filter(rol="docente"):
+        for docente in sala.docentes.filter(rol__in=["docente", "auxiliar"]):
             key = (docente.id, sala.turno)
             if key not in pares:
                 pares[key] = (docente, sala.turno)
@@ -332,15 +332,15 @@ def resumen_actividad_docente(request):
     
     # Base de docentes a supervisar
     if user.es_admin() or not user.programas_asignados.exists():
-        docentes = Usuario.objects.filter(rol="docente")
+        docentes = Usuario.objects.filter(rol__in=["docente", "auxiliar"])
     else:
         programas = user.programas_asignados.all()
         docentes_salas = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             salas_asignadas__jardin__programa__in=programas
         )
         docentes_asistencia_hoy = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             asistencias_docente__fecha=hoy,
             asistencias_docente__jardin__programa__in=programas
         )
@@ -412,7 +412,7 @@ from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "auxiliar")
 @require_POST
 def registrar_asistencia_docente(request):
     latitude_str = request.POST.get("latitude")
@@ -610,7 +610,7 @@ class DashboardEspaciosLudicosView(TemplateView):
         
         # Docentes
         cantidad_docentes = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             salas_asignadas__jardin_id__in=jardines_ids
         ).distinct().count()
         

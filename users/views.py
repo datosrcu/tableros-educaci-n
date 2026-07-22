@@ -42,7 +42,7 @@ def dashboard_coordinador(request):
         programas_count = Programa.objects.count()
         subprogramas_count = Subprograma.objects.count()
         salas_count = Sala.objects.count()
-        docentes_count = Usuario.objects.filter(rol="docente").count()
+        docentes_count = Usuario.objects.filter(rol__in=["docente", "auxiliar"]).count()
     else:
         programas = user.programas_asignados.all()
         espacios_count = Jardin.objects.filter(programa__in=programas).count()
@@ -50,7 +50,7 @@ def dashboard_coordinador(request):
         subprogramas_count = Subprograma.objects.filter(programa__in=programas).count()
         salas_count = Sala.objects.filter(jardin__programa__in=programas).count()
         docentes_count = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             salas_asignadas__jardin__programa__in=programas
         ).distinct().count()
 
@@ -132,11 +132,11 @@ def lista_salas(request):
 def lista_docentes(request):
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        docentes = Usuario.objects.filter(rol="docente")
+        docentes = Usuario.objects.filter(rol__in=["docente", "auxiliar"])
     else:
         programas = user.programas_asignados.all()
         docentes = Usuario.objects.filter(
-            Q(rol="docente") &
+            Q(rol__in=["docente", "auxiliar"]) &
             (Q(salas_asignadas__jardin__programa__in=programas) | Q(programas_asignados__in=programas) | Q(salas_asignadas__isnull=True))
         ).distinct()
         
@@ -339,14 +339,14 @@ def crear_docente(request):
 def editar_docente(request, docente_id):
     docente = get_object_or_404(Usuario, id=docente_id)
 
-    # 🔒 Seguridad adicional: solo editar docentes
-    if docente.rol != "docente":
-        raise PermissionDenied("Solo se pueden editar usuarios con rol docente.")
+    # 🔒 Seguridad adicional: solo editar docentes y auxiliares
+    if docente.rol not in ["docente", "auxiliar"]:
+        raise PermissionDenied("Solo se pueden editar usuarios con rol docente o auxiliar.")
 
     # 🔒 Validación de propiedad para coordinadores
     if not request.user.es_admin():
         from django.db.models import Q
-        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+        permiso = Usuario.objects.filter(id=docente_id, rol__in=["docente", "auxiliar"]).filter(
             Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
             Q(salas_asignadas__isnull=True)
         ).exists()
@@ -464,7 +464,7 @@ def asignar_docentes_sala(request, sala_id):
 
 @login_required
 def admin_redirect(request):
-    if request.user.rol == "docente":
+    if request.user.rol in ["docente", "auxiliar"]:
         return redirect("alumnos:dashboard_docente")
     
     if request.user.rol == "coordinator" or request.user.rol == "coordinador":
@@ -551,11 +551,11 @@ def exportar_docentes_csv(request):
 
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+        docentes = Usuario.objects.filter(rol__in=['docente', 'auxiliar']).order_by('last_name', 'first_name')
     else:
         programas = user.programas_asignados.all()
         docentes = Usuario.objects.filter(
-            Q(rol="docente") &
+            Q(rol__in=["docente", "auxiliar"]) &
             (Q(salas_asignadas__jardin__programa__in=programas) | Q(salas_asignadas__isnull=True))
         ).distinct().order_by('last_name', 'first_name')
 
@@ -568,11 +568,11 @@ def exportar_docentes_csv(request):
 def imprimir_docentes(request):
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        docentes = Usuario.objects.filter(rol='docente').order_by('last_name', 'first_name')
+        docentes = Usuario.objects.filter(rol__in=['docente', 'auxiliar']).order_by('last_name', 'first_name')
     else:
         programas = user.programas_asignados.all()
         docentes = Usuario.objects.filter(
-            Q(rol="docente") &
+            Q(rol__in=["docente", "auxiliar"]) &
             (Q(salas_asignadas__jardin__programa__in=programas) | Q(salas_asignadas__isnull=True))
         ).distinct().order_by('last_name', 'first_name')
     return render(request, "users/imprimir_docentes.html", {
@@ -726,7 +726,7 @@ def imprimir_subprogramas(request):
 @login_required
 @solo_coordinador
 def restablecer_password_docente(request, docente_id):
-    docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+    docente = get_object_or_404(Usuario, id=docente_id, rol__in=["docente", "auxiliar"])
     user = request.user
 
     if not user.es_admin() and user.programas_asignados.exists():
@@ -817,12 +817,12 @@ def eliminar_subprograma(request, subprograma_id):
 @login_required
 @solo_coordinador
 def eliminar_docente(request, docente_id):
-    docente = get_object_or_404(Usuario, id=docente_id, rol="docente")
+    docente = get_object_or_404(Usuario, id=docente_id, rol__in=["docente", "auxiliar"])
 
     # 🔒 Validación de propiedad
     if not request.user.es_admin():
         from django.db.models import Q
-        permiso = Usuario.objects.filter(id=docente_id, rol="docente").filter(
+        permiso = Usuario.objects.filter(id=docente_id, rol__in=["docente", "auxiliar"]).filter(
             Q(salas_asignadas__jardin__programa__in=request.user.programas_asignados.all()) |
             Q(salas_asignadas__isnull=True)
         ).exists()
