@@ -54,10 +54,18 @@ class CrearDocenteForm(forms.ModelForm):
         widget=forms.PasswordInput,
         label="Contraseña"
     )
+    rol = forms.ChoiceField(
+        choices=(
+            ("docente", "Docente"),
+            ("auxiliar", "Auxiliar"),
+        ),
+        label="Rol",
+        initial="docente"
+    )
 
     class Meta:
         model = Usuario
-        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "password"]
+        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "password", "rol"]
         labels = {
             "first_name": "Nombre",
             "last_name": "Apellido",
@@ -97,7 +105,7 @@ class CrearDocenteForm(forms.ModelForm):
 
         # 🔒 Forzar seguridad
         user.set_password(self.cleaned_data["password"])
-        user.rol = "docente"
+        user.rol = self.cleaned_data.get("rol", "docente")
         user.is_staff = False
         user.is_superuser = False
 
@@ -112,10 +120,17 @@ class CrearDocenteForm(forms.ModelForm):
 # =====================================================
 
 class EditarDocenteForm(forms.ModelForm):
+    rol = forms.ChoiceField(
+        choices=(
+            ("docente", "Docente"),
+            ("auxiliar", "Auxiliar"),
+        ),
+        label="Rol"
+    )
 
     class Meta:
         model = Usuario
-        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "is_active"]
+        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "rol", "is_active"]
         labels = {
             "first_name": "Nombre",
             "last_name": "Apellido",
