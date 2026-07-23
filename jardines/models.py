@@ -308,12 +308,12 @@ class AsistenciaDocente(models.Model):
         ordering = ["-fecha", "turno", "docente__last_name"]
 
     def clean(self):
-        """Valida que la fecha no sea futura y que el usuario sea docente."""
+        """Valida que la fecha no sea futura y que el usuario sea docente o auxiliar."""
         if self.fecha > timezone.now().date():
             raise ValidationError("No se puede registrar asistencia para una fecha futura.")
         
-        if self.docente.rol != "docente":
-            raise ValidationError("Solo se puede registrar asistencia para usuarios con el rol 'Docente'.")
+        if self.docente.rol not in ("docente", "auxiliar"):
+            raise ValidationError("Solo se puede registrar asistencia para usuarios con el rol 'Docente' o 'Auxiliar'.")
 
     def save(self, *args, **kwargs):
         self.full_clean()

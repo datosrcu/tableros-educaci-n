@@ -87,7 +87,36 @@
               </div>
             </div>
             {% empty %}
+            {% if jardines_disponibles %}
+            {# Auxiliar sin salas asignadas: mostrar selector de espacio y turno #}
+            <div class="col-12">
+              <div class="alert alert-info border-0 rounded-3 mb-3 d-flex align-items-start gap-3" style="background:#eff6ff;">
+                <i class="fas fa-info-circle text-primary mt-1"></i>
+                <span>No tenés salas asignadas aún. Seleccioná el espacio y turno en el que estás trabajando hoy para registrar tu asistencia.</span>
+              </div>
+              <div class="row g-3">
+                {% for j in jardines_disponibles %}
+                <div class="col-md-6">
+                  <div class="p-3 rounded-3 border bg-white">
+                    <div class="fw-bold text-dark mb-2"><i class="fas fa-building text-secondary me-1"></i>{{ j.nombre }}</div>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button class="btn btn-warning btn-sm rounded-pill btn-fichar-turno"
+                              data-jardin-id="{{ j.id }}" data-turno="mañana">
+                        <i class="fas fa-sun me-1"></i> Fichar Mañana
+                      </button>
+                      <button class="btn btn-info btn-sm rounded-pill btn-fichar-turno"
+                              data-jardin-id="{{ j.id }}" data-turno="tarde">
+                        <i class="fas fa-moon me-1"></i> Fichar Tarde
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% else %}
             <div class="col-12 text-muted small">No hay turnos registrados para hoy.</div>
+            {% endif %}
             {% endfor %}
           </div>
         </div>

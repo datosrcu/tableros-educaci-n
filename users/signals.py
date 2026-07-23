@@ -101,7 +101,7 @@ from django.contrib.auth.signals import user_logged_in, user_logged_out
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     # Log de auditoría estándar
-    if user.rol in ["coordinador", "administrador", "docente"]:
+    if user.rol in ["coordinador", "administrador", "docente", "auxiliar"]:
         AccionAuditoria.objects.create(
             usuario=user,
             accion="creacion",
@@ -110,15 +110,15 @@ def log_user_login(sender, request, user, **kwargs):
             descripcion=f"Inicio de sesión exitoso desde IP: {request.META.get('REMOTE_ADDR')}"
         )
     
-    # Registro automático de asistencia docente
-    if user.rol == "docente":
+    # Registro automático de asistencia (docentes con salas asignadas, auxiliares omitidos si no tienen salas)
+    if user.rol in ("docente", "auxiliar") and user.salas_asignadas.exists():
         from jardines.models import inicializar_asistencia_diaria
         inicializar_asistencia_diaria(user, request)
 
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
-    if user and user.rol in ["coordinador", "administrador", "docente"]:
+    if user and user.rol in ["coordinador", "administrador", "docente", "auxiliar"]:
         AccionAuditoria.objects.create(
             usuario=user,
             accion="eliminacion", # Representa "cierre"

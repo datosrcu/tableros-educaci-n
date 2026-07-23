@@ -324,17 +324,17 @@ def resumen_actividad_docente(request):
 
 
     
-    # Base de docentes a supervisar
+    # Base de docentes y auxiliares a supervisar
     if user.es_admin() or not user.programas_asignados.exists():
-        docentes = Usuario.objects.filter(rol="docente")
+        docentes = Usuario.objects.filter(rol__in=["docente", "auxiliar"])
     else:
         programas = user.programas_asignados.all()
         docentes_salas = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             salas_asignadas__jardin__programa__in=programas
         )
         docentes_asistencia_hoy = Usuario.objects.filter(
-            rol="docente",
+            rol__in=["docente", "auxiliar"],
             asistencias_docente__fecha=hoy,
             asistencias_docente__jardin__programa__in=programas
         )
@@ -406,7 +406,7 @@ from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "auxiliar")
 @require_POST
 def registrar_asistencia_docente(request):
     latitude_str = request.POST.get("latitude")
@@ -425,7 +425,7 @@ def registrar_asistencia_docente(request):
     hoy = ahora_local.date()
     hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR')
-    from .models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, _turno_por_hora
+    from .models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, _turno_por_hora, Jardin
     from users.models import AccionAuditoria
     from django.core.exceptions import ValidationError
     
@@ -455,10 +455,38 @@ def registrar_asistencia_docente(request):
         asist_qs = asist_qs.filter(turno=turno)
 
     if not asist_qs.exists():
-        return JsonResponse({
-            "status": "error",
-            "message": f"No tiene salas asignadas en el turno '{turno}' para registrar asistencia."
-        }, status=400)
+        # Para usuarios sin salas asignadas (ej: auxiliares)
+        target_jardin = None
+        if jardin_id:
+            target_jardin = get_object_or_404(Jardin, id=jardin_id)
+        elif request.user.programas_asignados.exists():
+            jardines_prog = Jardin.objects.filter(programa__in=request.user.programas_asignados.all())
+            if jardines_prog.count() == 1:
+                target_jardin = jardines_prog.first()
+        elif Jardin.objects.count() == 1:
+            target_jardin = Jardin.objects.first()
+
+        if target_jardin:
+            asist, _ = AsistenciaDocente.objects.get_or_create(
+                docente=request.user,
+                jardin=target_jardin,
+                turno=turno,
+                fecha=hoy,
+                defaults={
+                    "hora_ingreso": None,
+                    "ip_address": ip,
+                    "fuera_de_jornada": False,
+                    "estado": "A",
+                    "fichado": False,
+                    "observaciones": "Registro inicializado al fichar."
+                }
+            )
+            asist_qs = AsistenciaDocente.objects.filter(id=asist.id)
+        else:
+            return JsonResponse({
+                "status": "error",
+                "message": f"Por favor, seleccione un espacio (jardín) para registrar la asistencia del turno '{turno}'."
+            }, status=400)
 
     # Si todos los registros encontrados ya fueron fichados
     if not asist_qs.filter(fichado=False).exists():

@@ -74,13 +74,13 @@ def validar_alumno_para_docente(user, alumno):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "auxiliar")
 def dashboard_docente(request):
     """
-    Vista principal para el rol Docente.
+    Vista principal para el rol Docente y Auxiliar.
     Muestra el listado de salas y un botón de fichada por cada turno que tiene hoy.
     """
-    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente
+    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, Jardin
     from django.utils import timezone
     
     # Inicializar registros de asistencia de hoy si no existen
@@ -99,6 +99,14 @@ def dashboard_docente(request):
         .select_related("jardin", "jardin__programa", "jardin__subprograma")
         .all()
     )
+
+    # Si no tiene salas asignadas y tampoco tiene asistencias registradas hoy (ej: Auxiliares):
+    jardines_disponibles = []
+    if not salas.exists() and not asistencias_hoy.exists():
+        if request.user.programas_asignados.exists():
+            jardines_disponibles = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).order_by("nombre")
+        else:
+            jardines_disponibles = Jardin.objects.all().order_by("nombre")
 
     # Construir lista de turnos del docente hoy con su estado de fichada, jardín y salas
     turnos_hoy = []
@@ -128,8 +136,9 @@ def dashboard_docente(request):
         "fichado_hoy": fichado_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
-        "tiene_jardines": asistencias_hoy.exists(),
+        "tiene_jardines": asistencias_hoy.exists() or salas.exists() or bool(jardines_disponibles),
         "turnos_hoy": turnos_hoy,
+        "jardines_disponibles": jardines_disponibles,
     })
 
 
