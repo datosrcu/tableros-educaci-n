@@ -143,6 +143,7 @@
             <ul class="dropdown-menu shadow border-0">
               <li><a class="dropdown-item" href="{% url 'users:lista_programas' %}">Programas</a></li>
               <li><a class="dropdown-item" href="{% url 'users:lista_subprogramas' %}">Subprogramas</a></li>
+              <li><a class="dropdown-item fw-bold text-primary" href="{% url 'jardines:dashboard_espacios_ludicos' %}"><i class="fas fa-chart-pie me-2"></i>Dashboard Espacios Lúdicos</a></li>
               <li>
                 <hr class="dropdown-divider">
               </li>
@@ -156,7 +157,7 @@
             <a class="nav-link text-white-50" href="{% url 'cobros:dashboard' %}">Cobros</a>
           </li>
           {% endif %}
-          {% if user.rol == "docente" %}
+          {% if user.rol == "docente" or user.rol == "auxiliar" %}
           <li class="nav-item">
             <a class="nav-link text-white-50" href="{% url 'alumnos:dashboard_docente' %}">Mi Panel</a>
           </li>
@@ -182,6 +183,16 @@
   </nav>
 
   <div class="container pb-5">
+    {% if messages %}
+      <div class="mt-3">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
     {% block content %}
     {% endblock %}
   </div>

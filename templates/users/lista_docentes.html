@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="row mb-4 align-items-center">
-    <div class="col-md-8">
+    <div class="col-md-5">
         <h2 class="fw-bold"><i class="fas fa-user-graduate me-2 text-primary"></i>Gestión de Docentes</h2>
     </div>
-    <div class="col-md-4 text-md-end">
+    <div class="col-md-7 text-md-end d-flex justify-content-md-end align-items-center gap-3">
+        <form method="get" class="d-inline-flex gap-2 align-items-center m-0">
+            <input type="text" name="q" class="form-control rounded-pill" placeholder="Buscar por nombre, apellido o DNI..." value="{{ q|default:'' }}" style="min-width: 260px;">
+            <button type="submit" class="btn btn-outline-primary rounded-pill" title="Buscar"><i class="fas fa-search"></i></button>
+            {% if q %}
+            <a href="{% url 'users:lista_docentes' %}" class="btn btn-outline-secondary rounded-pill" title="Limpiar búsqueda"><i class="fas fa-times"></i></a>
+            {% endif %}
+        </form>
         <div class="d-inline-flex gap-2">
             <div class="dropdown">
                 <button class="btn btn-outline-primary shadow-sm rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -29,6 +36,7 @@
                 <tr>
                     <th class="ps-4">Nombre y Apellido</th>
                     <th>DNI</th>
+                    <th>Rol</th>
                     <th>Contacto</th>
                     <th>Usuario</th>
                     <th class="text-end pe-4">Acciones</th>
@@ -49,6 +57,13 @@
                         <span class="badge bg-light text-dark fw-normal border">
                             {{ d.dni|default:"-" }}
                         </span>
+                    </td>
+                    <td>
+                        {% if d.rol == 'auxiliar' %}
+                        <span class="badge bg-info-subtle text-info rounded-pill px-3 py-1 text-uppercase small" style="font-size: 0.75rem;">Auxiliar</span>
+                        {% else %}
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 text-uppercase small" style="font-size: 0.75rem;">Docente</span>
+                        {% endif %}
                     </td>
                     <td>
                         <div class="small"><i class="fas fa-phone me-1 text-muted"></i>
@@ -83,7 +98,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
+                    <td colspan="6" class="text-center py-5 text-muted">
                         <i class="fas fa-info-circle me-1"></i>No hay docentes registrados.
                     </td>
                 </tr>

@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resumen Mensual de Asistencia{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-2 text-gray-800">
+                <i class="fas fa-calendar-alt text-primary me-2"></i>
+                Resumen Mensual de Asistencias
+            </h1>
+            <p class="text-muted">Consulta el historial detallado de asistencias de tus alumnos.</p>
+        </div>
+        <a href="{% url 'alumnos:dashboard_docente' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4 border-0">
+        <div class="card-body bg-light rounded">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="mes" class="form-label fw-bold">Mes</label>
+                    <select name="mes" id="mes" class="form-select">
+                        {% for num, nombre in meses_opciones %}
+                            <option value="{{ num }}" {% if num == mes %}selected{% endif %}>{{ nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="anio" class="form-label fw-bold">Año</label>
+                    <select name="anio" id="anio" class="form-select">
+                        {% for a in anios_opciones %}
+                            <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label for="sala" class="form-label fw-bold">Sala (Opcional)</label>
+                    <select name="sala" id="sala" class="form-select">
+                        <option value="">-- Todas mis salas --</option>
+                        {% for s in salas %}
+                            <option value="{{ s.id }}" {% if sala_seleccionada and s.id == sala_seleccionada.id %}selected{% endif %}>
+                                {{ s.nombre }} ({{ s.jardin.nombre }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i> Ver
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resultados -->
+    {% if datos_por_sala %}
+        {% for grupo in datos_por_sala %}
+        <div class="card shadow mb-4 border-0">
+            <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-door-open me-2"></i> {{ grupo.sala.nombre }} 
+                    <span class="text-muted small fw-normal ms-2">({{ grupo.sala.jardin.nombre }})</span>
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="min-width: 200px;" class="align-middle">Alumno</th>
+                                {% for d in dias_mes %}
+                                    <th class="text-center p-1" style="min-width: 30px; width: 30px;" title="{{ d|date:'l d/m/Y' }}">
+                                        {{ d|date:"d" }}<br>
+                                        <small class="text-muted" style="font-size: 0.65rem;">{{ d|date:"D"|slice:":1" }}</small>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in grupo.alumnos %}
+                            <tr>
+                                <td class="fw-bold">{{ fila.alumno.apellido }}, {{ fila.alumno.nombre }}</td>
+                                {% for estado in fila.dias %}
+                                    <td class="text-center p-1 align-middle">
+                                        {% if estado == 'P' %}
+                                            <span class="badge bg-success w-100 rounded-1" title="Presente">P</span>
+                                        {% elif estado == 'A' %}
+                                            <span class="badge bg-danger w-100 rounded-1" title="Ausente">A</span>
+                                        {% elif estado == 'J' %}
+                                            <span class="badge bg-warning text-dark w-100 rounded-1" title="Justificado">J</span>
+                                        {% elif estado == 'T' %}
+                                            <span class="badge bg-info text-dark w-100 rounded-1" title="Tardanza">T</span>
+                                        {% elif estado == 'R' %}
+                                            <span class="badge bg-primary w-100 rounded-1" title="Retiro Anticipado">R</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info shadow-sm text-center py-4">
+            <i class="fas fa-info-circle fa-2x mb-3 text-info"></i>
+            <h5>No se encontraron alumnos registrados</h5>
+            <p class="mb-0">No hay alumnos inscriptos en las salas seleccionadas o no tienes salas asignadas.</p>
+        </div>
+    {% endif %}
+
+    <div class="card mt-4 mb-4 border-0 bg-transparent shadow-none">
+        <div class="card-body p-0">
+            <h6 class="fw-bold text-muted"><i class="fas fa-info-circle me-2"></i> Referencias de Asistencia:</h6>
+            <div class="d-flex flex-wrap gap-3 mt-2">
+                <div><span class="badge bg-success me-1">P</span> Presente</div>
+                <div><span class="badge bg-danger me-1">A</span> Ausente</div>
+                <div><span class="badge bg-warning text-dark me-1">J</span> Justificado</div>
+                <div><span class="badge bg-info text-dark me-1">T</span> Tardanza</div>
+                <div><span class="badge bg-primary me-1">R</span> Retiro Anticipado</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -222,9 +222,9 @@ class Sala(models.Model):
                 )
 
         if self.responsable:
-            if self.responsable.rol not in ["docente", "coordinador"]:
+            if self.responsable.rol not in ["docente", "coordinador", "auxiliar"]:
                 errors["responsable"] = (
-                    "El responsable de la sala debe tener rol 'docente' o 'coordinador'."
+                    "El responsable de la sala debe tener rol 'docente', 'coordinador' o 'auxiliar'."
                 )
 
         if errors:
@@ -312,7 +312,7 @@ class AsistenciaDocente(models.Model):
         if self.fecha > timezone.now().date():
             raise ValidationError("No se puede registrar asistencia para una fecha futura.")
         
-        if self.docente.rol not in ("docente", "auxiliar"):
+        if self.docente.rol not in ["docente", "auxiliar"]:
             raise ValidationError("Solo se puede registrar asistencia para usuarios con el rol 'Docente' o 'Auxiliar'.")
 
     def save(self, *args, **kwargs):

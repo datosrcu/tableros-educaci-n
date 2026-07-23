@@ -62,11 +62,17 @@ def docente_tiene_sala(user, sala_id):
 
 def validar_alumno_para_docente(user, alumno):
     """
-    Lanza PermissionDenied si el docente intenta acceder a un alumno
-    que no pertenece a ninguna de sus salas asignadas.
+    Lanza PermissionDenied si el docente o auxiliar intenta acceder a un alumno
+    que no pertenece a ninguna de sus salas asignadas, o si el coordinador intenta
+    acceder a un alumno fuera de su jurisdicción.
     """
-    if not AsignacionSala.objects.filter(alumno=alumno, sala__in=user.salas_asignadas.all()).exists():
-        raise PermissionDenied
+    if user.rol in ["docente", "auxiliar"]:
+        if not AsignacionSala.objects.filter(alumno=alumno, sala__in=user.salas_asignadas.all()).exists():
+            raise PermissionDenied
+    elif user.rol == "coordinador":
+        if not user.es_admin() and user.programas_asignados.exists():
+            if not AsignacionSala.objects.filter(alumno=alumno, sala__jardin__programa__in=user.programas_asignados.all()).exists():
+                raise PermissionDenied
 
 
 # =========================================================
@@ -86,7 +92,7 @@ def dashboard_docente(request):
     # Inicializar registros de asistencia de hoy si no existen
     inicializar_asistencia_diaria(request.user, request)
     
-    hoy = timezone.now().date()
+    hoy = timezone.localtime(timezone.now()).date()
     asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     
     # Verificar si está de licencia hoy
@@ -176,7 +182,7 @@ def lista_alumnos(request):
         ).distinct()
 
     # 👨‍🏫 Docentes ven solo su jurisdicción
-    elif user.rol == "docente":
+    elif user.rol in ["docente", "auxiliar"]:
         alumnos_base = Alumno.objects.filter(
             asignaciones__sala__in=user.salas_asignadas.all()
         ).prefetch_related(
@@ -248,7 +254,7 @@ def alumnos_por_sala(request, sala_id):
     """
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol in ["docente", "auxiliar"] and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
     elif request.user.rol == "coordinador" and not request.user.es_admin() and request.user.programas_asignados.exists():
         if sala.jardin.programa not in request.user.programas_asignados.all():
@@ -263,7 +269,7 @@ def alumnos_por_sala(request, sala_id):
 
 
     # 🔹 Acciones masivas de baja/activación
-    if request.method == "POST" and request.user.rol == "docente":
+    if request.method == "POST" and request.user.rol in ["docente", "auxiliar", "coordinador"]:
         renderizados_ids = request.POST.getlist('alumnos_renderizados')
         asignaciones_a_actualizar = asignaciones_todas.filter(alumno_id__in=renderizados_ids)
         
@@ -288,7 +294,7 @@ def alumnos_por_sala(request, sala_id):
                         accion="modificacion",
                         modelo="Alumno",
                         objeto_id=asignacion.alumno.id,
-                        descripcion=f"El docente {request.user.username} dio de baja al alumno {asignacion.alumno.nombre} {asignacion.alumno.apellido} en la sala {sala.nombre}."
+                        descripcion=f"El usuario {request.user.username} (rol: {request.user.rol}) dio de baja al alumno {asignacion.alumno.nombre} {asignacion.alumno.apellido} en la sala {sala.nombre}."
                     )
 
         # Redirigir conservando la query string de búsqueda y orden
@@ -339,7 +345,7 @@ def alumnos_por_sala(request, sala_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def agregar_alumno(request, sala_id):
     """
     Alta de un nuevo alumno en una sala.
@@ -350,8 +356,13 @@ def agregar_alumno(request, sala_id):
     """
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if not docente_tiene_sala(request.user, sala.id):
-        raise PermissionDenied
+    if request.user.rol in ["docente", "auxiliar"]:
+        if not docente_tiene_sala(request.user, sala.id):
+            raise PermissionDenied
+    elif request.user.rol == "coordinador":
+        if not request.user.es_admin() and request.user.programas_asignados.exists():
+            if sala.jardin.programa not in request.user.programas_asignados.all():
+                raise PermissionDenied("No tiene permiso para agregar alumnos a esta sala.")
 
     # --- Lógica de Formulario Dinámico ---
     # Según el programa del jardín, buscamos si hay campos personalizados
@@ -425,6 +436,9 @@ def agregar_alumno(request, sala_id):
                 messages.success(request, f"Alumno {alumno.nombre} {alumno.apellido} registrado correctamente.")
 
                 return redirect("alumnos:alumnos_por_sala", sala_id=sala.id)
+            else:
+                from django.contrib import messages
+                messages.error(request, "Por favor revise los errores marcados en rojo en el formulario.")
 
     else:
         alumno_form = AlumnoForm()
@@ -443,7 +457,7 @@ def agregar_alumno(request, sala_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def editar_alumno(request, alumno_id):
     """
     Edición de datos de un alumno. Mantiene la misma lógica 
@@ -517,6 +531,9 @@ def editar_alumno(request, alumno_id):
                     )
 
             return redirect("alumnos:detalle_alumno", alumno_id=alumno.id)
+        else:
+            from django.contrib import messages
+            messages.error(request, "Por favor revise los errores marcados en rojo en el formulario.")
 
     else:
         alumno_form = AlumnoForm(instance=alumno)
@@ -548,7 +565,7 @@ def detalle_alumno(request, alumno_id):
     alumno = get_object_or_404(Alumno, id=alumno_id)
     user = request.user
 
-    if user.rol == "docente":
+    if user.rol in ["docente", "auxiliar"]:
         validar_alumno_para_docente(user, alumno)
     elif user.rol == "coordinador" and not user.es_admin() and user.programas_asignados.exists():
         if not Alumno.objects.filter(id=alumno_id, asignaciones__sala__jardin__programa__in=user.programas_asignados.all()).exists():
@@ -619,7 +636,7 @@ def cargar_asistencia(request, sala_id):
         if not user.es_admin() and user.programas_asignados.exists():
             if sala.jardin.programa not in user.programas_asignados.all():
                 raise PermissionDenied("No tiene permiso para gestionar asistencias en esta sala.")
-    elif user.rol == "docente":
+    elif user.rol in ["docente", "auxiliar"]:
         if not docente_tiene_sala(user, sala.id):
             raise PermissionDenied
     else:
@@ -704,7 +721,7 @@ def ver_asistencias(request, sala_id):
     """Vista de solo lectura para revisar las asistencias de un día específico."""
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol in ["docente", "auxiliar"] and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
@@ -789,12 +806,17 @@ def crear_tutor_ajax(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def exportar_alumnos_csv(request, sala_id):
     """Exporta el padrón activo de una sala a formato CSV compatible con Excel."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if not docente_tiene_sala(request.user, sala.id):
-        raise PermissionDenied
+    if request.user.rol in ["docente", "auxiliar"]:
+        if not docente_tiene_sala(request.user, sala.id):
+            raise PermissionDenied
+    elif request.user.rol == "coordinador":
+        if not request.user.es_admin() and request.user.programas_asignados.exists():
+            if sala.jardin.programa not in request.user.programas_asignados.all():
+                raise PermissionDenied
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="alumnos_{sala.nombre}.csv"'
@@ -884,12 +906,17 @@ def exportar_alumnos_completo_csv(request):
 
 
 @login_required
-@rol_requerido("docente")
+@rol_requerido("docente", "coordinador")
 def imprimir_alumnos_sala(request, sala_id):
     """Genera una vista HTML optimizada para imprimir el listado de alumnos."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if not docente_tiene_sala(request.user, sala.id):
-        raise PermissionDenied
+    if request.user.rol in ["docente", "auxiliar"]:
+        if not docente_tiene_sala(request.user, sala.id):
+            raise PermissionDenied
+    elif request.user.rol == "coordinador":
+        if not request.user.es_admin() and request.user.programas_asignados.exists():
+            if sala.jardin.programa not in request.user.programas_asignados.all():
+                raise PermissionDenied
 
     asignaciones = AsignacionSala.objects.filter(sala=sala, activo=True).select_related('alumno').order_by('alumno__apellido')
     alumnos = [a.alumno for a in asignaciones]
@@ -905,7 +932,7 @@ def imprimir_alumnos_sala(request, sala_id):
 def exportar_asistencias_csv(request, sala_id):
     """Exporta el registro de asistencia del día a formato CSV."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol in ["docente", "auxiliar"] and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
@@ -946,7 +973,7 @@ def exportar_asistencias_csv(request, sala_id):
 def imprimir_asistencias_sala(request, sala_id):
     """Genera una página HTML optimizada para imprimir el parte diario de asistencia."""
     sala = get_object_or_404(Sala, id=sala_id)
-    if request.user.rol == "docente" and not docente_tiene_sala(request.user, sala.id):
+    if request.user.rol in ["docente", "auxiliar"] and not docente_tiene_sala(request.user, sala.id):
         raise PermissionDenied
 
     fecha_str = request.GET.get("fecha")
@@ -968,3 +995,97 @@ def imprimir_asistencias_sala(request, sala_id):
         "asistencias_dict": asistencias_dict,
         "fecha": fecha,
     })
+
+
+@login_required
+@rol_requerido("docente", "auxiliar")
+def resumen_mensual_docente(request):
+    """
+    Vista de solo lectura que muestra la tabla mensual de asistencias de los alumnos
+    de las salas asignadas al docente, filtrada por mes y año.
+    """
+    from django.db.models import Count
+    
+    ahora = timezone.localdate()
+    mes = int(request.GET.get('mes', ahora.month))
+    anio = int(request.GET.get('anio', ahora.year))
+    sala_id = request.GET.get('sala')
+    
+    # Obtener rango de días del mes
+    ultimo_dia_mes = calendar.monthrange(anio, mes)[1]
+    dias_mes = [date(anio, mes, d) for d in range(1, ultimo_dia_mes + 1)]
+    
+    # Filtrar salas del docente
+    salas = request.user.salas_asignadas.select_related("jardin", "jardin__programa").all().order_by("nombre")
+    
+    sala_seleccionada = None
+    if sala_id:
+        try:
+            sala_seleccionada = next((s for s in salas if s.id == int(sala_id)), None)
+            salas_filtro = [sala_seleccionada] if sala_seleccionada else salas
+        except ValueError:
+            salas_filtro = salas
+    else:
+        salas_filtro = salas
+        
+    asignaciones = AsignacionSala.objects.filter(sala__in=salas_filtro, activo=True).select_related('alumno', 'sala').order_by('sala__nombre', 'alumno__apellido', 'alumno__nombre')
+    
+    alumnos_ids = [asig.alumno_id for asig in asignaciones]
+    
+    # Obtener todas las asistencias del mes para estos alumnos
+    asistencias = Asistencia.objects.filter(
+        alumno_id__in=alumnos_ids,
+        fecha__year=anio,
+        fecha__month=mes
+    ).values('alumno_id', 'fecha', 'estado')
+    
+    # data_asistencia = { alumno_id: { dia: estado } }
+    data_asistencia = {}
+    for a in asistencias:
+        aid = a['alumno_id']
+        fecha = a['fecha']
+        if aid not in data_asistencia:
+            data_asistencia[aid] = {}
+        data_asistencia[aid][fecha.day] = a['estado']
+        
+    # Organizar filas para la vista por sala
+    # [{ sala: Sala, alumnos: [{ alumno: Alumno, dias: [estado_dia1, estado_dia2, ...] }] }]
+    datos_por_sala = {}
+    for sala in salas_filtro:
+        datos_por_sala[sala.id] = {
+            'sala': sala,
+            'alumnos': []
+        }
+        
+    for asig in asignaciones:
+        alumno = asig.alumno
+        fila_alumno = {
+            'alumno': alumno,
+            'dias': []
+        }
+        for dia in range(1, ultimo_dia_mes + 1):
+            estado = data_asistencia.get(alumno.id, {}).get(dia, '-')
+            fila_alumno['dias'].append(estado)
+            
+        if asig.sala_id in datos_por_sala:
+            datos_por_sala[asig.sala_id]['alumnos'].append(fila_alumno)
+            
+    # Filtrar salas que no tienen alumnos (opcional, pero deja el reporte mas limpio)
+    datos_por_sala_list = [d for d in datos_por_sala.values() if d['alumnos']]
+        
+    context = {
+        'mes': mes,
+        'anio': anio,
+        'dias_mes': dias_mes,
+        'salas': salas,
+        'sala_seleccionada': sala_seleccionada,
+        'datos_por_sala': datos_por_sala_list,
+        'meses_opciones': [
+            (1, 'Enero'), (2, 'Febrero'), (3, 'Marzo'), (4, 'Abril'),
+            (5, 'Mayo'), (6, 'Junio'), (7, 'Julio'), (8, 'Agosto'),
+            (9, 'Septiembre'), (10, 'Octubre'), (11, 'Noviembre'), (12, 'Diciembre')
+        ],
+        'anios_opciones': range(2024, ahora.year + 2)
+    }
+    
+    return render(request, "alumnos/resumen_mensual_docente.html", context)

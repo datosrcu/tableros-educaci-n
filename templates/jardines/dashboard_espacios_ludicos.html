@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Espacios Lúdicos</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <style>
+        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        #map { height: 400px; border-radius: 10px; z-index: 1; }
+        .micro-text { font-size: 0.75rem; letter-spacing: 1px; }
+        .uppercase { text-transform: uppercase; }
+        
+        /* Table styles */
+        .table-espacios th { background-color: #f8f9fa; font-weight: 600; }
+        .jardin-row { background-color: #e9ecef; font-weight: bold; cursor: pointer; }
+        .turno-row { background-color: #f8f9fa; font-weight: 600; }
+        .docente-row { background-color: #ffffff; }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <!-- Header y Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Espacios Lúdicos y de Aprendizaje</h2>
+            <p class="text-muted mb-0">Dashboard exclusivo para la primera infancia.</p>
+        </div>
+        <div class="mt-3 mt-md-0">
+            <form method="get" class="d-flex gap-2 align-items-center">
+                <select name="subprograma" class="form-select border-0 shadow-sm" onchange="this.form.submit()">
+                    <option value="">Todos los subprogramas</option>
+                    {% for sp in subprogramas %}
+                        <option value="{{ sp.id }}" {% if sp.id == subprograma_sel %}selected{% endif %}>{{ sp.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <select name="zona" class="form-select border-0 shadow-sm" onchange="this.form.submit()">
+                    <option value="">Todas las Zonas</option>
+                    {% for val, label in sectores %}
+                        <option value="{{ val }}" {% if val == zona_sel %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <input type="month" name="fecha" value="{{ request.GET.fecha }}" class="form-control border-0 shadow-sm" onchange="this.form.submit()">
+                <a href="{% url 'jardines:dashboard_espacios_ludicos' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen -->
+    <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+        <!-- Tarjeta Alcance -->
+        <div class="col">
+            <div class="card border-0 shadow-sm p-3 h-100">
+                <h6 class="micro-text uppercase fw-bold text-muted mb-3">Alcance (Inscriptos)</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="fw-bold mb-0">{{ total_inscriptos }}</h2>
+                    <div class="text-end">
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 mb-1 d-block">
+                            Activos: {{ activos }}
+                        </span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2 d-block">
+                            Bajas: {{ bajas }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Cantidad de Espacios -->
+        <div class="col">
+            <div class="card border-0 shadow-sm p-3 h-100 bg-primary bg-opacity-10 text-primary text-center d-flex flex-column justify-content-center">
+                <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Cantidad de Espacios</h6>
+                <h2 class="fw-bold mb-0">{{ cantidad_espacios }}</h2>
+            </div>
+        </div>
+
+        <!-- Tarjeta Cantidad de Docentes -->
+        <div class="col">
+            <div class="card border-0 shadow-sm p-3 h-100 bg-info bg-opacity-10 text-info text-center d-flex flex-column justify-content-center">
+                <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Cantidad de Docentes</h6>
+                <h2 class="fw-bold mb-0">{{ cantidad_docentes }}</h2>
+            </div>
+        </div>
+
+        <!-- Tarjeta Costo Total Docente -->
+        <div class="col">
+            <div class="card border-0 shadow-sm p-3 h-100 bg-success bg-opacity-10 text-success text-center d-flex flex-column justify-content-center">
+                <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Costo Total Docente</h6>
+                <h2 class="fw-bold mb-0">$ {{ costo_total_docentes|floatformat:0 }}</h2>
+            </div>
+        </div>
+
+        <!-- Tarjeta Costo Promedio por Alumno -->
+        <div class="col">
+            <div class="card border-0 shadow-sm p-3 h-100 bg-warning bg-opacity-10 text-dark text-center d-flex flex-column justify-content-center">
+                <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Costo x Alumno</h6>
+                <h2 class="fw-bold mb-0">$ {{ costo_x_alumno_global|floatformat:0 }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Gráfico de Participación Mensual -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h5 class="fw-bold mb-0">Evolución de Alumnos Activos</h5>
+                </div>
+                <div class="card-body p-3 d-flex align-items-center justify-content-center">
+                    <canvas id="monthlyChart" style="max-height: 350px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Torta por Sector -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h5 class="fw-bold mb-0">Alumnos Activos por Zona</h5>
+                </div>
+                <div class="card-body p-3 d-flex align-items-center justify-content-center">
+                    <canvas id="pieChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Mapa de Ubicaciones -->
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Ubicación de Espacios</h5>
+                    <div id="map-legend"></div>
+                </div>
+                <div class="card-body p-3">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Tabla por Espacios -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+            <h5 class="fw-bold text-info mb-0">Tabla por Espacios</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-espacios mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="min-width: 250px;">Espacios / Turnos / Docentes</th>
+                            <th scope="col" class="text-center">% Permanencia</th>
+                            <th scope="col" class="text-center">% Deserción</th>
+                            <th scope="col" class="text-center">Activos</th>
+                            <th scope="col" class="text-center text-danger">Bajas</th>
+                            <th scope="col" class="text-center text-muted"><small>Costo Alumno</small></th>
+                            <th scope="col" class="text-center text-muted"><small>Costo Laboral</small></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jardin, datos_jardin in espacios_dict.items %}
+                            <!-- Fila Jardín -->
+                            <tr class="jardin-row bg-light" data-target-class=".jardin-kids-{{ forloop.counter }}" style="cursor: pointer;">
+                                <td><i class="fas fa-plus-square text-muted me-2"></i><strong>{{ jardin }}</strong></td>
+                                <td class="text-center text-muted">{{ datos_jardin.permanencia|floatformat:1 }} %</td>
+                                <td class="text-center text-muted">{{ datos_jardin.desercion|floatformat:1 }} %</td>
+                                <td class="text-center fs-5 text-success fw-bold">{{ datos_jardin.total_activos }}</td>
+                                <td class="text-center fs-5 text-danger fw-bold">{{ datos_jardin.total_bajas }}</td>
+                                <td class="text-center text-muted">$ {{ datos_jardin.costo_x_alumno|floatformat:0 }}</td>
+                                <td class="text-center text-muted">$ {{ datos_jardin.costo_total|floatformat:0 }}</td>
+                            </tr>
+                            
+                            <!-- Filas Turnos -->
+                            {% for turno, datos_turno in datos_jardin.turnos.items %}
+                                <tr class="jardin-kids-{{ forloop.parentloop.counter }} turno-row" data-target-class=".turno-kids-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" style="cursor: pointer; display: none;">
+                                    <td class="ps-4"><i class="fas fa-plus-square text-muted me-2"></i><strong>Turno {{ turno|title }}</strong></td>
+                                    <td class="text-center text-muted">{{ datos_turno.permanencia|floatformat:1 }} %</td>
+                                    <td class="text-center text-muted">{{ datos_turno.desercion|floatformat:1 }} %</td>
+                                    <td class="text-center text-success fw-bold">{{ datos_turno.total_activos }}</td>
+                                    <td class="text-center text-danger fw-bold">{{ datos_turno.total_bajas }}</td>
+                                    <td class="text-center text-muted">$ {{ datos_turno.costo_x_alumno|floatformat:0 }}</td>
+                                    <td class="text-center text-muted">$ {{ datos_turno.costo_total|floatformat:0 }}</td>
+                                </tr>
+
+                                <!-- Filas Salas -->
+                                {% for sala in datos_turno.salas %}
+                                    <tr class="jardin-kids-{{ forloop.parentloop.parentloop.counter }} turno-kids-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }} sala-row" data-target-class=".sala-kids-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" style="cursor: pointer; display: none;">
+                                        <td class="ps-5 text-secondary"><i class="fas fa-plus-square text-muted me-2"></i>{{ sala.nombre }}</td>
+                                        <td class="text-center">{{ sala.permanencia|floatformat:1 }} %</td>
+                                        <td class="text-center">{{ sala.desercion|floatformat:1 }} %</td>
+                                        <td class="text-center text-success">{{ sala.activos }}</td>
+                                        <td class="text-center text-danger">{{ sala.bajas }}</td>
+                                        <td class="text-center text-muted">$ {{ sala.costo_x_alumno|floatformat:0 }}</td>
+                                        <td class="text-center text-muted">$ {{ sala.costo_total|floatformat:0 }}</td>
+                                    </tr>
+
+                                    <!-- Filas Docentes -->
+                                    {% for docente in sala.docentes %}
+                                        <tr class="sala-kids-{{ forloop.parentloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }} docente-row bg-light" style="display: none;">
+                                            <td class="text-secondary" style="padding-left: 4.5rem !important;"><i class="fas fa-user-circle text-muted me-2"></i>{{ docente.nombres|default:"Sin docente asignado" }}</td>
+                                            <td colspan="5" class="text-muted text-center" style="font-size: 0.85rem;">Docente a cargo de la sala</td>
+                                            <td class="text-center text-muted" style="font-size: 0.85rem;">$ {{ docente.costo|floatformat:0 }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr class="sala-kids-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }} docente-row bg-light" style="display: none;">
+                                            <td class="text-secondary" style="padding-left: 4.5rem !important;"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Sin docente asignado</td>
+                                            <td colspan="6" class="text-muted text-center"></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">No hay datos disponibles para mostrar con los filtros actuales.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reporte de Asistencia Mensual -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-primary mb-0"><i class="fas fa-table me-2"></i>Asistencia Mensual por Espacio</h5>
+                <small class="text-muted">Consolidado mensual de alumnos registrados por día.</small>
+            </div>
+            <div>
+                <span class="badge bg-primary fs-6">{{ mes_nombre_reporte }}</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm mb-0 align-middle text-center table-hover" style="font-size: 0.85rem;">
+                    <thead class="bg-light">
+                        <tr>
+                            <th rowspan="2" class="align-middle text-start ps-3" style="min-width: 200px;">Espacio <span class="text-success ms-1 fs-7 fw-normal">(Activos)</span></th>
+                            <th colspan="{{ dias_mes|length }}" class="border-bottom-0">DÍAS DEL MES</th>
+                            <th rowspan="2" class="align-middle border-end">Días con<br>Asist.</th>
+                        </tr>
+                        <tr>
+                            {% for d in dias_mes %}
+                                <th class="text-muted" style="width: 28px; padding: 4px;">{{ d }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in reporte_mensual %}
+                            <!-- Fila Jardin -->
+                            <tr class="reporte-jardin-row bg-light" data-target-class=".reporte-jardin-kids-{{ forloop.counter }}" style="cursor: pointer;">
+                                <td class="fw-bold align-middle ps-3 text-nowrap">
+                                    <i class="fas fa-plus-circle text-primary me-2 toggle-icon"></i>
+                                    {{ fila.espacio }} <span class="text-success ms-1">({{ fila.total_activos }})</span>
+                                </td>
+                                {% for d, val in fila.dias.items %}
+                                    <td class="text-center align-middle {% if val > 0 %}bg-success bg-opacity-10 text-success fw-bold{% else %}text-muted{% endif %}">
+                                        {% if val > 0 %}{{ val }}{% else %}-{% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="fw-bold text-primary">{{ fila.dias_con_asist }}</td>
+                            </tr>
+                            
+                            {% for t_nombre, t_datos in fila.turnos.items %}
+                                <!-- Fila Turno -->
+                                <tr class="reporte-turno-row d-none reporte-jardin-kids-{{ forloop.parentloop.counter }} bg-white" data-target-class=".reporte-turno-kids-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" style="cursor: pointer;">
+                                    <td class="align-middle ps-4 border-start border-3 border-primary text-nowrap">
+                                        <i class="fas fa-plus-circle text-info me-2 toggle-icon"></i>
+                                        <span class="fw-bold text-primary">{{ t_nombre }}</span>
+                                        <span class="text-success ms-1">({{ t_datos.total_activos }})</span>
+                                    </td>
+                                    {% for d, val in t_datos.dias.items %}
+                                        <td class="text-center align-middle {% if val > 0 %}bg-success bg-opacity-10 text-success fw-bold{% else %}text-muted{% endif %}">
+                                            {% if val > 0 %}{{ val }}{% else %}-{% endif %}
+                                        </td>
+                                    {% endfor %}
+                                    <td class="fw-bold text-primary">{{ t_datos.dias_con_asist }}</td>
+                                </tr>
+                                
+                                {% for s_nombre, s_datos in t_datos.salas.items %}
+                                    <!-- Fila Sala -->
+                                    <tr class="reporte-sala-row d-none reporte-turno-kids-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }} bg-white">
+                                        <td class="align-middle ps-5 border-start border-3 border-info text-secondary text-nowrap">
+                                            {{ s_nombre }} <span class="text-success ms-1">({{ s_datos.total_activos }})</span>
+                                        </td>
+                                        {% for d, val in s_datos.dias.items %}
+                                            <td class="text-center align-middle {% if val > 0 %}text-success fw-bold{% else %}text-muted{% endif %}">
+                                                {% if val > 0 %}{{ val }}{% else %}-{% endif %}
+                                            </td>
+                                        {% endfor %}
+                                        <td class="fw-bold text-primary">{{ s_datos.dias_con_asist }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="34" class="text-center text-muted py-4">No hay asistencias registradas en este mes.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // --- 1. Inicializar Mapa (Leaflet) ---
+        var mapData = JSON.parse('{{ mapa_data_json|escapejs }}');
+        
+        // Si no hay datos, centrar en San Luis
+        var centroLat = -33.2950;
+        var centroLon = -66.3356;
+        if (mapData.length > 0) {
+            centroLat = mapData[0].lat;
+            centroLon = mapData[0].lon;
+        }
+
+        var map = L.map('map').setView([centroLat, centroLon], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // --- 2. Asignar colores por subprograma ---
+        var colorPalette = ["#0d6efd", "#198754", "#6f42c1", "#fd7e14", "#20c997", "#0dcaf0"];
+        var subprogColorMap = {};
+        var colorIndex = 0;
+        
+        mapData.forEach(function(lugar) {
+            if (lugar.subprograma && !subprogColorMap[lugar.subprograma]) {
+                subprogColorMap[lugar.subprograma] = colorPalette[colorIndex % colorPalette.length];
+                colorIndex++;
+            }
+        });
+
+        // --- 3. Añadir Marcadores ---
+        mapData.forEach(function(lugar) {
+            var isAlert = lugar.activos === 0;
+            var markerColor = isAlert ? "#dc3545" : subprogColorMap[lugar.subprograma];
+            
+            var iconHtml = "<div style='background-color:" + markerColor + "; width:20px; height:20px; border-radius:50%; border:2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>";
+            
+            var icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: iconHtml,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            var popupContent = `
+                <div style="min-width: 150px;">
+                    <h6 class="mb-1 text-primary fw-bold">${lugar.nombre}</h6>
+                    <p class="mb-1 text-muted" style="font-size:0.85rem;"><i class="fas fa-layer-group me-1"></i>${lugar.subprograma}</p>
+                    <p class="mb-1" style="font-size:0.9rem;"><strong>Zona:</strong> ${lugar.zona}</p>
+                    <p class="mb-0 text-success fw-bold"><i class="fas fa-users me-1"></i>${lugar.activos} Activos</p>
+                </div>
+            `;
+            if (isAlert) {
+                popupContent = `
+                <div style="min-width: 150px;">
+                    <h6 class="mb-1 text-danger fw-bold">${lugar.nombre}</h6>
+                    <p class="mb-1 text-muted" style="font-size:0.85rem;"><i class="fas fa-layer-group me-1"></i>${lugar.subprograma}</p>
+                    <p class="mb-1" style="font-size:0.9rem;"><strong>Zona:</strong> ${lugar.zona}</p>
+                    <p class="mb-0 text-danger fw-bold"><i class="fas fa-exclamation-triangle me-1"></i>Sin datos (0 activos)</p>
+                </div>
+                `;
+            }
+
+            L.marker([lugar.lat, lugar.lon], {icon: icon})
+                .addTo(map)
+                .bindPopup(popupContent);
+        });
+        
+        // --- 4. Construir Leyenda ---
+        var legendHtml = '<div class="d-flex flex-wrap gap-3 align-items-center" style="font-size: 0.85rem;">';
+        Object.keys(subprogColorMap).forEach(function(sp) {
+            legendHtml += '<span class="d-flex align-items-center"><span class="d-inline-block rounded-circle me-1" style="width:12px; height:12px; background-color:' + subprogColorMap[sp] + '"></span>' + sp + '</span>';
+        });
+        legendHtml += '<span class="d-flex align-items-center"><span class="d-inline-block rounded-circle me-1" style="width:12px; height:12px; background-color:#dc3545"></span>Sin alumnos/datos</span>';
+        legendHtml += '</div>';
+        
+        document.getElementById('map-legend').innerHTML = legendHtml;
+
+
+        // --- 2. Inicializar Gráfico (Chart.js) ---
+        var chartLabels = JSON.parse('{{ grafico_labels_json|escapejs }}');
+        var chartData = JSON.parse('{{ grafico_data_json|escapejs }}');
+        var chartGrowth = JSON.parse('{{ grafico_crecimiento_json|escapejs }}');
+
+        var ctx = document.getElementById('monthlyChart').getContext('2d');
+        var monthlyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Alumnos Activos',
+                    data: chartData,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointBackgroundColor: '#198754',
+                    yAxisID: 'y'
+                },
+                {
+                    label: '% Crecimiento vs mes anterior',
+                    data: chartGrowth,
+                    borderColor: '#0d6efd',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    fill: false,
+                    pointBackgroundColor: '#0d6efd',
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.datasetIndex === 1) {
+                                    label += context.raw + '%';
+                                } else {
+                                    label += context.raw;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        position: 'left',
+                        title: { display: true, text: 'Cant. Activos' },
+                        ticks: { precision: 0 }
+                    },
+                    y1: {
+                        beginAtZero: true,
+                        position: 'right',
+                        title: { display: true, text: '% Crecimiento' },
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: function(value) { return value + '%'; } }
+                    }
+                }
+            }
+        });
+
+        // --- 3. Inicializar Gráfico Torta (Chart.js) ---
+        var pieLabels = JSON.parse('{{ pie_labels_json|escapejs }}');
+        var pieData = JSON.parse('{{ pie_data_json|escapejs }}');
+
+        var ctxPie = document.getElementById('pieChart').getContext('2d');
+        var pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: colorPalette.slice(0, pieLabels.length),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Custom logic for expanding nested table rows with N-levels
+        function collapseRow(row) {
+            row.style.display = 'none';
+            let icon = row.querySelector('i.fas.fa-minus-square');
+            if (icon) {
+                icon.classList.replace('fa-minus-square', 'fa-plus-square');
+                let targetClass = row.getAttribute('data-target-class');
+                if (targetClass) {
+                    document.querySelectorAll(targetClass).forEach(child => collapseRow(child));
+                }
+            }
+        }
+
+        function handleRowClick(event) {
+            let row = event.currentTarget;
+            let targetClass = row.getAttribute('data-target-class');
+            if (!targetClass) return;
+            
+            let children = document.querySelectorAll(targetClass);
+            let icon = row.querySelector('i.fas');
+            let isExpanded = icon && icon.classList.contains('fa-minus-square');
+            
+            if (isExpanded) {
+                icon.classList.replace('fa-minus-square', 'fa-plus-square');
+                children.forEach(child => collapseRow(child));
+            } else {
+                if(icon) icon.classList.replace('fa-plus-square', 'fa-minus-square');
+                children.forEach(child => child.style.display = 'table-row');
+            }
+        }
+
+        document.querySelectorAll('.jardin-row, .turno-row, .sala-row').forEach(row => {
+            row.addEventListener('click', handleRowClick);
+        });
+
+    document.querySelectorAll('.reporte-jardin-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const targetClass = this.getAttribute('data-target-class');
+            const targetRows = document.querySelectorAll(targetClass);
+            const icon = this.querySelector('.toggle-icon');
+            
+            const isExpanded = icon.classList.contains('fa-minus-circle');
+            
+            if (isExpanded) {
+                icon.classList.remove('fa-minus-circle');
+                icon.classList.add('fa-plus-circle');
+                // Ocultar turnos y salas
+                targetRows.forEach(target => {
+                    target.classList.add('d-none');
+                    if (target.classList.contains('reporte-turno-row')) {
+                        const tIcon = target.querySelector('.toggle-icon');
+                        if (tIcon) {
+                            tIcon.classList.remove('fa-minus-circle');
+                            tIcon.classList.add('fa-plus-circle');
+                        }
+                        const salasClass = target.getAttribute('data-target-class');
+                        if (salasClass) {
+                            document.querySelectorAll(salasClass).forEach(s => s.classList.add('d-none'));
+                        }
+                    }
+                });
+            } else {
+                icon.classList.remove('fa-plus-circle');
+                icon.classList.add('fa-minus-circle');
+                targetRows.forEach(target => {
+                    if (target.classList.contains('reporte-turno-row')) {
+                        target.classList.remove('d-none');
+                    }
+                });
+            }
+        });
+    });
+
+    document.querySelectorAll('.reporte-turno-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const targetClass = this.getAttribute('data-target-class');
+            const targetRows = document.querySelectorAll(targetClass);
+            const icon = this.querySelector('.toggle-icon');
+            
+            const isExpanded = icon.classList.contains('fa-minus-circle');
+            
+            if (isExpanded) {
+                icon.classList.remove('fa-minus-circle');
+                icon.classList.add('fa-plus-circle');
+                targetRows.forEach(target => target.classList.add('d-none'));
+            } else {
+                icon.classList.remove('fa-plus-circle');
+                icon.classList.add('fa-minus-circle');
+                targetRows.forEach(target => target.classList.remove('d-none'));
+            }
+        });
+    });
+    });
+</script>
+</body>
+</html>

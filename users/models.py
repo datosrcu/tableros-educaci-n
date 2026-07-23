@@ -17,6 +17,7 @@ class Usuario(AbstractUser):
         ("coordinador", "Coordinador"),
         ("docente", "Docente"),
         ("auxiliar", "Auxiliar"),
+        ("auxiliar", "Auxiliar"),
     )
 
     rol = models.CharField(
@@ -56,12 +57,8 @@ class Usuario(AbstractUser):
         return self.rol == "coordinador"
 
     def es_docente(self):
-        """Verifica si el usuario es docente o auxiliar."""
-        return self.rol in ("docente", "auxiliar")
-
-    def es_auxiliar(self):
-        """Verifica si el usuario es auxiliar."""
-        return self.rol == "auxiliar"
+        """Verifica si el usuario es docente."""
+        return self.rol == "docente"
 
     @property
     def puede_gestionar_cobros(self):
@@ -112,7 +109,7 @@ class Usuario(AbstractUser):
             self.is_staff = False
             self.is_superuser = False
 
-        elif self.rol in ("docente", "auxiliar"):
+        elif self.rol == "docente":
             self.is_staff = False
             self.is_superuser = False
 

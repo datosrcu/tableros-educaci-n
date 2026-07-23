@@ -27,16 +27,18 @@ class UsuarioAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # 🔒 Coordinador solo puede crear docentes
+        # 🔒 Coordinador solo puede crear docentes y auxiliares
         if request and request.user.rol == "coordinador":
             self.fields["rol"].choices = [
                 ("docente", "Docente"),
+                ("auxiliar", "Auxiliar"),
             ]
 
     def clean_rol(self):
         rol = self.cleaned_data.get("rol")
 
         # 🔒 Nunca permitir escalamiento por form
-        if rol not in ["docente", "coordinador", "administrador"]:
+        if rol not in ["docente", "auxiliar", "coordinador", "administrador"]:
             raise ValidationError("Rol inválido.")
 
         return rol
@@ -52,10 +54,18 @@ class CrearDocenteForm(forms.ModelForm):
         widget=forms.PasswordInput,
         label="Contraseña"
     )
+    rol = forms.ChoiceField(
+        choices=(
+            ("docente", "Docente"),
+            ("auxiliar", "Auxiliar"),
+        ),
+        label="Rol",
+        initial="docente"
+    )
 
     class Meta:
         model = Usuario
-        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "password"]
+        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "password", "rol"]
         labels = {
             "first_name": "Nombre",
             "last_name": "Apellido",
@@ -95,7 +105,7 @@ class CrearDocenteForm(forms.ModelForm):
 
         # 🔒 Forzar seguridad
         user.set_password(self.cleaned_data["password"])
-        user.rol = "docente"
+        user.rol = self.cleaned_data.get("rol", "docente")
         user.is_staff = False
         user.is_superuser = False
 
@@ -110,10 +120,17 @@ class CrearDocenteForm(forms.ModelForm):
 # =====================================================
 
 class EditarDocenteForm(forms.ModelForm):
+    rol = forms.ChoiceField(
+        choices=(
+            ("docente", "Docente"),
+            ("auxiliar", "Auxiliar"),
+        ),
+        label="Rol"
+    )
 
     class Meta:
         model = Usuario
-        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "is_active"]
+        fields = ["first_name", "last_name", "dni", "telefono", "username", "email", "rol", "is_active"]
         labels = {
             "first_name": "Nombre",
             "last_name": "Apellido",
@@ -186,7 +203,7 @@ class AsignarDocentesSalaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # 🔒 Queryset dinámico
-        qs = Usuario.objects.filter(rol="docente", is_active=True)
+        qs = Usuario.objects.filter(rol__in=["docente", "auxiliar"], is_active=True)
         if user and not user.es_admin():
             from django.db.models import Q
             qs = qs.filter(
@@ -200,9 +217,9 @@ class AsignarDocentesSalaForm(forms.ModelForm):
         docentes = self.cleaned_data.get("docentes")
 
         for docente in docentes:
-            if docente.rol != "docente":
+            if docente.rol not in ["docente", "auxiliar"]:
                 raise ValidationError(
-                    "Solo usuarios con rol docente pueden asignarse."
+                    "Solo usuarios con rol docente o auxiliar pueden asignarse."
                 )
 
         return docentes
@@ -279,7 +296,7 @@ class SubprogramaForm(forms.ModelForm):
 
 class SalaForm(forms.ModelForm):
     docentes = forms.ModelMultipleChoiceField(
-        queryset=Usuario.objects.filter(rol="docente", is_active=True),
+        queryset=Usuario.objects.filter(rol__in=["docente", "auxiliar"], is_active=True),
         widget=forms.CheckboxSelectMultiple,
         required=False,
         label="Docentes"
@@ -318,15 +335,16 @@ class SalaForm(forms.ModelForm):
             
             from django.db.models import Q as Qlocal
             self.fields["responsable"].queryset = Usuario.objects.filter(
-                rol__in=["docente", "coordinador"]
+                rol__in=["docente", "coordinador", "auxiliar"]
             ).filter(
                 Qlocal(salas_asignadas__jardin__programa__in=programas) |
                 Qlocal(programas_asignados__in=programas) |
-                Qlocal(rol="docente", salas_asignadas__isnull=True)
+                Qlocal(rol__in=["docente", "auxiliar"], salas_asignadas__isnull=True)
             ).distinct()
             
-            self.fields["docentes"].queryset = Usuario.objects.filter(rol="docente", is_active=True).filter(
+            self.fields["docentes"].queryset = Usuario.objects.filter(rol__in=["docente", "auxiliar"], is_active=True).filter(
                 Qlocal(salas_asignadas__jardin__programa__in=programas) |
+                Qlocal(programas_asignados__in=programas) |
                 Qlocal(salas_asignadas__isnull=True)
             ).distinct()
 
@@ -334,18 +352,18 @@ class SalaForm(forms.ModelForm):
         docentes = self.cleaned_data.get("docentes")
         if docentes:
             for docente in docentes:
-                if docente.rol != "docente":
+                if docente.rol not in ["docente", "auxiliar"]:
                     raise ValidationError(
-                        "Solo usuarios con rol docente pueden asignarse."
+                        "Solo usuarios con rol docente o auxiliar pueden asignarse."
                     )
         return docentes
 
     def clean_responsable(self):
         responsable = self.cleaned_data.get("responsable")
 
-        if responsable and responsable.rol not in ["docente", "coordinador"]:
+        if responsable and responsable.rol not in ["docente", "coordinador", "auxiliar"]:
             raise ValidationError(
-                "El responsable debe ser docente o coordinador."
+                "El responsable debe ser docente, auxiliar o coordinador."
             )
 
         return responsable
