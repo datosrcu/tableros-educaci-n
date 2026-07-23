@@ -112,8 +112,6 @@ def log_user_login(sender, request, user, **kwargs):
     
     # Registro automático de asistencia (docentes con salas asignadas, auxiliares omitidos si no tienen salas)
     if user.rol in ("docente", "auxiliar") and user.salas_asignadas.exists():
-    # Registro automático de asistencia docente
-    if user.rol in ["docente", "auxiliar"]:
         from jardines.models import inicializar_asistencia_diaria
         inicializar_asistencia_diaria(user, request)
 

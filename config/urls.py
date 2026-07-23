@@ -18,7 +18,6 @@ def home_redirect(request):
 
     if request.user.rol == "coordinador":
         return redirect("users:dashboard_coordinador")
-    if request.user.rol in ["docente", "auxiliar"]:
     if request.user.rol in ("docente", "auxiliar"):
         return redirect("alumnos:dashboard_docente")
 
