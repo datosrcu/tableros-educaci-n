@@ -455,44 +455,38 @@ def registrar_asistencia_docente(request):
     asist_qs = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
     if asistencia_id:
         asist_qs = asist_qs.filter(id=asistencia_id)
-    elif jardin_id:
+    elif jardin_id and turno:
         asist_qs = asist_qs.filter(jardin_id=jardin_id, turno=turno)
+    elif request.user.rol == "auxiliar" or not request.user.salas_asignadas.exists():
+        pass  # Usar todos los registros de la fecha para el auxiliar
     else:
         asist_qs = asist_qs.filter(turno=turno)
 
     if not asist_qs.exists():
-        # Para usuarios sin salas asignadas (ej: auxiliares)
+        # Crear registro diario automático para auxiliares / personal sin salas
         target_jardin = None
         if jardin_id:
-            target_jardin = get_object_or_404(Jardin, id=jardin_id)
+            target_jardin = Jardin.objects.filter(id=jardin_id).first()
         elif request.user.programas_asignados.exists():
-            jardines_prog = Jardin.objects.filter(programa__in=request.user.programas_asignados.all())
-            if jardines_prog.count() == 1:
-                target_jardin = jardines_prog.first()
-        elif Jardin.objects.count() == 1:
+            target_jardin = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).first()
+        if not target_jardin:
             target_jardin = Jardin.objects.first()
 
-        if target_jardin:
-            asist, _ = AsistenciaDocente.objects.get_or_create(
-                docente=request.user,
-                jardin=target_jardin,
-                turno=turno,
-                fecha=hoy,
-                defaults={
-                    "hora_ingreso": None,
-                    "ip_address": ip,
-                    "fuera_de_jornada": False,
-                    "estado": "A",
-                    "fichado": False,
-                    "observaciones": "Registro inicializado al fichar."
-                }
-            )
-            asist_qs = AsistenciaDocente.objects.filter(id=asist.id)
-        else:
-            return JsonResponse({
-                "status": "error",
-                "message": f"Por favor, seleccione un espacio (jardín) para registrar la asistencia del turno '{turno}'."
-            }, status=400)
+        asist, _ = AsistenciaDocente.objects.get_or_create(
+            docente=request.user,
+            fecha=hoy,
+            defaults={
+                "jardin": target_jardin,
+                "turno": None,
+                "hora_ingreso": None,
+                "ip_address": ip,
+                "fuera_de_jornada": False,
+                "estado": "A",
+                "fichado": False,
+                "observaciones": "Registro inicializado al fichar."
+            }
+        )
+        asist_qs = AsistenciaDocente.objects.filter(id=asist.id)
 
     # Si todos los registros encontrados ya fueron fichados
     if not asist_qs.filter(fichado=False).exists():

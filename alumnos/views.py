@@ -106,51 +106,46 @@ def dashboard_docente(request):
         .all()
     )
 
-    # Si no tiene salas asignadas y tampoco tiene asistencias registradas hoy (ej: Auxiliares):
-    jardines_disponibles = []
-    if not salas.exists() and not asistencias_hoy.exists():
-        if request.user.programas_asignados.exists():
-            jardines_disponibles = Jardin.objects.filter(programa__in=request.user.programas_asignados.all()).order_by("nombre")
-        else:
-            jardines_disponibles = Jardin.objects.all().order_by("nombre")
+    es_auxiliar = (request.user.rol == "auxiliar") or (not salas.exists())
 
-    # Construir lista de turnos del docente hoy con su estado de fichada, jardín y salas
+    auxiliar_asistencia = None
+    if es_auxiliar:
+        auxiliar_asistencia = asistencias_hoy.first()
+
     turnos_hoy = []
-    for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
-        # Filtrar salas del docente que corresponden a este jardín y turno
-        salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
-        if salas_turno:
-            salas_nombres = ", ".join([s.nombre for s in salas_turno])
-        elif request.user.rol == "auxiliar":
-            salas_nombres = "Personal Auxiliar"
-        else:
-            salas_nombres = "Sin sala asignada"
-        
-        turnos_hoy.append({
-            "asistencia_id": asist.id,
-            "jardin_id": asist.jardin_id,
-            "turno": asist.turno,
-            "turno_label": asist.get_turno_display() if asist.turno else "—",
-            "fichado": asist.fichado,
-            "hora_fichada": asist.hora_ingreso if asist.fichado else None,
-            "estado": asist.estado,
-            "jardin_nombre": asist.jardin.nombre,
-            "salas_nombres": salas_nombres,
-        })
+    if not es_auxiliar:
+        for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
+            salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
+            salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+            
+            turnos_hoy.append({
+                "asistencia_id": asist.id,
+                "jardin_id": asist.jardin_id,
+                "turno": asist.turno,
+                "turno_label": asist.get_turno_display() if asist.turno else "—",
+                "fichado": asist.fichado,
+                "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+                "estado": asist.estado,
+                "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
+                "salas_nombres": salas_nombres,
+            })
     
-    # Backwards-compat: fichado_hoy = True solo si fichó en TODOS los turnos
-    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
-    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
+    if es_auxiliar and auxiliar_asistencia:
+        fichado_hoy = auxiliar_asistencia.fichado
+        hora_fichada = auxiliar_asistencia.hora_ingreso if auxiliar_asistencia.fichado else None
+    else:
+        fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+        hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
         "fichado_hoy": fichado_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
-        "tiene_jardines": asistencias_hoy.exists() or salas.exists() or bool(jardines_disponibles),
+        "tiene_jardines": True,
         "turnos_hoy": turnos_hoy,
-        "jardines_disponibles": jardines_disponibles,
-        "es_auxiliar": request.user.rol == "auxiliar",
+        "es_auxiliar": es_auxiliar,
+        "auxiliar_asistencia": auxiliar_asistencia,
     })
 
 
