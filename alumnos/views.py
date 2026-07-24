@@ -119,7 +119,12 @@ def dashboard_docente(request):
     for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
         # Filtrar salas del docente que corresponden a este jardín y turno
         salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
-        salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+        if salas_turno:
+            salas_nombres = ", ".join([s.nombre for s in salas_turno])
+        elif request.user.rol == "auxiliar":
+            salas_nombres = "Personal Auxiliar"
+        else:
+            salas_nombres = "Sin sala asignada"
         
         turnos_hoy.append({
             "asistencia_id": asist.id,
@@ -145,6 +150,7 @@ def dashboard_docente(request):
         "tiene_jardines": asistencias_hoy.exists() or salas.exists() or bool(jardines_disponibles),
         "turnos_hoy": turnos_hoy,
         "jardines_disponibles": jardines_disponibles,
+        "es_auxiliar": request.user.rol == "auxiliar",
     })
 
 
