@@ -155,7 +155,7 @@ def dashboard_docente(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def lista_alumnos(request):
     """
     Muestra el listado de alumnos filtrado por rol con buscador y ordenamiento.
@@ -246,7 +246,7 @@ def lista_alumnos(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def alumnos_por_sala(request, sala_id):
     """
     Lista los alumnos de una sala específica para que el docente
@@ -270,7 +270,9 @@ def alumnos_por_sala(request, sala_id):
 
 
     # 🔹 Acciones masivas de baja/activación
-    if request.method == "POST" and request.user.rol in ["docente", "auxiliar", "coordinador"]:
+    if request.method == "POST":
+        if request.user.rol not in ["docente", "coordinador", "administrador"] and not request.user.is_superuser:
+            raise PermissionDenied("Los auxiliares no tienen permiso para modificar el estado de los alumnos.")
         renderizados_ids = request.POST.getlist('alumnos_renderizados')
         asignaciones_a_actualizar = asignaciones_todas.filter(alumno_id__in=renderizados_ids)
         
@@ -357,7 +359,7 @@ def agregar_alumno(request, sala_id):
     """
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if request.user.rol in ["docente", "auxiliar"]:
+    if request.user.rol == "docente":
         if not docente_tiene_sala(request.user, sala.id):
             raise PermissionDenied
     elif request.user.rol == "coordinador":
@@ -554,7 +556,7 @@ def editar_alumno(request, alumno_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def detalle_alumno(request, alumno_id):
     """
     Vista detallada de un alumno:
@@ -637,7 +639,7 @@ def cargar_asistencia(request, sala_id):
         if not user.es_admin() and user.programas_asignados.exists():
             if sala.jardin.programa not in user.programas_asignados.all():
                 raise PermissionDenied("No tiene permiso para gestionar asistencias en esta sala.")
-    elif user.rol in ["docente", "auxiliar"]:
+    elif user.rol == "docente":
         if not docente_tiene_sala(user, sala.id):
             raise PermissionDenied
     else:
@@ -717,7 +719,7 @@ def cargar_asistencia(request, sala_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def ver_asistencias(request, sala_id):
     """Vista de solo lectura para revisar las asistencias de un día específico."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -807,7 +809,7 @@ def crear_tutor_ajax(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador")
+@rol_requerido("docente", "auxiliar", "coordinador")
 def exportar_alumnos_csv(request, sala_id):
     """Exporta el padrón activo de una sala a formato CSV compatible con Excel."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -907,7 +909,7 @@ def exportar_alumnos_completo_csv(request):
 
 
 @login_required
-@rol_requerido("docente", "coordinador")
+@rol_requerido("docente", "auxiliar", "coordinador")
 def imprimir_alumnos_sala(request, sala_id):
     """Genera una vista HTML optimizada para imprimir el listado de alumnos."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -929,7 +931,7 @@ def imprimir_alumnos_sala(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def exportar_asistencias_csv(request, sala_id):
     """Exporta el registro de asistencia del día a formato CSV."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -970,7 +972,7 @@ def exportar_asistencias_csv(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def imprimir_asistencias_sala(request, sala_id):
     """Genera una página HTML optimizada para imprimir el parte diario de asistencia."""
     sala = get_object_or_404(Sala, id=sala_id)

@@ -12,8 +12,6 @@ def rol_requerido(*roles):
                 return view_func(request, *args, **kwargs)
 
             allowed_roles = list(roles)
-            if "docente" in roles:
-                allowed_roles.append("auxiliar")
 
             if request.user.rol not in allowed_roles:
                 raise PermissionDenied
