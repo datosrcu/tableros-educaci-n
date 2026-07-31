@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 class Usuario(AbstractUser):
     """
     Modelo de usuario extendido con roles específicos para el Sistema Presente.
-    Roles disponibles: administrador, coordinador, docente.
+    Roles disponibles: administrador, coordinador, docente, auxiliar.
     """
     ROLES = (
         ("administrador", "Administrador"),
@@ -58,6 +58,10 @@ class Usuario(AbstractUser):
     def es_docente(self):
         """Verifica si el usuario es docente o auxiliar."""
         return self.rol in ("docente", "auxiliar")
+
+    def es_auxiliar(self):
+        """Verifica si el usuario es auxiliar."""
+        return self.rol == "auxiliar"
 
     @property
     def puede_gestionar_cobros(self):
@@ -108,7 +112,7 @@ class Usuario(AbstractUser):
             self.is_staff = False
             self.is_superuser = False
 
-        elif self.rol in ["docente", "auxiliar"]:
+        elif self.rol in ("docente", "auxiliar"):
             self.is_staff = False
             self.is_superuser = False
 

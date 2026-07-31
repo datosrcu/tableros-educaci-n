@@ -110,8 +110,8 @@ def log_user_login(sender, request, user, **kwargs):
             descripcion=f"Inicio de sesión exitoso desde IP: {request.META.get('REMOTE_ADDR')}"
         )
     
-    # Registro automático de asistencia docente
-    if user.rol in ["docente", "auxiliar"]:
+    # Registro automático de asistencia (docentes con salas asignadas, auxiliares omitidos si no tienen salas)
+    if user.rol in ("docente", "auxiliar") and user.salas_asignadas.exists():
         from jardines.models import inicializar_asistencia_diaria
         inicializar_asistencia_diaria(user, request)
 

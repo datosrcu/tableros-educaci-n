@@ -268,7 +268,10 @@ class AsistenciaDocente(models.Model):
     jardin = models.ForeignKey(
         Jardin,
         on_delete=models.CASCADE,
-        related_name="asistencias_docentes"
+        related_name="asistencias_docentes",
+        null=True,
+        blank=True,
+        verbose_name="Espacio / Jardín"
     )
     # Turno al que corresponde este registro (null = registros históricos pre-migración)
     turno = models.CharField(
@@ -308,7 +311,7 @@ class AsistenciaDocente(models.Model):
         ordering = ["-fecha", "turno", "docente__last_name"]
 
     def clean(self):
-        """Valida que la fecha no sea futura y que el usuario sea docente."""
+        """Valida que la fecha no sea futura y que el usuario sea docente o auxiliar."""
         if self.fecha > timezone.now().date():
             raise ValidationError("No se puede registrar asistencia para una fecha futura.")
         
@@ -331,10 +334,9 @@ def _turno_por_hora(hora):
 
 def inicializar_asistencia_diaria(user, request=None):
     """
-    Crea los registros de AsistenciaDocente del día para el docente.
-    Un registro por cada combinación única (jardín, turno) en las salas asignadas.
-    Si el docente trabaja mañana y tarde en el mismo espacio → 2 registros.
-    Si trabaja en 2 espacios distintos → 2 registros (uno por espacio).
+    Crea los registros de AsistenciaDocente del día para el docente o auxiliar.
+    - Para docentes con salas: un registro por cada combinación única (jardín, turno) en sus salas asignadas.
+    - Para auxiliares o personal sin salas: un único registro diario de asistencia.
     """
     from django.utils import timezone
     from datetime import datetime, timedelta
@@ -353,42 +355,62 @@ def inicializar_asistencia_diaria(user, request=None):
         estado_inicial = 'A'
         obs_inicial = 'Registro inicializado por el sistema.'
 
-    # Agrupar salas por (jardin, turno) — cada par es un registro distinto
     salas = user.salas_asignadas.select_related('jardin').all()
-    pares_vistos = set()
 
-    for sala in salas:
-        par = (sala.jardin_id, sala.turno)
-        if par in pares_vistos:
-            continue
-        pares_vistos.add(par)
+    if user.rol != 'auxiliar' and salas.exists():
+        pares_vistos = set()
+        for sala in salas:
+            par = (sala.jardin_id, sala.turno)
+            if par in pares_vistos:
+                continue
+            pares_vistos.add(par)
 
-        jardin = sala.jardin
-        turno = sala.turno  # 'mañana' o 'tarde'
+            jardin = sala.jardin
+            turno = sala.turno  # 'mañana' o 'tarde'
 
-        # Verificar si ya existe el registro para este par hoy
-        if AsistenciaDocente.objects.filter(
-            docente=user, jardin=jardin, turno=turno, fecha=hoy
-        ).exists():
-            continue
+            if AsistenciaDocente.objects.filter(
+                docente=user, jardin=jardin, turno=turno, fecha=hoy
+            ).exists():
+                continue
 
-        # Verificar fuera de jornada para esta sala específica
-        h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
-        h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
-        fuera = not (h_inicio <= hora <= h_fin)
+            h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
+            h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
+            fuera = not (h_inicio <= hora <= h_fin)
 
-        AsistenciaDocente.objects.create(
-            docente=user,
-            jardin=jardin,
-            turno=turno,
-            fecha=hoy,
-            hora_ingreso=None,
-            ip_address=ip,
-            fuera_de_jornada=fuera,
-            estado=estado_inicial,
-            fichado=False,
-            observaciones=obs_inicial
-        )
+            AsistenciaDocente.objects.create(
+                docente=user,
+                jardin=jardin,
+                turno=turno,
+                fecha=hoy,
+                hora_ingreso=None,
+                ip_address=ip,
+                fuera_de_jornada=fuera,
+                estado=estado_inicial,
+                fichado=False,
+                observaciones=obs_inicial
+            )
+    else:
+        # Para Auxiliares o personal sin salas asignadas: 1 solo registro de asistencia diaria
+        if not AsistenciaDocente.objects.filter(docente=user, fecha=hoy).exists():
+            target_jardin = None
+            if user.programas_asignados.exists():
+                target_jardin = Jardin.objects.filter(programa__in=user.programas_asignados.all()).first()
+            if not target_jardin:
+                target_jardin = Jardin.objects.first()
+
+            AsistenciaDocente.objects.create(
+                docente=user,
+                jardin=target_jardin,
+                turno=None,
+                fecha=hoy,
+                hora_ingreso=None,
+                ip_address=ip,
+                fuera_de_jornada=False,
+                estado=estado_inicial,
+                fichado=False,
+                observaciones="Registro de asistencia de auxiliar."
+            )
+
 
 class LicenciaDocente(models.Model):
     TIPO_CHOICES = [

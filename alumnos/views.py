@@ -83,10 +83,10 @@ def validar_alumno_para_docente(user, alumno):
 @rol_requerido("docente", "auxiliar")
 def dashboard_docente(request):
     """
-    Vista principal para el rol Docente.
+    Vista principal para el rol Docente y Auxiliar.
     Muestra el listado de salas y un botón de fichada por cada turno que tiene hoy.
     """
-    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente
+    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, Jardin
     from django.utils import timezone
     
     # Inicializar registros de asistencia de hoy si no existen
@@ -106,36 +106,46 @@ def dashboard_docente(request):
         .all()
     )
 
-    # Construir lista de turnos del docente hoy con su estado de fichada, jardín y salas
+    es_auxiliar = (request.user.rol == "auxiliar") or (not salas.exists())
+
+    auxiliar_asistencia = None
+    if es_auxiliar:
+        auxiliar_asistencia = asistencias_hoy.first()
+
     turnos_hoy = []
-    for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
-        # Filtrar salas del docente que corresponden a este jardín y turno
-        salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
-        salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
-        
-        turnos_hoy.append({
-            "asistencia_id": asist.id,
-            "jardin_id": asist.jardin_id,
-            "turno": asist.turno,
-            "turno_label": asist.get_turno_display() if asist.turno else "—",
-            "fichado": asist.fichado,
-            "hora_fichada": asist.hora_ingreso if asist.fichado else None,
-            "estado": asist.estado,
-            "jardin_nombre": asist.jardin.nombre,
-            "salas_nombres": salas_nombres,
-        })
+    if not es_auxiliar:
+        for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
+            salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
+            salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+            
+            turnos_hoy.append({
+                "asistencia_id": asist.id,
+                "jardin_id": asist.jardin_id,
+                "turno": asist.turno,
+                "turno_label": asist.get_turno_display() if asist.turno else "—",
+                "fichado": asist.fichado,
+                "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+                "estado": asist.estado,
+                "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
+                "salas_nombres": salas_nombres,
+            })
     
-    # Backwards-compat: fichado_hoy = True solo si fichó en TODOS los turnos
-    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
-    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
+    if es_auxiliar and auxiliar_asistencia:
+        fichado_hoy = auxiliar_asistencia.fichado
+        hora_fichada = auxiliar_asistencia.hora_ingreso if auxiliar_asistencia.fichado else None
+    else:
+        fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+        hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
         "fichado_hoy": fichado_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
-        "tiene_jardines": asistencias_hoy.exists(),
+        "tiene_jardines": True,
         "turnos_hoy": turnos_hoy,
+        "es_auxiliar": es_auxiliar,
+        "auxiliar_asistencia": auxiliar_asistencia,
     })
 
 
@@ -145,7 +155,7 @@ def dashboard_docente(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def lista_alumnos(request):
     """
     Muestra el listado de alumnos filtrado por rol con buscador y ordenamiento.
@@ -236,7 +246,7 @@ def lista_alumnos(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def alumnos_por_sala(request, sala_id):
     """
     Lista los alumnos de una sala específica para que el docente
@@ -260,7 +270,9 @@ def alumnos_por_sala(request, sala_id):
 
 
     # 🔹 Acciones masivas de baja/activación
-    if request.method == "POST" and request.user.rol in ["docente", "auxiliar", "coordinador"]:
+    if request.method == "POST":
+        if request.user.rol not in ["docente", "coordinador", "administrador"] and not request.user.is_superuser:
+            raise PermissionDenied("Los auxiliares no tienen permiso para modificar el estado de los alumnos.")
         renderizados_ids = request.POST.getlist('alumnos_renderizados')
         asignaciones_a_actualizar = asignaciones_todas.filter(alumno_id__in=renderizados_ids)
         
@@ -347,7 +359,7 @@ def agregar_alumno(request, sala_id):
     """
     sala = get_object_or_404(Sala, id=sala_id)
 
-    if request.user.rol in ["docente", "auxiliar"]:
+    if request.user.rol == "docente":
         if not docente_tiene_sala(request.user, sala.id):
             raise PermissionDenied
     elif request.user.rol == "coordinador":
@@ -544,7 +556,7 @@ def editar_alumno(request, alumno_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def detalle_alumno(request, alumno_id):
     """
     Vista detallada de un alumno:
@@ -627,7 +639,7 @@ def cargar_asistencia(request, sala_id):
         if not user.es_admin() and user.programas_asignados.exists():
             if sala.jardin.programa not in user.programas_asignados.all():
                 raise PermissionDenied("No tiene permiso para gestionar asistencias en esta sala.")
-    elif user.rol in ["docente", "auxiliar"]:
+    elif user.rol == "docente":
         if not docente_tiene_sala(user, sala.id):
             raise PermissionDenied
     else:
@@ -707,7 +719,7 @@ def cargar_asistencia(request, sala_id):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def ver_asistencias(request, sala_id):
     """Vista de solo lectura para revisar las asistencias de un día específico."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -797,7 +809,7 @@ def crear_tutor_ajax(request):
 # =========================================================
 
 @login_required
-@rol_requerido("docente", "coordinador")
+@rol_requerido("docente", "auxiliar", "coordinador")
 def exportar_alumnos_csv(request, sala_id):
     """Exporta el padrón activo de una sala a formato CSV compatible con Excel."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -897,7 +909,7 @@ def exportar_alumnos_completo_csv(request):
 
 
 @login_required
-@rol_requerido("docente", "coordinador")
+@rol_requerido("docente", "auxiliar", "coordinador")
 def imprimir_alumnos_sala(request, sala_id):
     """Genera una vista HTML optimizada para imprimir el listado de alumnos."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -919,7 +931,7 @@ def imprimir_alumnos_sala(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def exportar_asistencias_csv(request, sala_id):
     """Exporta el registro de asistencia del día a formato CSV."""
     sala = get_object_or_404(Sala, id=sala_id)
@@ -960,7 +972,7 @@ def exportar_asistencias_csv(request, sala_id):
 
 
 @login_required
-@rol_requerido("docente", "coordinador", "administrador")
+@rol_requerido("docente", "auxiliar", "coordinador", "administrador")
 def imprimir_asistencias_sala(request, sala_id):
     """Genera una página HTML optimizada para imprimir el parte diario de asistencia."""
     sala = get_object_or_404(Sala, id=sala_id)
