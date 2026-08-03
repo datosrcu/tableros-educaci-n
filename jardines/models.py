@@ -368,7 +368,7 @@ def inicializar_asistencia_diaria(user, request=None):
 
     salas = user.salas_asignadas.select_related('jardin').all()
 
-    if user.rol != 'auxiliar' and salas.exists():
+    if salas.exists():
         # Mapa de asignaciones de días específicos del docente por sala
         from .models import AsignacionDocenteSala
         asignaciones_map = {

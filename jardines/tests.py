@@ -208,6 +208,21 @@ class AsistenciaDocenteTestCase(TestCase):
         self.assertTrue(asistencia.fichado)
         self.assertEqual(asistencia.estado, 'P')
 
+    def test_auxiliar_con_salas_dashboard(self):
+        auxiliar = User.objects.create_user(
+            username="auxiliartested",
+            password="testpassword",
+            rol="auxiliar"
+        )
+        self.sala.docentes.add(auxiliar)
+        self.client.login(username="auxiliartested", password="testpassword")
+
+        response = self.client.get(reverse("alumnos:docente_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["turnos_hoy"]), 1)
+        self.assertEqual(response.context["turnos_hoy"][0]["jardin_id"], self.jardin.id)
+
+
 
 
 
