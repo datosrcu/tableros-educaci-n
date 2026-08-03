@@ -106,15 +106,8 @@ def dashboard_docente(request):
         .all()
     )
 
-    tiene_salas = salas.exists()
-    es_auxiliar_sin_salas = (request.user.rol == "auxiliar" or not tiene_salas) and not tiene_salas
-
-    auxiliar_asistencia = None
-    if es_auxiliar_sin_salas:
-        auxiliar_asistencia = asistencias_hoy.first()
-
     turnos_hoy = []
-    if tiene_salas:
+    if salas.exists():
         for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
             salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
             salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
@@ -168,20 +161,8 @@ def dashboard_docente(request):
                     "salas_nombres": salas_nombres,
                 })
     
-    if es_auxiliar_sin_salas and auxiliar_asistencia:
-        fichado_hoy = auxiliar_asistencia.fichado
-        hora_fichada = auxiliar_asistencia.hora_ingreso if auxiliar_asistencia.fichado else None
-    else:
-        fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
-        hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
-
-    jardines_disponibles = []
-    if not tiene_salas:
-        from jardines.models import Jardin
-        if request.user.programas_asignados.exists():
-            jardines_disponibles = Jardin.objects.filter(programa__in=request.user.programas_asignados.all())
-        else:
-            jardines_disponibles = Jardin.objects.all()
+    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
@@ -190,9 +171,6 @@ def dashboard_docente(request):
         "licencia_activa": licencia_activa,
         "tiene_jardines": True,
         "turnos_hoy": turnos_hoy,
-        "es_auxiliar": es_auxiliar_sin_salas,
-        "auxiliar_asistencia": auxiliar_asistencia,
-        "jardines_disponibles": jardines_disponibles,
     })
 
 

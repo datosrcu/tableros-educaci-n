@@ -461,25 +461,20 @@ def registrar_asistencia_docente(request):
         asist_qs = asist_qs.filter(turno=turno)
 
     if not asist_qs.exists():
-        # Para usuarios sin registro pre-creado o auxiliares
         target_jardin = None
-        if jardin_id:
-            target_jardin = get_object_or_404(Jardin, id=jardin_id)
-        elif request.user.salas_asignadas.exists():
-            # Buscar el jardín de las salas asignadas al docente para ese turno o el primero asignado
-            sala_turno = request.user.salas_asignadas.filter(turno=turno).first()
-            if sala_turno:
-                target_jardin = sala_turno.jardin
-            else:
-                sala_cualquiera = request.user.salas_asignadas.first()
-                if sala_cualquiera:
-                    target_jardin = sala_cualquiera.jardin
-        elif request.user.programas_asignados.exists():
-            jardines_prog = Jardin.objects.filter(programa__in=request.user.programas_asignados.all())
-            if jardines_prog.count() == 1:
-                target_jardin = jardines_prog.first()
-        elif Jardin.objects.count() == 1:
-            target_jardin = Jardin.objects.first()
+        if request.user.salas_asignadas.exists():
+            if jardin_id:
+                sala_jardin = request.user.salas_asignadas.filter(jardin_id=jardin_id).first()
+                if sala_jardin:
+                    target_jardin = sala_jardin.jardin
+            if not target_jardin:
+                sala_turno = request.user.salas_asignadas.filter(turno=turno).first()
+                if sala_turno:
+                    target_jardin = sala_turno.jardin
+                else:
+                    sala_cualquiera = request.user.salas_asignadas.first()
+                    if sala_cualquiera:
+                        target_jardin = sala_cualquiera.jardin
 
         if target_jardin:
             asist, _ = AsistenciaDocente.objects.get_or_create(
@@ -500,7 +495,7 @@ def registrar_asistencia_docente(request):
         else:
             return JsonResponse({
                 "status": "error",
-                "message": f"Por favor, seleccione un espacio (jardín) para registrar la asistencia del turno '{turno}'."
+                "message": "No tenés salas asignadas para registrar asistencia. Por favor, contactáte con tu coordinador."
             }, status=400)
 
     # Si todos los registros encontrados ya fueron fichados
