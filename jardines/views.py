@@ -461,10 +461,19 @@ def registrar_asistencia_docente(request):
         asist_qs = asist_qs.filter(turno=turno)
 
     if not asist_qs.exists():
-        # Para usuarios sin salas asignadas (ej: auxiliares)
+        # Para usuarios sin registro pre-creado o auxiliares
         target_jardin = None
         if jardin_id:
             target_jardin = get_object_or_404(Jardin, id=jardin_id)
+        elif request.user.salas_asignadas.exists():
+            # Buscar el jardín de las salas asignadas al docente para ese turno o el primero asignado
+            sala_turno = request.user.salas_asignadas.filter(turno=turno).first()
+            if sala_turno:
+                target_jardin = sala_turno.jardin
+            else:
+                sala_cualquiera = request.user.salas_asignadas.first()
+                if sala_cualquiera:
+                    target_jardin = sala_cualquiera.jardin
         elif request.user.programas_asignados.exists():
             jardines_prog = Jardin.objects.filter(programa__in=request.user.programas_asignados.all())
             if jardines_prog.count() == 1:

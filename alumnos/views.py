@@ -129,6 +129,43 @@ def dashboard_docente(request):
                 "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                 "salas_nombres": salas_nombres,
             })
+
+        if not turnos_hoy and salas.exists():
+            pares_vistos = set()
+            for sala in salas:
+                par = (sala.jardin_id, sala.turno)
+                if par in pares_vistos:
+                    continue
+                pares_vistos.add(par)
+                asist, _ = AsistenciaDocente.objects.get_or_create(
+                    docente=request.user,
+                    jardin=sala.jardin,
+                    turno=sala.turno,
+                    fecha=hoy,
+                    defaults={
+                        "hora_ingreso": None,
+                        "ip_address": request.META.get('REMOTE_ADDR'),
+                        "fuera_de_jornada": False,
+                        "estado": "A",
+                        "fichado": False,
+                        "observaciones": "Registro inicializado desde panel docente."
+                    }
+                )
+            asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
+            for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
+                salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
+                salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+                turnos_hoy.append({
+                    "asistencia_id": asist.id,
+                    "jardin_id": asist.jardin_id,
+                    "turno": asist.turno,
+                    "turno_label": asist.get_turno_display() if asist.turno else "—",
+                    "fichado": asist.fichado,
+                    "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+                    "estado": asist.estado,
+                    "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
+                    "salas_nombres": salas_nombres,
+                })
     
     if es_auxiliar and auxiliar_asistencia:
         fichado_hoy = auxiliar_asistencia.fichado

@@ -181,5 +181,33 @@ class AsistenciaDocenteTestCase(TestCase):
         self.assertTrue(asistencia_despues.fichado)
         self.assertEqual(asistencia_despues.estado, 'P')
 
+    def test_registrar_asistencia_onthefly(self):
+        # Probar fichado cuando la AsistenciaDocente del turno tarde no había sido pre-inicializada
+        self.sala_tarde = Sala.objects.create(
+            jardin=self.jardin,
+            nombre="Taller Tarde",
+            turno="tarde",
+            horario_inicio="14:00",
+            horario_fin="18:00"
+        )
+        self.sala_tarde.docentes.add(self.docente)
+        self.client.login(username="docentetested", password="testpassword")
+
+        post_data = {
+            "latitude": "-35.123456",
+            "longitude": "-65.654321",
+            "jardin_id": self.jardin.id,
+            "turno": "tarde"
+        }
+        response = self.client.post(reverse("jardines:registrar_asistencia_docente"), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "success")
+
+        hoy = timezone.now().date()
+        asistencia = AsistenciaDocente.objects.get(docente=self.docente, jardin=self.jardin, turno="tarde", fecha=hoy)
+        self.assertTrue(asistencia.fichado)
+        self.assertEqual(asistencia.estado, 'P')
+
+
 
 

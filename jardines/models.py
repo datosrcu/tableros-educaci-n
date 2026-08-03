@@ -335,7 +335,7 @@ def _turno_por_hora(hora):
 def inicializar_asistencia_diaria(user, request=None):
     """
     Crea los registros de AsistenciaDocente del día para el docente o auxiliar.
-    - Para docentes con salas: un registro por cada combinación única (jardín, turno) en sus salas asignadas.
+    - Para docentes con salas: un registro por cada combinación única (jardín, turno) en sus salas asignadas para el día de hoy.
     - Para auxiliares o personal sin salas: un único registro diario de asistencia.
     """
     from django.utils import timezone
@@ -346,6 +346,17 @@ def inicializar_asistencia_diaria(user, request=None):
     hora = ahora_local.time()
     ip = request.META.get('REMOTE_ADDR') if request else None
     
+    dias_map = {
+        0: 'lunes',
+        1: 'martes',
+        2: 'miercoles',
+        3: 'jueves',
+        4: 'viernes',
+        5: 'sabado',
+        6: 'domingo'
+    }
+    dia_nombre = dias_map.get(hoy.weekday(), 'lunes')
+
     # Licencia activa
     licencia = LicenciaDocente.obtener_licencia_activa(user, hoy)
     if licencia:
@@ -358,8 +369,23 @@ def inicializar_asistencia_diaria(user, request=None):
     salas = user.salas_asignadas.select_related('jardin').all()
 
     if user.rol != 'auxiliar' and salas.exists():
+        # Mapa de asignaciones de días específicos del docente por sala
+        from .models import AsignacionDocenteSala
+        asignaciones_map = {
+            asig.sala_id: asig
+            for asig in AsignacionDocenteSala.objects.filter(docente=user)
+        }
+
         pares_vistos = set()
         for sala in salas:
+            asig = asignaciones_map.get(sala.id)
+            # Si el docente no tiene habilitado este día de la semana para la sala, omitir
+            if asig and not getattr(asig, dia_nombre, True):
+                continue
+            # Si la sala en sí no funciona hoy, omitir
+            if not getattr(sala, dia_nombre, True):
+                continue
+
             par = (sala.jardin_id, sala.turno)
             if par in pares_vistos:
                 continue
@@ -373,9 +399,12 @@ def inicializar_asistencia_diaria(user, request=None):
             ).exists():
                 continue
 
-            h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
-            h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
-            fuera = not (h_inicio <= hora <= h_fin)
+            if sala.horario_inicio and sala.horario_fin:
+                h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
+                h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
+                fuera = not (h_inicio <= hora <= h_fin)
+            else:
+                fuera = False
 
             AsistenciaDocente.objects.create(
                 docente=user,
@@ -389,6 +418,9 @@ def inicializar_asistencia_diaria(user, request=None):
                 fichado=False,
                 observaciones=obs_inicial
             )
+
+        # Si tras filtrar por día no se creó ninguna ficha porque todas son de otros días,
+        # pero el docente intentara fichar, dejamos que else maneje auxiliares o que se inicialice al fichar.
     else:
         # Para Auxiliares o personal sin salas asignadas: 1 solo registro de asistencia diaria
         if not AsistenciaDocente.objects.filter(docente=user, fecha=hoy).exists():
