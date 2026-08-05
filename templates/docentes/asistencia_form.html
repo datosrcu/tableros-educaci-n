@@ -122,15 +122,26 @@ document.addEventListener('DOMContentLoaded', function() {
       var alumnoId = this.dataset.alumno;
       var wrapper = document.getElementById('motivo_wrapper_' + alumnoId);
       var placeholder = document.getElementById('motivo_placeholder_' + alumnoId);
+      var motivoSelect = wrapper ? wrapper.querySelector('.motivo-select') : null;
+
       if (['J', 'T', 'R'].includes(this.value)) {
         wrapper.style.display = 'block';
         placeholder.style.display = 'none';
+        if (motivoSelect) {
+          motivoSelect.required = (this.value === 'J');
+        }
       } else {
         wrapper.style.display = 'none';
         placeholder.style.display = 'block';
-        // Hide observaciones when not justified
+        if (motivoSelect) {
+          motivoSelect.required = false;
+          motivoSelect.value = '';
+        }
         var obsInput = document.getElementById('observaciones_' + alumnoId);
-        if (obsInput) obsInput.classList.add('d-none');
+        if (obsInput) {
+          obsInput.classList.add('d-none');
+          obsInput.value = '';
+        }
       }
     });
     // Trigger on load
@@ -141,12 +152,13 @@ document.addEventListener('DOMContentLoaded', function() {
     select.addEventListener('change', function() {
       var alumnoId = this.dataset.alumno;
       var obsInput = document.getElementById('observaciones_' + alumnoId);
-      var selectedText = this.options[this.selectedIndex].text.toLowerCase().trim();
-      
-      if (selectedText === 'otro' || selectedText === 'otra') {
-        obsInput.classList.remove('d-none');
-      } else {
-        obsInput.classList.add('d-none');
+      if (obsInput && this.selectedIndex >= 0 && this.options[this.selectedIndex]) {
+        var selectedText = this.options[this.selectedIndex].text.toLowerCase().trim();
+        if (selectedText === 'otro' || selectedText === 'otra') {
+          obsInput.classList.remove('d-none');
+        } else {
+          obsInput.classList.add('d-none');
+        }
       }
     });
     // Trigger on load

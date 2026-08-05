@@ -217,7 +217,7 @@ class AsistenciaDocenteTestCase(TestCase):
         self.sala.docentes.add(auxiliar)
         self.client.login(username="auxiliartested", password="testpassword")
 
-        response = self.client.get(reverse("alumnos:docente_dashboard"))
+        response = self.client.get(reverse("alumnos:dashboard_docente"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["turnos_hoy"]), 1)
         self.assertEqual(response.context["turnos_hoy"][0]["jardin_id"], self.jardin.id)

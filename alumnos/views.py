@@ -685,31 +685,36 @@ def cargar_asistencia(request, sala_id):
 
     if request.method == "POST":
         from django.contrib import messages
+        from django.db import transaction
         try:
-            for alumno in alumnos:
-                estado = request.POST.get(f"estado_{alumno.id}")
-                if not estado:
-                    continue
-                motivo_id = request.POST.get(f"motivo_{alumno.id}")
-                observaciones = request.POST.get(f"observaciones_{alumno.id}", "").strip()
-                
-                motivo = None
-                if estado in ["J", "T", "R"] and motivo_id:
-                    motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
-                elif estado not in ["J", "T", "R"]:
-                    motivo = None
+            with transaction.atomic():
+                for alumno in alumnos:
+                    estado = request.POST.get(f"estado_{alumno.id}")
+                    if not estado:
+                        continue
+                    motivo_id = request.POST.get(f"motivo_{alumno.id}")
+                    observaciones = request.POST.get(f"observaciones_{alumno.id}", "").strip()
+                    
+                    if estado == 'J' and not motivo_id:
+                        raise ValidationError(f"Debe seleccionar un motivo de inasistencia para {alumno.apellido}, {alumno.nombre}.")
 
-                Asistencia.objects.update_or_create(
-                    alumno=alumno,
-                    fecha=fecha,
-                    sala=sala,
-                    defaults={
-                        "estado": estado,
-                        "motivo": motivo,
-                        "observaciones": observaciones,
-                        "docente": request.user
-                    }
-                )
+                    motivo = None
+                    if estado in ["J", "T", "R"] and motivo_id:
+                        motivo = MotivoJustificacion.objects.filter(id=motivo_id).first()
+                    elif estado not in ["J", "T", "R"]:
+                        motivo = None
+
+                    Asistencia.objects.update_or_create(
+                        alumno=alumno,
+                        fecha=fecha,
+                        sala=sala,
+                        defaults={
+                            "estado": estado,
+                            "motivo": motivo,
+                            "observaciones": observaciones,
+                            "docente": request.user
+                        }
+                    )
             messages.success(request, f"Asistencia del {fecha.strftime('%d/%m/%Y')} guardada correctamente.")
             from django.urls import reverse
             return redirect(f"{reverse('alumnos:cargar_asistencia', args=[sala.id])}?fecha={fecha.strftime('%Y-%m-%d')}")
