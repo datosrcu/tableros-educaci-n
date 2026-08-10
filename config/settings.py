@@ -237,3 +237,12 @@ LOGGING = {
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Google Apps Script API URLs para los costos del Dashboard (Hoja 1 RUL_long y Hoja 2 Database RRHH_2026)
+GOOGLE_APPS_SCRIPT_COSTOS_URL = config('GOOGLE_APPS_SCRIPT_COSTOS_URL', default='https://script.google.com/macros/s/AKfycbwGeKMUcjaWUbFBxzxoXYDfSxnmVpmsbt-gYsxOY3pXiAGwIPl3KgcrduDbkC2HA-cl/exec')
+GOOGLE_APPS_SCRIPT_COSTOS_URL_2 = config('GOOGLE_APPS_SCRIPT_COSTOS_URL_2', default='https://script.google.com/macros/s/AKfycbwIJKyzHvIAsxK5aPwpR6ZjgwI31jLP7jXcI4rOnCNEkkststYWgntjGgl4kBjtJool/exec')
+
+
+
+
+

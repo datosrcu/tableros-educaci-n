@@ -538,6 +538,9 @@ def registrar_asistencia_docente(request):
         "turno": turno
     })
 
+import urllib.request
+import urllib.error
+from django.core.cache import cache
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils.decorators import method_decorator
 from django.db.models import Q, Count
@@ -545,8 +548,138 @@ from datetime import date
 import calendar
 from alumnos.models import Asistencia
 
+def obtener_costos_docentes_api(target_date):
+
+    """
+    Obtiene los costos de docentes y auxiliares por DNI para un mes/año dado.
+    Prioriza la API de Google Apps Script (Google Sheets).
+    Fallback a archivo Excel local si la API no está configurada o falla.
+    """
+    costos = {}
+    from django.conf import settings
+
+    api_url = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL', '')
+    
+    # Nombres de mes en español
+    meses_es = {
+        1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+        5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+        9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+    }
+    
+    nombre_mes = meses_es.get(target_date.month, '')
+    mes_abrev = nombre_mes[:3] if nombre_mes else ''
+    year_str = str(target_date.year)
+    year_short = year_str[-2:]
+    
+    # Candidatos para matchear en la columna K / D ("mar-26", "marzo-26", "marzo", "sept-26", "03-26", etc.)
+    candidatos_mes = {
+        nombre_mes,
+        mes_abrev,
+        f"{mes_abrev}-{year_short}",
+        f"{nombre_mes}-{year_short}",
+        f"{nombre_mes} {year_short}",
+        f"{nombre_mes}-{year_str}",
+        f"{target_date.month:02d}-{year_short}",
+        f"{target_date.month}-{year_short}"
+    }
+    if target_date.month == 9:
+        candidatos_mes.add(f"sept-{year_short}")
+        candidatos_mes.add("sept")
+
+    # Prioridad: 
+    # 1. url2 (Database RRHH_2026) como fuente primaria y autoritativa.
+    # 2. url1 (RUL_long) como fuente secundaria solo para rescatar DNI no presentes en la principal.
+    api_urls = []
+    url2 = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL_2', '')
+    url1 = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL', '')
+    
+    if url2: api_urls.append((url2, "sheet2_rrhh"))
+    if url1: api_urls.append((url1, "sheet1_rul"))
+
+    for api_url, tag in api_urls:
+        cache_key = f"costos_google_sheets_{tag}_{target_date.year}_{target_date.month}"
+        cached_data = cache.get(cache_key)
+        
+        data_rows = None
+        if cached_data is not None:
+            data_rows = cached_data
+        else:
+            try:
+                req = urllib.request.Request(
+                    api_url,
+                    headers={'User-Agent': 'Django-Presente-Dashboard/1.0'}
+                )
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    if response.status == 200:
+                        content = response.read().decode('utf-8')
+                        payload = json.loads(content)
+                        if isinstance(payload, dict) and "data" in payload:
+                            data_rows = payload["data"]
+                        elif isinstance(payload, list):
+                            data_rows = payload
+                        if data_rows is not None:
+                            cache.set(cache_key, data_rows, 60) # Caché de 60 segundos
+            except Exception:
+                data_rows = None
+
+        if data_rows:
+            for item in data_rows:
+                try:
+                    dni_raw = str(item.get("dni", "")).strip().replace(".", "").replace(" ", "")
+                    if not dni_raw:
+                        continue
+                    dni = "".join(filter(str.isdigit, dni_raw))
+                    if not dni:
+                        continue
+                    
+                    mes_item = str(item.get("mes", "")).strip().lower()
+                    costo_val = float(item.get("costo", 0) or 0)
+                    
+                    # Verificar si coincide con el mes seleccionado
+                    if mes_item in candidatos_mes or (nombre_mes == mes_item) or ((nombre_mes in mes_item or mes_abrev in mes_item) and year_short in mes_item):
+                        # Si no existe en el diccionario o si es la planilla primaria y tiene un costo > 0
+                        if dni not in costos:
+                            costos[dni] = costo_val
+                        elif tag == "sheet2_rrhh" and costo_val > 0:
+                            costos[dni] = costo_val
+                except (ValueError, TypeError):
+                    pass
+
+
+
+    if costos:
+        return costos
+
+
+
+    # --- FALLBACK A EXCEL LOCAL SI LA API NO SE USA O FALLA ---
+    try:
+        excel_path = os.path.join(settings.BASE_DIR, "data", "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx")
+        if os.path.exists(excel_path):
+            wb = openpyxl.load_workbook(excel_path, data_only=True)
+            sheet = wb['Locaciones']
+            col_map = {5: 25, 6: 26, 7: 27}
+            target_col = col_map.get(target_date.month, None)
+            if target_col is not None:
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    try:
+                        val = row[2]
+                        if not val: continue
+                        dni = str(int(float(val)))
+                        costo = row[target_col] or 0
+                        costos[dni] = float(costo)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    return costos
+
+
 @method_decorator(xframe_options_exempt, name='dispatch')
 class DashboardEspaciosLudicosView(TemplateView):
+
     template_name = "jardines/dashboard_espacios_ludicos.html"
 
     def get_context_data(self, **kwargs):
@@ -580,32 +713,10 @@ class DashboardEspaciosLudicosView(TemplateView):
         start_of_selected_month = target_date
         end_of_selected_month = target_date.replace(day=calendar.monthrange(target_date.year, target_date.month)[1])
         
-        # --- EXCEL COST PARSING ---
-        costos_docentes = {} # {dni: costo}
-        try:
-            from django.conf import settings
-            excel_path = os.path.join(settings.BASE_DIR, "data", "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx")
-            if os.path.exists(excel_path):
-                wb = openpyxl.load_workbook(excel_path, data_only=True)
-                sheet = wb['Locaciones']
-                
-                # Column index map based on target_date.month
-                col_map = {5: 25, 6: 26, 7: 27}
-                target_col = col_map.get(target_date.month, None)
-                
-                if target_col is not None:
-                    for row in sheet.iter_rows(min_row=2, values_only=True):
-                        try:
-                            val = row[2]
-                            if not val: continue
-                            dni = str(int(float(val)))
-                            costo = row[target_col] or 0
-                            costos_docentes[dni] = float(costo)
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+        # --- COST PARSING (API Google Sheets / Excel Fallback) ---
+        costos_docentes = obtener_costos_docentes_api(target_date)
         # ---------------------------
+
         
         q_activo_mes = Q(
             Q(fecha_ingreso__lte=end_of_selected_month) | Q(alumno__asistencias__fecha__lte=end_of_selected_month)
