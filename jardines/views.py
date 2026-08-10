@@ -635,6 +635,8 @@ def obtener_costos_docentes_api(target_date):
                     
                     mes_item = str(item.get("mes", "")).strip().lower()
                     costo_val = float(item.get("costo", 0) or 0)
+                    if 0 < costo_val < 10000:
+                        costo_val *= 1000  # Convertir montos expresados en miles (ej: 450 -> 450000 pesos)
                     
                     # Verificar si coincide con el mes seleccionado
                     if mes_item in candidatos_mes or (nombre_mes == mes_item) or ((nombre_mes in mes_item or mes_abrev in mes_item) and year_short in mes_item):
@@ -643,6 +645,7 @@ def obtener_costos_docentes_api(target_date):
                             costos[dni] = costo_val
                         elif tag == "sheet2_rrhh" and costo_val > 0:
                             costos[dni] = costo_val
+
                 except (ValueError, TypeError):
                     pass
 
