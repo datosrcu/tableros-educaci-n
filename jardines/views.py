@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db.models import Count, Q
-from .models import Subprograma, Jardin, Sala, AsistenciaDocente
+from .models import Programa, Subprograma, Jardin, Sala, AsistenciaDocente
 from users.decorators import rol_requerido
 from django.contrib.auth.decorators import login_required
 from users.models import Usuario
@@ -681,13 +681,26 @@ def obtener_costos_docentes_api(target_date):
 
 
 @method_decorator(xframe_options_exempt, name='dispatch')
-class DashboardEspaciosLudicosView(TemplateView):
-
+class BaseDashboardProgramaView(TemplateView):
     template_name = "jardines/dashboard_espacios_ludicos.html"
+    programa_id = None
+    programa_nombre = None
+    programa_titulo = ""
+    programa_subtitulo = ""
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
+        # Obtener Objeto Programa
+        programa_obj = None
+        if self.programa_id:
+            programa_obj = Programa.objects.filter(pk=self.programa_id).first()
+        elif self.programa_nombre:
+            programa_obj = Programa.objects.filter(nombre=self.programa_nombre).first()
+        
+        if not programa_obj and self.programa_nombre:
+            programa_obj = Programa.objects.filter(nombre__icontains=self.programa_nombre).first()
+
         # Filtros
         subprograma_id = self.request.GET.get('subprograma')
         zona_filtro = self.request.GET.get('zona')
@@ -719,7 +732,6 @@ class DashboardEspaciosLudicosView(TemplateView):
         # --- COST PARSING (API Google Sheets / Excel Fallback) ---
         costos_docentes = obtener_costos_docentes_api(target_date)
         # ---------------------------
-
         
         q_activo_mes = Q(
             Q(fecha_ingreso__lte=end_of_selected_month) | Q(alumno__asistencias__fecha__lte=end_of_selected_month)
@@ -735,8 +747,11 @@ class DashboardEspaciosLudicosView(TemplateView):
         )
         
         # Base querysets
-        jardines = Jardin.objects.filter(programa__nombre="Espacios lúdicos y de aprendizaje para la primera infancia")
-        
+        if programa_obj:
+            jardines = Jardin.objects.filter(programa=programa_obj)
+        else:
+            jardines = Jardin.objects.none()
+            
         if subprograma_id:
             jardines = jardines.filter(subprograma_id=subprograma_id)
         if zona_filtro:
@@ -760,8 +775,6 @@ class DashboardEspaciosLudicosView(TemplateView):
             salas_asignadas__jardin_id__in=jardines_ids
         ).distinct().count()
         
-        # (El mapa ahora se procesa más abajo junto con la tabla de espacios)
-        
         # Gráfico Mensual (Activos por mes, últimos 6 meses)
         hoy = date.today()
         meses = []
@@ -776,9 +789,9 @@ class DashboardEspaciosLudicosView(TemplateView):
                 target_month += 12
                 target_year -= 1
             
-            target_date = date(target_year, target_month, 1)
-            start_of_month = target_date
-            end_of_month = target_date.replace(day=calendar.monthrange(target_year, target_month)[1])
+            t_date = date(target_year, target_month, 1)
+            start_of_month = t_date
+            end_of_month = t_date.replace(day=calendar.monthrange(target_year, target_month)[1])
             
             activos_mes = asignaciones.filter(
                 Q(fecha_ingreso__lte=end_of_month) | Q(alumno__asistencias__fecha__lte=end_of_month)
@@ -787,7 +800,7 @@ class DashboardEspaciosLudicosView(TemplateView):
                 fecha_baja__lt=start_of_month
             ).values('alumno').distinct().count()
             
-            meses.append(target_date.strftime("%b %Y"))
+            meses.append(t_date.strftime("%b %Y"))
             cantidades.append(activos_mes)
             
             if i == 5:
@@ -812,11 +825,19 @@ class DashboardEspaciosLudicosView(TemplateView):
         espacios_dict = {}
         jardines_mapa = []
         
-        filtros_jardin = {"programa__nombre": "Espacios lúdicos y de aprendizaje para la primera infancia"}
-        if subprograma_id: filtros_jardin["subprograma_id"] = subprograma_id
-        if zona_filtro: filtros_jardin["sector"] = zona_filtro
-        jardines_obj = Jardin.objects.filter(**filtros_jardin).order_by('nombre')
-        
+        filtros_jardin = {}
+        if programa_obj:
+            filtros_jardin["programa"] = programa_obj
+        if subprograma_id:
+            filtros_jardin["subprograma_id"] = subprograma_id
+        if zona_filtro:
+            filtros_jardin["sector"] = zona_filtro
+            
+        if programa_obj:
+            jardines_obj = Jardin.objects.filter(**filtros_jardin).order_by('nombre')
+        else:
+            jardines_obj = Jardin.objects.none()
+            
         from django.db.models import Prefetch
         salas_jardin_qs = Sala.objects.filter(jardin__in=jardines_obj).select_related('jardin').prefetch_related(
             'docentes',
@@ -1023,7 +1044,11 @@ class DashboardEspaciosLudicosView(TemplateView):
         reporte_mensual = [{"espacio": k, **v} for k, v in matriz_asistencia.items()]
         reporte_mensual.sort(key=lambda x: x["espacio"])
 
+        subprog_qs = Subprograma.objects.filter(programa=programa_obj) if programa_obj else Subprograma.objects.none()
+
         context.update({
+            "programa_titulo": self.programa_titulo or (programa_obj.nombre if programa_obj else ""),
+            "programa_subtitulo": self.programa_subtitulo or (f"Dashboard exclusivo de {programa_obj.nombre}" if programa_obj else ""),
             "total_inscriptos": total_inscriptos,
             "activos": activos,
             "bajas": bajas,
@@ -1041,10 +1066,45 @@ class DashboardEspaciosLudicosView(TemplateView):
             "reporte_mensual": reporte_mensual,
             "dias_mes": dias_rango,
             "mes_nombre_reporte": mes_label,
-            "subprogramas": Subprograma.objects.filter(programa__nombre="Espacios lúdicos y de aprendizaje para la primera infancia"),
+            "subprogramas": subprog_qs,
             "subprograma_sel": int(subprograma_id) if subprograma_id and subprograma_id.isdigit() else '',
             "zona_sel": zona_filtro or '',
             "sectores": Jardin.SECTORES_CHOICES,
         })
         return context
+
+
+class DashboardEspaciosLudicosView(BaseDashboardProgramaView):
+    programa_id = 2
+    programa_nombre = "Espacios lúdicos y de aprendizaje para la primera infancia"
+    programa_titulo = "Espacio educativo para la primer infancia (jardines Maternales municipales)"
+    programa_subtitulo = "Dashboard exclusivo para la primera infancia."
+
+
+class DashboardAlfabetizacionView(BaseDashboardProgramaView):
+    programa_id = 6
+    programa_nombre = "Programa Municipal de Alfabetización y Programa Acompañamiento Educativo"
+    programa_titulo = "Programa Municipal de Alfabetización y Acompañamiento Educativo"
+    programa_subtitulo = "Dashboard de gestión del Programa Municipal de Alfabetización y Acompañamiento Educativo."
+
+
+class DashboardCarpinteriaView(BaseDashboardProgramaView):
+    programa_id = 7
+    programa_nombre = "Escuela de Carpintería"
+    programa_titulo = "Escuela de Carpintería"
+    programa_subtitulo = "Dashboard de gestión de la Escuela de Carpintería."
+
+
+class DashboardArtesPlasticasView(BaseDashboardProgramaView):
+    programa_id = 8
+    programa_nombre = "Escuela Municipal de Artes Plásticas Manuel Belgrano"
+    programa_titulo = "Escuela Municipal de Artes Plásticas Manuel Belgrano"
+    programa_subtitulo = "Dashboard de gestión de la Escuela Municipal de Artes Plásticas Manuel Belgrano."
+
+
+class DashboardExpresionCulturalView(BaseDashboardProgramaView):
+    programa_id = 9
+    programa_nombre = "Expresión Cultural"
+    programa_titulo = "Expresión Cultural"
+    programa_subtitulo = "Dashboard de gestión del Programa Expresión Cultural."
 

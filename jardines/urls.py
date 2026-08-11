@@ -9,8 +9,12 @@ urlpatterns = [
     path("ajax/jardines/", views.cargar_jardines),
     path("ajax/validar-docente-turno/", views.validar_docente_turno),
     path("ajax/subprogramas-por-programa/", views.subprogramas_por_programa, name="subprogramas_por_programa"),
-    # Dashboard Espacios Lúdicos
+    # Dashboards de Gestión por Programa
     path("dashboard-espacios-ludicos/", views.DashboardEspaciosLudicosView.as_view(), name="dashboard_espacios_ludicos"),
+    path("dashboard-alfabetizacion/", views.DashboardAlfabetizacionView.as_view(), name="dashboard_alfabetizacion"),
+    path("dashboard-carpinteria/", views.DashboardCarpinteriaView.as_view(), name="dashboard_carpinteria"),
+    path("dashboard-artes-plasticas/", views.DashboardArtesPlasticasView.as_view(), name="dashboard_artes_plasticas"),
+    path("dashboard-expresion-cultural/", views.DashboardExpresionCulturalView.as_view(), name="dashboard_expresion_cultural"),
     
     # Asistencia Docente
     path("asistencia/", views.lista_jardines_asistencia, name="lista_jardines_asistencia"),
