@@ -549,13 +549,13 @@ import calendar
 from alumnos.models import Asistencia
 
 def obtener_costos_docentes_api(target_date):
-
     """
     Obtiene los costos de docentes y auxiliares por DNI para un mes/año dado.
     Prioriza la API de Google Apps Script (Google Sheets).
-    Fallback a archivo Excel local si la API no está configurada o falla.
+    Fallback a último mes cargado por DNI y fallback a archivo Excel local si la API no está configurada o falla.
     """
     costos = {}
+    costos_fallback_ultimo_mes = {}
     from django.conf import settings
 
     api_url = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL', '')
@@ -638,23 +638,37 @@ def obtener_costos_docentes_api(target_date):
                     if 0 < costo_val < 10000:
                         costo_val *= 1000  # Convertir montos expresados en miles (ej: 450 -> 450000 pesos)
                     
+                    if costo_val > 0:
+                        if dni not in costos_fallback_ultimo_mes:
+                            costos_fallback_ultimo_mes[dni] = costo_val
+                        elif tag == "sheet2_rrhh":
+                            costos_fallback_ultimo_mes[dni] = costo_val
+
+                    dnis_to_add = [dni]
+                    if len(dni) == 11 and dni[:2] in ('20', '27', '23', '24', '25', '26'):
+                        dnis_to_add.append(dni[2:10])
+
+                    if costo_val > 0:
+                        for d_key in dnis_to_add:
+                            if d_key not in costos_fallback_ultimo_mes or tag == "sheet2_rrhh":
+                                costos_fallback_ultimo_mes[d_key] = costo_val
+
                     # Verificar si coincide con el mes seleccionado
                     if mes_item in candidatos_mes or (nombre_mes == mes_item) or ((nombre_mes in mes_item or mes_abrev in mes_item) and year_short in mes_item):
-                        # Si no existe en el diccionario o si es la planilla primaria y tiene un costo > 0
-                        if dni not in costos:
-                            costos[dni] = costo_val
-                        elif tag == "sheet2_rrhh" and costo_val > 0:
-                            costos[dni] = costo_val
+                        for d_key in dnis_to_add:
+                            if d_key not in costos or (tag == "sheet2_rrhh" and costo_val > 0):
+                                costos[d_key] = costo_val
 
                 except (ValueError, TypeError):
                     pass
 
-
+    # Para cualquier DNI no encontrado en el mes seleccionado, usar el último mes cargado disponible
+    for dni, costo_f in costos_fallback_ultimo_mes.items():
+        if dni not in costos or costos[dni] == 0:
+            costos[dni] = costo_f
 
     if costos:
         return costos
-
-
 
     # --- FALLBACK A EXCEL LOCAL SI LA API NO SE USA O FALLA ---
     try:

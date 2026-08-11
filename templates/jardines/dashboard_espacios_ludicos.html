@@ -26,37 +26,6 @@
 </head>
 <body>
 <div class="container py-4">
-    <!-- Selector de Tableros por Programa -->
-    <div class="mb-4">
-        <ul class="nav nav-pills bg-white p-2 rounded shadow-sm flex-nowrap overflow-auto">
-            <li class="nav-item">
-                <a class="nav-link text-nowrap fw-semibold {% if request.resolver_match.url_name == 'dashboard_espacios_ludicos' %}active{% endif %}" href="{% url 'jardines:dashboard_espacios_ludicos' %}">
-                    <i class="fas fa-child me-1"></i> Espacios Lúdicos
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-nowrap fw-semibold {% if request.resolver_match.url_name == 'dashboard_alfabetizacion' %}active{% endif %}" href="{% url 'jardines:dashboard_alfabetizacion' %}">
-                    <i class="fas fa-book me-1"></i> Alfabetización y Acompañamiento
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-nowrap fw-semibold {% if request.resolver_match.url_name == 'dashboard_carpinteria' %}active{% endif %}" href="{% url 'jardines:dashboard_carpinteria' %}">
-                    <i class="fas fa-hammer me-1"></i> Escuela de Carpintería
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-nowrap fw-semibold {% if request.resolver_match.url_name == 'dashboard_artes_plasticas' %}active{% endif %}" href="{% url 'jardines:dashboard_artes_plasticas' %}">
-                    <i class="fas fa-palette me-1"></i> Artes Plásticas Belgrano
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-nowrap fw-semibold {% if request.resolver_match.url_name == 'dashboard_expresion_cultural' %}active{% endif %}" href="{% url 'jardines:dashboard_expresion_cultural' %}">
-                    <i class="fas fa-theater-masks me-1"></i> Expresión Cultural
-                </a>
-            </li>
-        </ul>
-    </div>
-
     <!-- Header y Filtros -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
