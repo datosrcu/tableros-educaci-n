@@ -69,16 +69,23 @@
                             </div>
                         </td>
                         <td>
-                            {% if item.fichado %}
-                                <div class="d-flex flex-column">
-                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
-                                        <i class="fas fa-check-circle me-1"></i> Fichó ({{ item.inicio_sesion|time:"H:i" }} hs)
+                            {% if item.fichado_salida %}
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-1.5 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
+                                        <i class="fas fa-check-double me-1"></i> Finalizada ({{ item.inicio_sesion|time:"H:i" }} - {{ item.hora_salida|time:"H:i" }})
                                     </span>
-                                    {% if item.asistencias.0.fuera_de_jornada %}
-                                        <span class="badge bg-danger bg-opacity-10 text-danger micro-text mt-1" style="width: fit-content;">
-                                            <i class="fas fa-clock me-1"></i>Fuera de Jornada
-                                        </span>
-                                    {% endif %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary micro-text fw-bold" style="width: fit-content;">
+                                        <i class="fas fa-stopwatch me-1"></i> Total: {{ item.horas_trabajadas }}
+                                    </span>
+                                </div>
+                            {% elif item.fichado %}
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="badge bg-warning bg-opacity-15 text-dark fw-bold px-3 py-1.5 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
+                                        <i class="fas fa-clock me-1"></i> Ingreso ({{ item.inicio_sesion|time:"H:i" }} hs)
+                                    </span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning micro-text" style="width: fit-content;">
+                                        En curso &bull; Sin salida
+                                    </span>
                                 </div>
                             {% else %}
                                 <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">

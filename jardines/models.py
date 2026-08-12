@@ -291,6 +291,13 @@ class AsistenciaDocente(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud")
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud")
 
+    # Campos para Fichaje de Salida
+    hora_salida = models.TimeField(null=True, blank=True, verbose_name="Hora de Salida")
+    latitude_salida = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud Salida")
+    longitude_salida = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud Salida")
+    ip_address_salida = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP Salida")
+    fichado_salida = models.BooleanField(default=False, verbose_name="Fichado Salida")
+
     # Usuario que registró la asistencia (null si fue automático)
     registrado_por = models.ForeignKey(
         "users.Usuario",
@@ -309,6 +316,65 @@ class AsistenciaDocente(models.Model):
         # Nueva clave: docente + espacio + TURNO + fecha
         unique_together = ("docente", "jardin", "turno", "fecha")
         ordering = ["-fecha", "turno", "docente__last_name"]
+
+    @property
+    def estado_jornada(self):
+        """
+        Calcula el estado actual de la jornada de fichaje:
+        - Ausente por licencia: si estado == 'L'
+        - Sin fichaje: si no fichó ingreso (fichado == False)
+        - Jornada finalizada: si fichó ingreso y salida (fichado == True y fichado_salida == True)
+        - Jornada en curso: si fichó ingreso pero no salida y la fecha es hoy
+        - Ingreso sin salida: si fichó ingreso pero no salida y la fecha es anterior a hoy
+        """
+        if self.estado == 'L':
+            return "Ausente por licencia"
+        if not self.fichado:
+            return "Sin fichaje"
+        if self.fichado and self.fichado_salida:
+            return "Jornada finalizada"
+        hoy = timezone.localtime(timezone.now()).date()
+        if self.fecha == hoy:
+            return "Jornada en curso"
+        return "Ingreso sin salida"
+
+    @property
+    def horas_trabajadas_td(self):
+        """Retorna un timedelta con la duración de la jornada si existe hora_ingreso y hora_salida."""
+        if self.hora_ingreso and self.hora_salida:
+            from datetime import datetime, date
+            dt_ingreso = datetime.combine(date.min, self.hora_ingreso)
+            dt_salida = datetime.combine(date.min, self.hora_salida)
+            if dt_salida >= dt_ingreso:
+                return dt_salida - dt_ingreso
+        return None
+
+    @property
+    def horas_trabajadas_str(self):
+        """Formatea el tiempo trabajado como 'HH:MM hs' o 'Ingreso sin salida' / '—'."""
+        td = self.horas_trabajadas_td
+        if td is not None:
+            total_seconds = int(td.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            return f"{hours:02d}:{minutes:02d} hs"
+        if self.fichado and not self.fichado_salida:
+            hoy = timezone.localtime(timezone.now()).date()
+            if self.fecha < hoy:
+                return "Ingreso sin salida"
+            return "En curso"
+        return "—"
+
+    @property
+    def salas_nombres(self):
+        """Retorna los nombres de las salas asignadas al docente en este jardín y turno."""
+        if not self.jardin_id:
+            return "General"
+        salas = self.docente.salas_asignadas.filter(jardin_id=self.jardin_id)
+        if self.turno:
+            salas = salas.filter(turno=self.turno)
+        nombres = [s.nombre for s in salas]
+        return ", ".join(nombres) if nombres else "Sin sala asignada"
 
     def clean(self):
         """Valida que la fecha no sea futura y que el usuario sea docente o auxiliar."""

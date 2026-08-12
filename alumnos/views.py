@@ -118,7 +118,12 @@ def dashboard_docente(request):
                 "turno": asist.turno,
                 "turno_label": asist.get_turno_display() if asist.turno else "—",
                 "fichado": asist.fichado,
+                "fichado_salida": asist.fichado_salida,
                 "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+                "hora_ingreso": asist.hora_ingreso if asist.fichado else None,
+                "hora_salida": asist.hora_salida if asist.fichado_salida else None,
+                "estado_jornada": asist.estado_jornada,
+                "horas_trabajadas": asist.horas_trabajadas_str,
                 "estado": asist.estado,
                 "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                 "salas_nombres": salas_nombres,
@@ -155,18 +160,25 @@ def dashboard_docente(request):
                     "turno": asist.turno,
                     "turno_label": asist.get_turno_display() if asist.turno else "—",
                     "fichado": asist.fichado,
+                    "fichado_salida": asist.fichado_salida,
                     "hora_fichada": asist.hora_ingreso if asist.fichado else None,
+                    "hora_ingreso": asist.hora_ingreso if asist.fichado else None,
+                    "hora_salida": asist.hora_salida if asist.fichado_salida else None,
+                    "estado_jornada": asist.estado_jornada,
+                    "horas_trabajadas": asist.horas_trabajadas_str,
                     "estado": asist.estado,
                     "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                     "salas_nombres": salas_nombres,
                 })
     
     fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
+    fichado_salida_hoy = bool(turnos_hoy) and all(t["fichado_salida"] for t in turnos_hoy)
     hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
         "fichado_hoy": fichado_hoy,
+        "fichado_salida_hoy": fichado_salida_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
         "tiene_jardines": True,
