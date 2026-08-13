@@ -83,6 +83,26 @@
     </div>
 </div>
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selects = ['#id_docente', '#id_reemplazante'];
+        selects.forEach(function (s) {
+            const el = document.querySelector(s);
+            if (el) {
+                $(el).select2({
+                    width: '100%',
+                    placeholder: 'Buscar y seleccionar...',
+                    allowClear: true,
+                    language: 'es'
+                });
+            }
+        });
+    });
+</script>
 <style>
     .border-light-subtle {
         border-color: #e2e8f0 !important;

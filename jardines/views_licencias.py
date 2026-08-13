@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, F
 
 from users.decorators import rol_requerido
 from users.models import Usuario
@@ -31,8 +31,18 @@ def lista_licencias(request):
             Q(docente__first_name__icontains=q) |
             Q(docente__last_name__icontains=q) |
             Q(docente__username__icontains=q) |
+            Q(reemplazante__first_name__icontains=q) |
+            Q(reemplazante__last_name__icontains=q) |
+            Q(reemplazante__username__icontains=q) |
             Q(motivo__icontains=q)
         ).distinct()
+
+    licencias = licencias.order_by(
+        F("reemplazante__last_name").asc(nulls_last=True),
+        F("reemplazante__first_name").asc(nulls_last=True),
+        "docente__last_name",
+        "docente__first_name",
+    )
         
     # Calcular días para cada licencia en la lista
     for l in licencias:
