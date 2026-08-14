@@ -80,6 +80,8 @@ class LicenciaDocenteForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         from users.models import Usuario
+        from django.db.models.functions import Lower, Coalesce, NullIf
+        from django.db.models import Value
         
         docentes_qs = Usuario.objects.filter(rol__in=["docente", "auxiliar"])
         
@@ -90,7 +92,32 @@ class LicenciaDocenteForm(forms.ModelForm):
                 Q(salas_asignadas__jardin__programa__in=programas)
             ).distinct()
             
-        self.fields["docente"].queryset = docentes_qs.order_by("last_name", "first_name")
-        self.fields["reemplazante"].queryset = docentes_qs.order_by("last_name", "first_name")
+        docentes_qs = docentes_qs.order_by(
+            Coalesce(NullIf(Lower("last_name"), Value("")), NullIf(Lower("first_name"), Value("")), Lower("username")).asc(),
+            Lower("first_name").asc(nulls_last=True),
+            Lower("username").asc()
+        )
+        
+        def format_user_label(obj):
+            if obj.last_name and obj.first_name:
+                return f"{obj.last_name}, {obj.first_name}"
+            elif obj.last_name or obj.first_name:
+                return f"{obj.last_name or obj.first_name}"
+            return obj.username
+
+        self.fields["docente"].queryset = docentes_qs
+        self.fields["docente"].label_from_instance = format_user_label
+        self.fields["docente"].empty_label = ""
+
+        self.fields["reemplazante"].queryset = docentes_qs
+        self.fields["reemplazante"].label_from_instance = format_user_label
+        self.fields["reemplazante"].empty_label = ""
         self.fields["reemplazante"].required = False
+
+        # Ordenar alfabéticamente de forma ascendente las opciones de tipo de licencia
+        tipo_choices = list(self.fields["tipo_licencia"].choices)
+        empty_choice = [c for c in tipo_choices if not c[0]]
+        data_choices = sorted([c for c in tipo_choices if c[0]], key=lambda x: str(x[1]).lower())
+        self.fields["tipo_licencia"].choices = empty_choice + data_choices
+
 

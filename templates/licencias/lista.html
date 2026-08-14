@@ -21,27 +21,37 @@
 </div>
 
 <div class="card shadow-sm border-0">
-    <!-- Buscador -->
-    <div class="p-3 bg-light border-bottom border-light">
+    <!-- Buscador destacado -->
+    <div class="p-3 border-bottom" style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);">
         <form method="get" class="row g-2 align-items-center m-0">
-            <div class="col-12 col-md-8">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white border-light-subtle rounded-start-pill">
-                        <i class="fas fa-search text-muted"></i>
+            <div class="col-12 col-md-7 col-lg-8">
+                <div class="input-group shadow-sm rounded-pill overflow-hidden border border-primary border-opacity-25" style="background: #ffffff;">
+                    <span class="input-group-text bg-primary bg-opacity-10 border-0 text-primary ps-3 pe-2">
+                        <i class="fas fa-search"></i>
                     </span>
                     <input type="text" name="q" value="{{ q }}"
-                           class="form-control border-light-subtle rounded-end-pill shadow-none"
-                           placeholder="Buscar por docente, reemplazante, motivo...">
+                           class="form-control border-0 shadow-none py-2 px-2"
+                           placeholder="🔍 Buscar por docente, reemplazante, motivo..."
+                           aria-label="Buscar">
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold border-0">
+                        <i class="fas fa-search me-1 d-none d-sm-inline"></i>Buscar
+                    </button>
                 </div>
             </div>
             {% if q %}
-            <div class="col-12 col-md-4">
-                <a href="{% url 'jardines:lista_licencias' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <div class="col-12 col-md-5 col-lg-4 d-flex align-items-center gap-2">
+                <a href="{% url 'jardines:lista_licencias' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm">
                     <i class="fas fa-times me-1"></i>Limpiar búsqueda
                 </a>
             </div>
             {% endif %}
         </form>
+        {% if q %}
+        <div class="mt-2 px-1 text-muted small d-flex align-items-center">
+            <i class="fas fa-filter text-primary me-2"></i>
+            <span>Mostrando resultados para <strong class="text-primary">"{{ q }}"</strong> (<strong>{{ licencias|length }}</strong> registro{{ licencias|length|pluralize }})</span>
+        </div>
+        {% endif %}
     </div>
 
     <div class="table-responsive">

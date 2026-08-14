@@ -38,8 +38,7 @@ def lista_licencias(request):
         ).distinct()
 
     licencias = licencias.order_by(
-        F("reemplazante__last_name").asc(nulls_last=True),
-        F("reemplazante__first_name").asc(nulls_last=True),
+        "-fecha_desde",
         "docente__last_name",
         "docente__first_name",
     )

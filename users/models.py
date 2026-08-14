@@ -47,6 +47,13 @@ class Usuario(AbstractUser):
     # MÉTODOS DE CONSULTA (Helpers de permisos)
     # =====================================================
 
+    def __str__(self):
+        if self.last_name and self.first_name:
+            return f"{self.last_name}, {self.first_name}"
+        elif self.last_name or self.first_name:
+            return f"{self.last_name or self.first_name}".strip()
+        return self.username
+
     def es_admin(self):
         """Verifica si el usuario tiene privilegios administrativos."""
         return self.rol == "administrador" or self.is_superuser

@@ -43,8 +43,13 @@
                         {% for field in form %}
                         <div class="col-md-6 mb-2">
                             <label for="{{ field.id_for_label }}"
-                                class="form-label small fw-bold text-muted text-uppercase mb-1 uppercase">
-                                {{ field.label }}
+                                class="form-label small fw-bold text-muted text-uppercase mb-1 uppercase d-flex align-items-center justify-content-between">
+                                <span>{{ field.label }}</span>
+                                {% if field.name == 'docente' or field.name == 'reemplazante' %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fw-medium" style="font-size: 0.7rem; text-transform: none; letter-spacing: normal;">
+                                    <i class="fas fa-search me-1"></i>Con buscador
+                                </span>
+                                {% endif %}
                             </label>
                             {% if field.name == 'motivo' %}
                                 {{ field|add_class:"form-control shadow-none border-light-subtle" }}
@@ -89,17 +94,39 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const selects = ['#id_docente', '#id_reemplazante'];
-        selects.forEach(function (s) {
-            const el = document.querySelector(s);
-            if (el) {
-                $(el).select2({
-                    width: '100%',
-                    placeholder: 'Buscar y seleccionar...',
-                    allowClear: true,
-                    language: 'es'
-                });
-            }
+        const configDocente = {
+            width: '100%',
+            placeholder: '🔍 Buscar y seleccionar docente titular...',
+            allowClear: true,
+            language: 'es'
+        };
+
+        const configReemplazante = {
+            width: '100%',
+            placeholder: '🔍 Buscar y seleccionar reemplazante (opcional)...',
+            allowClear: true,
+            language: 'es'
+        };
+
+        const elDocente = document.querySelector('#id_docente');
+        if (elDocente) {
+            $(elDocente).select2(configDocente);
+        }
+
+        const elReemplazante = document.querySelector('#id_reemplazante');
+        if (elReemplazante) {
+            $(elReemplazante).select2(configReemplazante);
+        }
+
+        // Agregar placeholder destacado y autofocus al abrir el desplegable
+        $('#id_docente, #id_reemplazante').on('select2:open', function () {
+            setTimeout(function () {
+                const searchField = document.querySelector('.select2-container--open .select2-search__field');
+                if (searchField) {
+                    searchField.setAttribute('placeholder', '🔍 Escriba apellido o nombre para filtrar...');
+                    searchField.focus();
+                }
+            }, 10);
         });
     });
 </script>
@@ -115,6 +142,92 @@
 
     .micro-text {
         font-size: 0.75rem;
+    }
+
+    /* Estilos modernos y destacados para Select2 */
+    .select2-container--default .select2-selection--single {
+        height: 44px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: #ffffff;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .select2-container--default .select2-selection--single:hover {
+        border-color: #009de0;
+    }
+
+    .select2-container--default.select2-container--open .select2-selection--single,
+    .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: #009de0 !important;
+        box-shadow: 0 0 0 0.25rem rgba(0, 157, 224, 0.18) !important;
+        outline: none;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #1e293b;
+        font-size: 0.95rem;
+        padding-left: 14px;
+        line-height: 42px;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 42px;
+        right: 12px;
+    }
+
+    .select2-dropdown {
+        border: 1.5px solid #009de0;
+        border-radius: 10px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        z-index: 1055;
+    }
+
+    .select2-search--dropdown {
+        padding: 10px;
+        background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1.5px solid #009de0;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 0.92rem;
+        background-color: #ffffff;
+        outline: none;
+        box-shadow: 0 2px 4px rgba(0, 157, 224, 0.1);
+        transition: all 0.2s ease;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: #0080b8;
+        box-shadow: 0 0 0 3px rgba(0, 157, 224, 0.25);
+    }
+
+    .select2-container--default .select2-results__option {
+        padding: 9px 14px;
+        font-size: 0.92rem;
+        color: #334155;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #009de0 !important;
+        color: #ffffff !important;
+    }
+
+    .select2-container--default .select2-results__option[aria-selected=true] {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        font-weight: 600;
     }
 </style>
 {% endblock %}
