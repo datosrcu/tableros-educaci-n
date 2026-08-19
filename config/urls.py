@@ -3,7 +3,8 @@ URL configuration for config project.
 """
 from django.contrib import admin
 from django.urls import path, include, reverse_lazy
-from django.shortcuts import redirect
+from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib.auth import views as auth_views, logout as django_logout
 from users.views import crear_docente
 from django.views.generic import RedirectView  # ← Importar correctamente
@@ -12,7 +13,14 @@ def logout_view(request):
     django_logout(request)
     return redirect("login")
 
+def mantenimiento_view(request):
+    """Vista directa para el estado de mantenimiento programado."""
+    return render(request, "mantenimiento.html", status=200)
+
 def home_redirect(request):
+    if getattr(settings, 'MAINTENANCE_MODE', False):
+        return render(request, "mantenimiento.html", status=200)
+
     if not request.user.is_authenticated:
         return redirect("login")
 
@@ -31,6 +39,7 @@ def health_check(request):
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
+    path('mantenimiento/', mantenimiento_view, name='mantenimiento'),
     path('', home_redirect),
     path('admin-panel/', admin.site.urls),
     path('admin/', lambda r: redirect('/admin-panel/')),

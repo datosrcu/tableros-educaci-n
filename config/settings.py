@@ -4,6 +4,7 @@ Django settings for config project.
 
 from pathlib import Path
 import os
+import sys
 
 try:
     from decouple import config, Csv
@@ -29,6 +30,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 # Limpiamos posibles comillas accidentales de variables de entorno (p. ej. en Dokploy)
 def clean_env_list(env_val):
@@ -62,6 +64,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "config.middleware.MaintenanceModeMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -179,7 +182,7 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Security Settings for Production
-if not DEBUG:
+if not DEBUG and not TESTING:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
     SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
@@ -241,6 +244,9 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 # Google Apps Script API URLs para los costos del Dashboard (Hoja 1 RUL_long y Hoja 2 Database RRHH_2026)
 GOOGLE_APPS_SCRIPT_COSTOS_URL = config('GOOGLE_APPS_SCRIPT_COSTOS_URL', default='https://script.google.com/macros/s/AKfycbwGeKMUcjaWUbFBxzxoXYDfSxnmVpmsbt-gYsxOY3pXiAGwIPl3KgcrduDbkC2HA-cl/exec')
 GOOGLE_APPS_SCRIPT_COSTOS_URL_2 = config('GOOGLE_APPS_SCRIPT_COSTOS_URL_2', default='https://script.google.com/macros/s/AKfycbwIJKyzHvIAsxK5aPwpR6ZjgwI31jLP7jXcI4rOnCNEkkststYWgntjGgl4kBjtJool/exec')
+
+# Modo mantenimiento programado (10:00 hs a 12:00 hs - Trabajos en bases de datos)
+MAINTENANCE_MODE = False if TESTING else config('MAINTENANCE_MODE', default=True, cast=bool)
 
 
 
