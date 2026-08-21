@@ -161,3 +161,21 @@ class AsistenciaDocenteAdmin(BaseAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.rol == "administrador"
+
+
+from .models import TipoActividadEspecial, ActividadEspecial
+
+@admin.register(TipoActividadEspecial)
+class TipoActividadEspecialAdmin(BaseAdmin):
+    list_display = ('id', 'nombre', 'es_default', 'activo')
+    search_fields = ('nombre', 'descripcion')
+    list_filter = ('es_default', 'activo')
+
+
+@admin.register(ActividadEspecial)
+class ActividadEspecialAdmin(BaseAdmin):
+    list_display = ('id', 'nombre', 'tipo', 'fecha', 'hora_inicio', 'hora_fin', 'alcance', 'creado_por')
+    list_filter = ('tipo', 'fecha', 'alcance')
+    search_fields = ('nombre', 'descripcion', 'tipo__nombre')
+    filter_horizontal = ('salas', 'docentes')
+

@@ -16,6 +16,50 @@
 
 {% if tiene_jardines %}
 <div style="display:none;">{% csrf_token %}</div>
+
+{% if actividades_especiales_hoy %}
+<div class="row mb-4">
+  <div class="col-12">
+    {% for act in actividades_especiales_hoy %}
+    <div class="card border-0 shadow-sm mb-3" style="border-radius: 16px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 5px solid #2563eb !important;">
+      <div class="card-body p-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="p-3 rounded-circle" style="background-color: #bfdbfe; color: #1d4ed8;">
+              <i class="fas fa-calendar-star fa-2x"></i>
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary rounded-pill px-3 py-1 font-monospace" style="font-size: 0.75rem;">
+                  {{ act.tipo.nombre }}
+                </span>
+                <span class="badge bg-white text-primary border rounded-pill px-2.5 py-1 fw-bold">
+                  <i class="far fa-clock me-1"></i>{{ act.hora_inicio|time:"H:i" }} a {{ act.hora_fin|time:"H:i" }} hs
+                </span>
+              </div>
+              <h4 class="fw-bold mb-1 text-dark">{{ act.nombre }}</h4>
+              <p class="mb-0 text-primary fw-semibold" style="font-size: 0.95rem;">
+                <i class="fas fa-check-circle me-1 text-success"></i>Estás asignado/a a esta actividad especial &mdash; 
+                <span class="text-dark">Tu asistencia y jornada habitual se adaptan automáticamente sin computar faltas.</span>
+              </p>
+              {% if act.descripcion %}
+              <small class="text-muted d-block mt-1"><i class="fas fa-info-circle me-1"></i>{{ act.descripcion }}</small>
+              {% endif %}
+            </div>
+          </div>
+          <div>
+            <span class="badge bg-white text-primary border shadow-sm py-2 px-3 rounded-pill fw-bold" style="font-size: 0.85rem;">
+              <i class="fas fa-shield-alt text-success me-1"></i>Exención Activa
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="row mb-4">
   <div class="col-12">
     <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 5px solid {% if licencia_activa %}#8b5cf6{% elif fichado_hoy %}#10b981{% else %}#3b82f6{% endif %} !important;">
@@ -57,7 +101,9 @@
                       <i class="fas {% if t.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
                       Turno {{ t.turno_label }}
                     </span>
-                    {% if t.fichado and t.fichado_salida %}
+                    {% if t.es_exento %}
+                      <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill micro-text px-2">Exento por Actividad</span>
+                    {% elif t.fichado and t.fichado_salida %}
                       <span class="badge bg-success bg-opacity-10 text-success rounded-pill micro-text px-2">Finalizada</span>
                     {% elif t.fichado %}
                       <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill micro-text px-2">En Curso</span>
@@ -72,7 +118,11 @@
                     <i class="fas fa-door-open me-1"></i>Sala: <strong>{{ t.salas_nombres }}</strong>
                   </div>
                   
-                  {% if t.fichado and t.fichado_salida %}
+                  {% if t.es_exento %}
+                    <div class="text-primary small fw-semibold">
+                      <i class="fas fa-info-circle me-1"></i>{{ t.observaciones|default:"Exento de clase regular por actividad especial." }}
+                    </div>
+                  {% elif t.fichado and t.fichado_salida %}
                     <div class="text-success small fw-semibold mb-0.5">
                       <i class="fas fa-check-circle me-1"></i> Ingreso: <strong>{{ t.hora_ingreso|time:"H:i" }} hs</strong> &bull; Salida: <strong>{{ t.hora_salida|time:"H:i" }} hs</strong>
                     </div>
@@ -90,7 +140,11 @@
                 </div>
 
                 <div>
-                  {% if t.fichado and t.fichado_salida %}
+                  {% if t.es_exento %}
+                    <button class="btn btn-sm btn-outline-info rounded-pill px-3" disabled>
+                      <i class="fas fa-check me-1"></i> Exento
+                    </button>
+                  {% elif t.fichado and t.fichado_salida %}
                     <button class="btn btn-sm btn-outline-success rounded-pill px-3" disabled>
                       <i class="fas fa-check-double me-1"></i> Finalizada
                     </button>
