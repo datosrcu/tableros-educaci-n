@@ -5544,8 +5544,8 @@
                                         21
                                     </td>
                                 
-                                    <td class="text-center align-middle text-muted">
-                                        -
+                                    <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                        12
                                     </td>
                                 
                                     <td class="text-center align-middle text-muted">
@@ -5588,7 +5588,7 @@
                                         -
                                     </td>
                                 
-                                <td class="fw-bold text-primary">13</td>
+                                <td class="fw-bold text-primary">14</td>
                             </tr>
                             
                             
@@ -5680,8 +5680,8 @@
                                             21
                                         </td>
                                     
-                                        <td class="text-center align-middle text-muted">
-                                            -
+                                        <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                            12
                                         </td>
                                     
                                         <td class="text-center align-middle text-muted">
@@ -5724,7 +5724,7 @@
                                             -
                                         </td>
                                     
-                                    <td class="fw-bold text-primary">13</td>
+                                    <td class="fw-bold text-primary">14</td>
                                 </tr>
                                 
                                 
@@ -5814,8 +5814,8 @@
                                                 10
                                             </td>
                                         
-                                            <td class="text-center align-middle text-muted">
-                                                -
+                                            <td class="text-center align-middle text-success fw-bold">
+                                                12
                                             </td>
                                         
                                             <td class="text-center align-middle text-muted">
@@ -5858,7 +5858,7 @@
                                                 -
                                             </td>
                                         
-                                        <td class="fw-bold text-primary">12</td>
+                                        <td class="fw-bold text-primary">13</td>
                                     </tr>
                                 
                                     <!-- Fila Sala -->
@@ -10394,8 +10394,8 @@
                                         10
                                     </td>
                                 
-                                    <td class="text-center align-middle text-muted">
-                                        -
+                                    <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                        8
                                     </td>
                                 
                                     <td class="text-center align-middle text-muted">
@@ -10438,7 +10438,7 @@
                                         -
                                     </td>
                                 
-                                <td class="fw-bold text-primary">13</td>
+                                <td class="fw-bold text-primary">14</td>
                             </tr>
                             
                             
@@ -10530,8 +10530,8 @@
                                             10
                                         </td>
                                     
-                                        <td class="text-center align-middle text-muted">
-                                            -
+                                        <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                            8
                                         </td>
                                     
                                         <td class="text-center align-middle text-muted">
@@ -10574,7 +10574,7 @@
                                             -
                                         </td>
                                     
-                                    <td class="fw-bold text-primary">13</td>
+                                    <td class="fw-bold text-primary">14</td>
                                 </tr>
                                 
                                 
@@ -10664,8 +10664,8 @@
                                                 10
                                             </td>
                                         
-                                            <td class="text-center align-middle text-muted">
-                                                -
+                                            <td class="text-center align-middle text-success fw-bold">
+                                                8
                                             </td>
                                         
                                             <td class="text-center align-middle text-muted">
@@ -10708,7 +10708,7 @@
                                                 -
                                             </td>
                                         
-                                        <td class="fw-bold text-primary">13</td>
+                                        <td class="fw-bold text-primary">14</td>
                                     </tr>
                                 
                             
@@ -11612,8 +11612,8 @@
                                         13
                                     </td>
                                 
-                                    <td class="text-center align-middle text-muted">
-                                        -
+                                    <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                        12
                                     </td>
                                 
                                     <td class="text-center align-middle text-muted">
@@ -11656,7 +11656,7 @@
                                         -
                                     </td>
                                 
-                                <td class="fw-bold text-primary">13</td>
+                                <td class="fw-bold text-primary">14</td>
                             </tr>
                             
                             
@@ -11748,8 +11748,8 @@
                                             13
                                         </td>
                                     
-                                        <td class="text-center align-middle text-muted">
-                                            -
+                                        <td class="text-center align-middle bg-success bg-opacity-10 text-success fw-bold">
+                                            12
                                         </td>
                                     
                                         <td class="text-center align-middle text-muted">
@@ -11792,7 +11792,7 @@
                                             -
                                         </td>
                                     
-                                    <td class="fw-bold text-primary">13</td>
+                                    <td class="fw-bold text-primary">14</td>
                                 </tr>
                                 
                                 
@@ -11882,8 +11882,8 @@
                                                 13
                                             </td>
                                         
-                                            <td class="text-center align-middle text-muted">
-                                                -
+                                            <td class="text-center align-middle text-success fw-bold">
+                                                12
                                             </td>
                                         
                                             <td class="text-center align-middle text-muted">
@@ -11926,7 +11926,7 @@
                                                 -
                                             </td>
                                         
-                                        <td class="fw-bold text-primary">13</td>
+                                        <td class="fw-bold text-primary">14</td>
                                     </tr>
                                 
                             
@@ -18404,5 +18404,38 @@
         </div>
     </footer>
 
+
+<!-- Conector de Datos en Tiempo Real (Opción 2) -->
+<script>
+(function() {
+    const programaKey = window.location.pathname.split('/').pop().replace('.html', '');
+    const filterForm = document.querySelector('form');
+    
+    function actualizarDatosEnVivo() {
+        const subprog = filterForm ? (filterForm.querySelector('[name="subprograma"]')?.value || '') : '';
+        const zona = filterForm ? (filterForm.querySelector('[name="zona"]')?.value || '') : '';
+        const fecha = filterForm ? (filterForm.querySelector('[name="fecha"]')?.value || '') : '';
+        
+        const apiUrl = `/jardines/api/dashboard-datos/?programa=${encodeURIComponent(programaKey)}&subprograma=${encodeURIComponent(subprog)}&zona=${encodeURIComponent(zona)}&fecha=${encodeURIComponent(fecha)}`;
+        
+        fetch(apiUrl)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data && data.activos !== undefined) {
+                    console.log('⚡ Conectado a la API en vivo:', data);
+                }
+            })
+            .catch(err => console.log('ℹ️ Modo vista previa estática activa.'));
+    }
+
+    if (filterForm) {
+        filterForm.addEventListener('change', function(e) {
+            e.preventDefault();
+            actualizarDatosEnVivo();
+        });
+    }
+})();
+</script>
 </body>
+
 </html>
