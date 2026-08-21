@@ -95,7 +95,18 @@
                             {% endif %}
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-md-6">
+                            <label for="{{ form.turno_afectado.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                <i class="fas fa-business-time text-primary me-1"></i>Turno Exento de Clases <span class="text-danger">*</span>
+                            </label>
+                            {{ form.turno_afectado|add_class:"form-select shadow-none border-light-subtle" }}
+                            <div class="form-text small text-muted">Indica si libera de clases todo el día, turno mañana o turno tarde.</div>
+                            {% if form.turno_afectado.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.turno_afectado.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
                             <label for="{{ form.descripcion.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
                                 Descripción / Observaciones
                             </label>

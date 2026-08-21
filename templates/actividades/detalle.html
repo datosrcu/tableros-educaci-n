@@ -64,6 +64,13 @@
                 </div>
 
                 <div class="mb-3">
+                    <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.75rem;">Turno Exento de Clases</small>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill fs-6 mt-1">
+                        <i class="fas fa-business-time me-1"></i>{{ actividad.get_turno_afectado_display }}
+                    </span>
+                </div>
+
+                <div class="mb-3">
                     <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.75rem;">Nivel de Alcance</small>
                     <span class="badge bg-info bg-opacity-10 text-dark fw-medium border border-info border-opacity-25 rounded-pill px-3 py-1.5 mt-1">
                         {{ actividad.get_alcance_display }}

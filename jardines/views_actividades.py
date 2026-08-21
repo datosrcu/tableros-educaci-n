@@ -16,7 +16,7 @@ from .forms import ActividadEspecialForm, TipoActividadEspecialForm
 def _sincronizar_asistencias_por_actividad(actividad):
     """
     Actualiza los registros de asistencia existentes no fichados de los docentes afectados
-    en la fecha de la actividad para reflejar la exención ('E').
+    en la fecha de la actividad para reflejar la exención ('E') considerando el turno afectado.
     """
     docentes_afectados = actividad.obtener_docentes_afectados()
     if not docentes_afectados.exists():
@@ -30,6 +30,10 @@ def _sincronizar_asistencias_por_actividad(actividad):
     ).exclude(estado='L')
 
     for asist in asistencias:
+        # Si la actividad solo afecta a un turno y este registro es de otro turno, no eximir
+        if actividad.turno_afectado != 'todo_el_dia' and asist.turno and asist.turno != actividad.turno_afectado:
+            continue
+
         # Verificar si la sala de la asistencia está exenta
         salas_docente = asist.docente.salas_asignadas.filter(jardin=asist.jardin)
         if asist.turno:

@@ -98,9 +98,12 @@
                         <div class="text-dark fw-semibold small">
                             <i class="far fa-calendar-alt me-1 text-primary"></i>{{ a.fecha|date:"d/m/Y" }}
                         </div>
-                        <small class="text-muted">
+                        <small class="text-muted d-block">
                             <i class="far fa-clock me-1"></i>{{ a.hora_inicio|time:"H:i" }} a {{ a.hora_fin|time:"H:i" }} hs
                         </small>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill micro-text mt-1">
+                            <i class="fas fa-business-time me-1"></i>{{ a.get_turno_afectado_display }}
+                        </span>
                     </td>
                     <td>
                         <span class="badge bg-info bg-opacity-10 text-dark fw-medium border border-info border-opacity-25 rounded-pill px-2.5 py-1">

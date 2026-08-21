@@ -479,10 +479,14 @@ def inicializar_asistencia_diaria(user, request=None):
             obs_sala = obs_base
 
             if not licencia and actividades_hoy.exists():
-                # Evaluar relación horaria de la actividad con el horario de la sala
+                # Evaluar relación de la actividad con el turno y horario de la sala
                 for act in actividades_hoy:
+                    # Verificar si la actividad aplica a este turno
+                    if act.turno_afectado != 'todo_el_dia' and act.turno_afectado != turno:
+                        continue
+
                     if sala.horario_inicio and sala.horario_fin:
-                        # Escenario A: Franja distinta (ej. clase 10 a 11, actividad 12 a 14) -> Exime la clase habitual
+                        # Escenario A: Franja distinta (ej. clase 10 a 11, actividad 12 a 14) -> Exime la clase habitual del turno
                         if act.hora_fin <= sala.horario_inicio or act.hora_inicio >= sala.horario_fin:
                             estado_sala = 'E'
                             obs_sala = f"Exento de clase habitual por actividad especial: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
@@ -583,6 +587,12 @@ class ActividadEspecial(models.Model):
         ('docente', 'Docentes puntuales'),
     ]
 
+    TURNO_AFECTADO_CHOICES = [
+        ('todo_el_dia', 'Todo el día (Mañana y Tarde)'),
+        ('mañana', 'Turno Mañana'),
+        ('tarde', 'Turno Tarde'),
+    ]
+
     nombre = models.CharField(max_length=150, verbose_name="Nombre de la actividad")
     tipo = models.ForeignKey(
         TipoActividadEspecial,
@@ -593,6 +603,12 @@ class ActividadEspecial(models.Model):
     fecha = models.DateField(verbose_name="Fecha")
     hora_inicio = models.TimeField(verbose_name="Hora de inicio")
     hora_fin = models.TimeField(verbose_name="Hora de fin")
+    turno_afectado = models.CharField(
+        max_length=20,
+        choices=TURNO_AFECTADO_CHOICES,
+        default='todo_el_dia',
+        verbose_name="Turno exento de clases habituales"
+    )
     descripcion = models.TextField(blank=True, verbose_name="Descripción / Observaciones")
 
     alcance = models.CharField(

@@ -137,6 +137,7 @@ class ActividadesEspecialesTestCase(TestCase):
             "fecha": hoy.strftime("%Y-%m-%d"),
             "hora_inicio": "12:00",
             "hora_fin": "14:00",
+            "turno_afectado": "todo_el_dia",
             "descripcion": "Festejo general en turno tarde",
             "alcance": "docente",
             "docentes": [self.docente.id]
@@ -229,6 +230,7 @@ class ActividadesEspecialesTestCase(TestCase):
             fecha=hoy,
             hora_inicio=time(12, 0),
             hora_fin=time(14, 0),
+            turno_afectado="todo_el_dia",
             alcance="docente",
             descripcion="Presentarse en el SUM municipal",
             creado_por=self.coordinador
@@ -241,3 +243,42 @@ class ActividadesEspecialesTestCase(TestCase):
         self.assertContains(resp, "Festejo Día de las Infancias")
         self.assertContains(resp, "Exención Activa")
         self.assertContains(resp, "Exento por Actividad")
+
+    def test_turno_afectado_diferenciacion(self):
+        """
+        Un docente asignado tanto a sala de turno mañana como a sala de turno tarde:
+        - Si la actividad es de 11:00 a 11:30 hs con turno_afectado='mañana',
+          únicamente la clase de turno mañana queda exenta ('E').
+          La clase de turno tarde permanece obligatoria ('A').
+        """
+        hoy = timezone.localtime(timezone.now()).date()
+        # Asignar a docente a ambas salas (mañana y tarde)
+        self.sala_tarde.docentes.add(self.docente)
+
+        # Crear actividad solo para turno mañana
+        actividad_manana = ActividadEspecial.objects.create(
+            nombre="Reunión Corta Mañana",
+            tipo=self.tipo_capacitacion,
+            fecha=hoy,
+            hora_inicio=time(11, 0),
+            hora_fin=time(11, 30),
+            turno_afectado="mañana",
+            alcance="docente",
+            creado_por=self.coordinador
+        )
+        actividad_manana.docentes.add(self.docente)
+
+        # Inicializar asistencia
+        inicializar_asistencia_diaria(self.docente)
+
+        asist_manana = AsistenciaDocente.objects.get(docente=self.docente, fecha=hoy, turno="mañana")
+        asist_tarde = AsistenciaDocente.objects.get(docente=self.docente, fecha=hoy, turno="tarde")
+
+        # Turno mañana queda exento
+        self.assertEqual(asist_manana.estado, 'E')
+        self.assertEqual(asist_manana.estado_jornada, "Exento por Actividad Especial")
+
+        # Turno tarde NO queda exento
+        self.assertEqual(asist_tarde.estado, 'A')
+        self.assertNotEqual(asist_tarde.estado, 'E')
+

@@ -36,6 +36,9 @@
                 <span class="badge bg-white text-primary border rounded-pill px-2.5 py-1 fw-bold">
                   <i class="far fa-clock me-1"></i>{{ act.hora_inicio|time:"H:i" }} a {{ act.hora_fin|time:"H:i" }} hs
                 </span>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2.5 py-1 fw-semibold">
+                  <i class="fas fa-business-time me-1"></i>Exime: {{ act.get_turno_afectado_display }}
+                </span>
               </div>
               <h4 class="fw-bold mb-1 text-dark">{{ act.nombre }}</h4>
               <p class="mb-0 text-primary fw-semibold" style="font-size: 0.95rem;">
