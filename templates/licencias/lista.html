@@ -59,10 +59,10 @@
             <thead class="bg-light text-muted small text-uppercase fw-bold">
                 <tr>
                     <th class="ps-4">Docente</th>
-                    <th>Tipo de Licencia</th>
+                    <th>Tipo / Turno</th>
                     <th>Vigencia</th>
                     <th>Días</th>
-                    <th>Reemplazo</th>
+                    <th>Reemplazantes</th>
                     <th class="text-end pe-4">Acciones</th>
                 </tr>
             </thead>
@@ -74,9 +74,22 @@
                         <small class="text-muted d-block">{{ l.docente.username }}</small>
                     </td>
                     <td>
-                        <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold border border-primary border-opacity-25">
+                        <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold border border-primary border-opacity-25 d-block mb-1 text-truncate" style="max-width: 180px;">
                             {{ l.get_tipo_licencia_display }}
                         </span>
+                        {% if l.turno_licencia == 'manana' %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25" style="font-size: 0.72rem;">
+                            <i class="fas fa-sun me-1"></i>Mañana
+                        </span>
+                        {% elif l.turno_licencia == 'tarde' %}
+                        <span class="badge bg-info bg-opacity-10 text-info-emphasis border border-info border-opacity-25" style="font-size: 0.72rem;">
+                            <i class="fas fa-moon me-1"></i>Tarde
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.72rem;">
+                            <i class="fas fa-clock me-1"></i>Jornada completa
+                        </span>
+                        {% endif %}
                     </td>
                     <td>
                         <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ l.fecha_desde|date:"d/m/Y" }} al {{ l.fecha_hasta|date:"d/m/Y" }}</small>
@@ -85,8 +98,20 @@
                         <span class="badge bg-secondary-subtle text-secondary small fw-normal">{{ l.dias }} días</span>
                     </td>
                     <td>
-                        {% if l.reemplazante %}
-                        <small class="fw-semibold text-dark"><i class="fas fa-user-friends me-1 text-muted"></i>{{ l.reemplazante.get_full_name|default:l.reemplazante.username }}</small>
+                        {% if l.reemplazantes_licencia.all %}
+                        <ul class="list-unstyled mb-0 small">
+                            {% for r in l.reemplazantes_licencia.all %}
+                            <li class="mb-1 text-nowrap">
+                                <i class="fas fa-user-check text-success me-1"></i>
+                                <span class="fw-semibold text-dark">{{ r.reemplazante.last_name }}, {{ r.reemplazante.first_name|slice:":1" }}.</span>
+                                {% if r.sala %}
+                                <span class="badge bg-light text-muted border border-light-subtle ms-1" title="{{ r.sala.nombre }} ({{ r.sala.get_turno_display }}) - {{ r.sala.jardin.nombre }}">
+                                    {{ r.sala.nombre }}
+                                </span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
                         {% else %}
                         <span class="text-muted small italic">Sin reemplazo</span>
                         {% endif %}

@@ -62,18 +62,18 @@ class LicenciaDocenteForm(forms.ModelForm):
         fields = [
             "docente",
             "tipo_licencia",
-            "motivo",
+            "turno_licencia",
             "fecha_desde",
             "fecha_hasta",
-            "reemplazante",
+            "motivo",
         ]
         widgets = {
             "docente": forms.Select(attrs={"class": "form-select"}),
             "tipo_licencia": forms.Select(attrs={"class": "form-select"}),
-            "motivo": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Escriba los motivos o detalles de la licencia..."}),
+            "turno_licencia": forms.Select(attrs={"class": "form-select"}),
             "fecha_desde": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "fecha_hasta": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "reemplazante": forms.Select(attrs={"class": "form-select"}),
+            "motivo": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Escriba los motivos o detalles de la licencia..."}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -107,16 +107,19 @@ class LicenciaDocenteForm(forms.ModelForm):
 
         self.fields["docente"].queryset = docentes_qs
         self.fields["docente"].label_from_instance = format_user_label
-        self.fields["docente"].empty_label = ""
+        self.fields["docente"].empty_label = "Seleccione docente titular..."
 
-        self.fields["reemplazante"].queryset = docentes_qs
-        self.fields["reemplazante"].label_from_instance = format_user_label
-        self.fields["reemplazante"].empty_label = ""
-        self.fields["reemplazante"].required = False
+        # Opciones de turno
+        self.fields["turno_licencia"].choices = [
+            ("", "Todos los turnos (Jornada completa)"),
+            ("manana", "Turno Mañana"),
+            ("tarde", "Turno Tarde"),
+        ]
+        self.fields["turno_licencia"].required = False
 
         # Ordenar alfabéticamente de forma ascendente las opciones de tipo de licencia
         tipo_choices = list(self.fields["tipo_licencia"].choices)
-        empty_choice = [c for c in tipo_choices if not c[0]]
+        empty_choice = [("", "Seleccione tipo de licencia...")]
         data_choices = sorted([c for c in tipo_choices if c[0]], key=lambda x: str(x[1]).lower())
         self.fields["tipo_licencia"].choices = empty_choice + data_choices
 

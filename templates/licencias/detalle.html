@@ -34,11 +34,27 @@
                         <span class="fs-5 fw-bold text-dark">{{ licencia.docente.last_name }}, {{ licencia.docente.first_name }}</span>
                         <small class="text-muted d-block">Usuario: {{ licencia.docente.username }}</small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold d-block mb-1">Tipo de Licencia</label>
                         <span class="badge bg-primary bg-opacity-10 text-primary fs-6 fw-semibold border border-primary border-opacity-25 py-2 px-3">
                             {{ licencia.get_tipo_licencia_display }}
                         </span>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Turno Afectado</label>
+                        {% if licencia.turno_licencia == 'manana' %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning-emphasis fs-6 fw-semibold border border-warning border-opacity-25 py-2 px-3">
+                            <i class="fas fa-sun me-1"></i>Turno Mañana
+                        </span>
+                        {% elif licencia.turno_licencia == 'tarde' %}
+                        <span class="badge bg-info bg-opacity-10 text-info-emphasis fs-6 fw-semibold border border-info border-opacity-25 py-2 px-3">
+                            <i class="fas fa-moon me-1"></i>Turno Tarde
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary fs-6 fw-semibold py-2 px-3">
+                            <i class="fas fa-clock me-1"></i>Jornada Completa
+                        </span>
+                        {% endif %}
                     </div>
 
                     <div class="col-md-4">
@@ -55,11 +71,38 @@
                     </div>
 
                     <div class="col-md-12">
-                        <label class="text-muted small text-uppercase fw-bold d-block mb-1">Docente Reemplazante</label>
-                        {% if licencia.reemplazante %}
-                        <span class="fw-semibold text-dark"><i class="fas fa-user-friends me-2 text-muted"></i>{{ licencia.reemplazante.get_full_name|default:licencia.reemplazante.username }}</span>
+                        <label class="text-muted small text-uppercase fw-bold d-block mb-2">Docentes Reemplazantes</label>
+                        {% if licencia.reemplazantes_licencia.all %}
+                        <div class="list-group shadow-sm border-0">
+                            {% for r in licencia.reemplazantes_licencia.all %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-3 border-light-subtle">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-dark">{{ r.reemplazante.last_name }}, {{ r.reemplazante.first_name }}</h6>
+                                        <small class="text-muted">Usuario: {{ r.reemplazante.username }}</small>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if r.sala %}
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2">
+                                        <i class="fas fa-door-open me-1"></i>Sala: {{ r.sala.nombre }} ({{ r.sala.get_turno_display }}) - {{ r.sala.jardin.nombre }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-light text-muted border px-3 py-2">
+                                        <i class="fas fa-globe me-1"></i>Todas las salas / General
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                         {% else %}
-                        <span class="text-muted italic">Sin docente reemplazante asignado</span>
+                        <div class="p-3 bg-light rounded text-muted italic">
+                            <i class="fas fa-user-slash me-1"></i>Sin docentes reemplazantes asignados
+                        </div>
                         {% endif %}
                     </div>
 

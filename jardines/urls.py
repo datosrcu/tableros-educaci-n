@@ -33,6 +33,7 @@ urlpatterns = [
     path("licencias/<int:pk>/eliminar/", views_licencias.eliminar_licencia, name="eliminar_licencia"),
     path("licencias/exportar/", views_licencias.exportar_licencias_excel, name="exportar_licencias"),
     path("licencias/reporte/", views_licencias.reporte_licencias, name="reporte_licencias"),
+    path("licencias/ajax/salas-reemplazante/", views_licencias.ajax_salas_reemplazante, name="ajax_salas_reemplazante"),
 
     # Actividades Especiales
     path("actividades/", views_actividades.lista_actividades, name="lista_actividades"),

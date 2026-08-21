@@ -101,8 +101,8 @@ def cargar_asistencia_docente(request, jardin_id):
             estado = request.POST.get(campo)
             observaciones = request.POST.get(obs_campo, "")
             
-            # Forzar 'L' si tiene licencia activa
-            licencia = LicenciaDocente.obtener_licencia_activa(docente, fecha)
+            # Forzar 'L' si tiene licencia activa para este turno
+            licencia = LicenciaDocente.obtener_licencia_activa(docente, fecha, turno=turno)
             if licencia:
                 estado = 'L'
                 observaciones = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
@@ -129,7 +129,7 @@ def cargar_asistencia_docente(request, jardin_id):
 
     docente_data = []
     for docente, turno in pares_lista:
-        lic = LicenciaDocente.obtener_licencia_activa(docente, fecha)
+        lic = LicenciaDocente.obtener_licencia_activa(docente, fecha, turno=turno)
         docente_data.append({
             "docente": docente,
             "turno": turno,
@@ -488,8 +488,9 @@ def registrar_asistencia_docente(request):
     from users.models import AccionAuditoria
     from django.core.exceptions import ValidationError
     
-    # Verificar licencia activa
-    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
+    # Verificar licencia activa para el turno que está fichando
+    turno_fichaje = request.POST.get("turno") or _turno_por_hora(hora)
+    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy, turno=turno_fichaje)
     if licencia:
         return JsonResponse({
             "status": "error",

@@ -742,6 +742,11 @@ class LicenciaDocente(models.Model):
         ('otro', 'Otro'),
     ]
 
+    TURNO_LICENCIA_CHOICES = [
+        ('manana', 'Mañana'),
+        ('tarde', 'Tarde'),
+    ]
+
     docente = models.ForeignKey(
         "users.Usuario",
         on_delete=models.CASCADE,
@@ -753,6 +758,14 @@ class LicenciaDocente(models.Model):
         choices=TIPO_CHOICES,
         verbose_name="Tipo de licencia"
     )
+    turno_licencia = models.CharField(
+        max_length=10,
+        choices=TURNO_LICENCIA_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Turno afectado",
+        help_text="Dejar vacío si la licencia afecta a todos los turnos del docente."
+    )
     motivo = models.TextField(
         verbose_name="Motivo / Descripción"
     )
@@ -761,14 +774,6 @@ class LicenciaDocente(models.Model):
     )
     fecha_hasta = models.DateField(
         verbose_name="Fecha hasta"
-    )
-    reemplazante = models.ForeignKey(
-        "users.Usuario",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="reemplazos",
-        verbose_name="Docente reemplazante"
     )
     creado_por = models.ForeignKey(
         "users.Usuario",
@@ -792,23 +797,89 @@ class LicenciaDocente(models.Model):
                 raise ValidationError({
                     "fecha_hasta": "La fecha hasta debe ser posterior o igual a la fecha desde."
                 })
-        
-        if self.docente and self.reemplazante and self.docente == self.reemplazante:
-            raise ValidationError({
-                "reemplazante": "El docente reemplazante no puede ser la misma persona con licencia."
-            })
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
 
     @classmethod
-    def obtener_licencia_activa(cls, docente, fecha):
-        return cls.objects.filter(
+    def obtener_licencia_activa(cls, docente, fecha, turno=None):
+        """
+        Retorna la licencia activa para un docente en una fecha dada.
+        Si se pasa `turno` (ej: 'mañana' o 'tarde'), solo bloquea la licencia
+        si esta no tiene turno específico (afecta a todos) O si el turno coincide.
+        """
+        # Mapa de turno de sala → valor en turno_licencia
+        turno_map = {
+            'mañana': 'manana',
+            'manana': 'manana',
+            'tarde': 'tarde',
+        }
+        turno_normalizado = turno_map.get(str(turno).lower()) if turno else None
+
+        qs = cls.objects.filter(
             docente=docente,
             fecha_desde__lte=fecha,
             fecha_hasta__gte=fecha
-        ).first()
+        )
+
+        if turno_normalizado:
+            # Bloquea si la licencia no tiene turno (afecta todo el día)
+            # O si el turno de la licencia coincide con el turno del docente
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(turno_licencia__isnull=True) | Q(turno_licencia='') | Q(turno_licencia=turno_normalizado)
+            )
+
+        return qs.first()
+
+    def get_reemplazantes_display(self):
+        """Retorna una lista de strings con 'Apellido, Nombre (Sala)' de cada reemplazante."""
+        return [
+            f"{r.reemplazante.last_name}, {r.reemplazante.first_name}" +
+            (f" ({r.sala})" if r.sala else "")
+            for r in self.reemplazantes_licencia.select_related('reemplazante', 'sala').all()
+        ]
 
     def __str__(self):
         return f"Licencia de {self.docente} ({self.fecha_desde} al {self.fecha_hasta})"
+
+
+class ReemplazanteLicencia(models.Model):
+    """Docente reemplazante vinculado a una licencia, con sala opcional de cobertura."""
+    licencia = models.ForeignKey(
+        LicenciaDocente,
+        on_delete=models.CASCADE,
+        related_name="reemplazantes_licencia"
+    )
+    reemplazante = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.CASCADE,
+        related_name="reemplazos_realizados",
+        verbose_name="Docente reemplazante"
+    )
+    sala = models.ForeignKey(
+        "Sala",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reemplazos",
+        verbose_name="Sala a cubrir"
+    )
+
+    class Meta:
+        verbose_name = "Reemplazante de Licencia"
+        verbose_name_plural = "Reemplazantes de Licencia"
+        unique_together = [("licencia", "reemplazante")]
+
+    def clean(self):
+        super().clean()
+        if self.licencia_id and self.reemplazante_id:
+            if self.reemplazante == self.licencia.docente:
+                raise ValidationError({
+                    "reemplazante": "El reemplazante no puede ser el mismo docente con licencia."
+                })
+
+    def __str__(self):
+        sala_str = f" → {self.sala}" if self.sala else ""
+        return f"{self.reemplazante} reemplaza a {self.licencia.docente}{sala_str}"
