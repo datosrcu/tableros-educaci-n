@@ -28,7 +28,7 @@
     <div class="col-lg-10">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <form method="post" novalidate>
+                <form method="post" id="licenciaForm" novalidate>
                     {% csrf_token %}
                     {% if form.non_field_errors %}
                     <div class="alert alert-danger shadow-sm border-0 mb-4">
@@ -39,41 +39,114 @@
                         </ul>
                     </div>
                     {% endif %}
-                    <div class="row g-4">
-                        {% for field in form %}
-                        <div class="col-md-6 mb-2">
-                            <label for="{{ field.id_for_label }}"
-                                class="form-label small fw-bold text-muted text-uppercase mb-1 uppercase d-flex align-items-center justify-content-between">
-                                <span>{{ field.label }}</span>
-                                {% if field.name == 'docente' or field.name == 'reemplazante' %}
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fw-medium" style="font-size: 0.7rem; text-transform: none; letter-spacing: normal;">
+
+                    <!-- Datos Principales de la Licencia -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                                <i class="fas fa-user-clock me-2 text-primary"></i>Datos de la Licencia
+                            </h5>
+                        </div>
+
+                        <!-- Docente Titular -->
+                        <div class="col-md-6">
+                            <label for="{{ form.docente.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1 d-flex align-items-center justify-content-between">
+                                <span>Docente Titular *</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fw-medium" style="font-size: 0.7rem;">
                                     <i class="fas fa-search me-1"></i>Con buscador
                                 </span>
-                                {% endif %}
                             </label>
-                            {% if field.name == 'motivo' %}
-                                {{ field|add_class:"form-control shadow-none border-light-subtle" }}
-                            {% elif field.name == 'docente' or field.name == 'tipo_licencia' or field.name == 'reemplazante' %}
-                                {{ field|add_class:"form-select shadow-none border-light-subtle" }}
-                            {% else %}
-                                {{ field|add_class:"form-control shadow-none border-light-subtle" }}
-                            {% endif %}
-                            
-                            {% if field.errors %}
-                            <div class="text-danger micro-text mt-1">
-                                {% for error in field.errors %}
-                                {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            {% if field.help_text %}
-                            <div class="form-text small text-muted mt-1 micro-text">
-                                {{ field.help_text }}
-                            </div>
+                            {{ form.docente|add_class:"form-select shadow-none border-light-subtle" }}
+                            {% if form.docente.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.docente.errors }}</div>
                             {% endif %}
                         </div>
-                        {% endfor %}
+
+                        <!-- Tipo de Licencia -->
+                        <div class="col-md-6">
+                            <label for="{{ form.tipo_licencia.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                Tipo de Licencia *
+                            </label>
+                            {{ form.tipo_licencia|add_class:"form-select shadow-none border-light-subtle" }}
+                            {% if form.tipo_licencia.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.tipo_licencia.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Turno Afectado -->
+                        <div class="col-md-4">
+                            <label for="{{ form.turno_licencia.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                Turno Afectado
+                            </label>
+                            {{ form.turno_licencia|add_class:"form-select shadow-none border-light-subtle" }}
+                            {% if form.turno_licencia.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.turno_licencia.errors }}</div>
+                            {% endif %}
+                            <div class="form-text text-muted micro-text">
+                                Si sólo tiene licencia en un turno (ej: Tarde), elija el turno para permitirle fichar en el otro.
+                            </div>
+                        </div>
+
+                        <!-- Fecha Desde -->
+                        <div class="col-md-4">
+                            <label for="{{ form.fecha_desde.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                Fecha Desde *
+                            </label>
+                            {{ form.fecha_desde|add_class:"form-control shadow-none border-light-subtle" }}
+                            {% if form.fecha_desde.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.fecha_desde.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Fecha Hasta -->
+                        <div class="col-md-4">
+                            <label for="{{ form.fecha_hasta.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                Fecha Hasta *
+                            </label>
+                            {{ form.fecha_hasta|add_class:"form-control shadow-none border-light-subtle" }}
+                            {% if form.fecha_hasta.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.fecha_hasta.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Motivo / Descripción -->
+                        <div class="col-12">
+                            <label for="{{ form.motivo.id_for_label }}" class="form-label small fw-bold text-muted text-uppercase mb-1">
+                                Motivo / Observaciones *
+                            </label>
+                            {{ form.motivo|add_class:"form-control shadow-none border-light-subtle" }}
+                            {% if form.motivo.errors %}
+                            <div class="text-danger micro-text mt-1">{{ form.motivo.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
+
+                    <!-- Sección de Docentes Reemplazantes Dinámica -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="fas fa-user-friends me-2 text-primary"></i>Docentes Reemplazantes
+                                </h5>
+                                <small class="text-muted">Puede asignar uno o más reemplazantes e indicar qué sala de la docente cubrirán.</small>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" id="btnAgregarReemplazante">
+                                <i class="fas fa-plus me-1"></i>Agregar Reemplazante
+                            </button>
+                        </div>
+
+                        <!-- Mensaje orientador si no hay reemplazos -->
+                        <div id="sinReemplazosMsg" class="p-3 bg-light rounded text-muted small text-center mb-3" style="display: none;">
+                            <i class="fas fa-info-circle me-1"></i>No se han asignado docentes reemplazantes. Haga clic en <strong>"Agregar Reemplazante"</strong> si desea asignar cobertura.
+                        </div>
+
+                        <!-- Contenedor de filas de reemplazantes -->
+                        <div id="reemplazantesList" class="d-flex flex-column gap-3">
+                            <!-- Filas dinámicas generadas por JS -->
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
                     <div class="mt-4 pt-3 border-top d-flex gap-2">
                         <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
                             <i class="fas fa-save me-1"></i>Guardar Licencia
@@ -88,48 +161,183 @@
     </div>
 </div>
 
+<!-- Template HTML oculto para fila de reemplazante -->
+<template id="reemplazanteRowTemplate">
+    <div class="reemplazante-row card border border-light-subtle shadow-none p-3 bg-body-tertiary rounded-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Docente Reemplazante</label>
+                <select name="reemplazante_id[]" class="form-select select-reemplazante shadow-none border-light-subtle">
+                    <option value="">Seleccione docente reemplazante...</option>
+                    {% for d in docentes_reemplazo %}
+                    <option value="{{ d.id }}">{{ d.last_name }}, {{ d.first_name }} ({{ d.username }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Sala a Cubrir (Opcional)</label>
+                <select name="reemplazante_sala_id[]" class="form-select select-sala shadow-none border-light-subtle">
+                    <option value="">Todas las salas / General</option>
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end justify-content-center pt-3">
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle btn-remove-row" title="Quitar reemplazante" style="width: 36px; height: 36px;">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const configDocente = {
-            width: '100%',
-            placeholder: '🔍 Buscar y seleccionar docente titular...',
-            allowClear: true,
-            language: 'es'
-        };
+        const docenteSelect = document.querySelector('#id_docente');
+        const listContainer = document.querySelector('#reemplazantesList');
+        const btnAdd = document.querySelector('#btnAgregarReemplazante');
+        const emptyMsg = document.querySelector('#sinReemplazosMsg');
+        const rowTemplate = document.querySelector('#reemplazanteRowTemplate');
 
-        const configReemplazante = {
-            width: '100%',
-            placeholder: '🔍 Buscar y seleccionar reemplazante (opcional)...',
-            allowClear: true,
-            language: 'es'
-        };
+        // Datos iniciales de reemplazos para edición
+        const initialReemplazos = {{ reemplazos_data|safe|default:"[]" }};
+        let cachedSalas = [];
 
-        const elDocente = document.querySelector('#id_docente');
-        if (elDocente) {
-            $(elDocente).select2(configDocente);
+        // Inicializar Select2 en Docente Titular
+        if (docenteSelect) {
+            $(docenteSelect).select2({
+                width: '100%',
+                placeholder: '🔍 Buscar y seleccionar docente titular...',
+                allowClear: true,
+                language: 'es'
+            });
+
+            $(docenteSelect).on('select2:open', function () {
+                setTimeout(function () {
+                    const searchField = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchField) {
+                        searchField.setAttribute('placeholder', '🔍 Escriba apellido o nombre...');
+                        searchField.focus();
+                    }
+                }, 10);
+            });
+
+            $(docenteSelect).on('change', function () {
+                cargarSalasDocente($(this).val());
+            });
         }
 
-        const elReemplazante = document.querySelector('#id_reemplazante');
-        if (elReemplazante) {
-            $(elReemplazante).select2(configReemplazante);
+        function updateEmptyState() {
+            if (listContainer.children.length === 0) {
+                emptyMsg.style.display = 'block';
+            } else {
+                emptyMsg.style.display = 'none';
+            }
         }
 
-        // Agregar placeholder destacado y autofocus al abrir el desplegable
-        $('#id_docente, #id_reemplazante').on('select2:open', function () {
-            setTimeout(function () {
-                const searchField = document.querySelector('.select2-container--open .select2-search__field');
-                if (searchField) {
-                    searchField.setAttribute('placeholder', '🔍 Escriba apellido o nombre para filtrar...');
-                    searchField.focus();
+        function populateSalasInRow(row, selectedSalaId = '') {
+            const salaSelect = row.querySelector('.select-sala');
+            if (!salaSelect) return;
+
+            const currentValue = selectedSalaId || salaSelect.value;
+            salaSelect.innerHTML = '<option value="">Todas las salas / General</option>';
+
+            cachedSalas.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                if (String(s.id) === String(currentValue)) {
+                    opt.selected = true;
                 }
-            }, 10);
+                salaSelect.appendChild(opt);
+            });
+        }
+
+        function cargarSalasDocente(docenteId, callback = null) {
+            if (!docenteId) {
+                cachedSalas = [];
+                document.querySelectorAll('.reemplazante-row').forEach(row => populateSalasInRow(row));
+                if (callback) callback();
+                return;
+            }
+
+            fetch(`{% url 'jardines:ajax_salas_reemplazante' %}?docente_id=${docenteId}`)
+                .then(res => res.json())
+                .then(data => {
+                    cachedSalas = data.salas || [];
+                    document.querySelectorAll('.reemplazante-row').forEach(row => populateSalasInRow(row));
+                    if (callback) callback();
+                })
+                .catch(err => {
+                    console.error('Error al cargar salas del docente:', err);
+                    if (callback) callback();
+                });
+        }
+
+        function addReemplazanteRow(reemplazanteId = '', salaId = '') {
+            const clone = rowTemplate.content.cloneNode(true);
+            const rowDiv = clone.querySelector('.reemplazante-row');
+
+            const selectReemp = rowDiv.querySelector('.select-reemplazante');
+            if (reemplazanteId) {
+                selectReemp.value = reemplazanteId;
+            }
+
+            populateSalasInRow(rowDiv, salaId);
+
+            rowDiv.querySelector('.btn-remove-row').addEventListener('click', function () {
+                $(selectReemp).select2('destroy');
+                rowDiv.remove();
+                updateEmptyState();
+            });
+
+            listContainer.appendChild(rowDiv);
+
+            // Inicializar Select2 en el select de reemplazante
+            $(selectReemp).select2({
+                width: '100%',
+                placeholder: '🔍 Seleccione reemplazante...',
+                allowClear: true,
+                language: 'es'
+            });
+
+            $(selectReemp).on('select2:open', function () {
+                setTimeout(function () {
+                    const searchField = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchField) {
+                        searchField.setAttribute('placeholder', '🔍 Escriba apellido o nombre...');
+                        searchField.focus();
+                    }
+                }, 10);
+            });
+
+            updateEmptyState();
+        }
+
+        btnAdd.addEventListener('click', function () {
+            addReemplazanteRow();
         });
+
+        // Inicialización al cargar la página
+        const initialDocenteId = docenteSelect ? docenteSelect.value : null;
+        if (initialDocenteId) {
+            cargarSalasDocente(initialDocenteId, function () {
+                if (initialReemplazos && initialReemplazos.length > 0) {
+                    initialReemplazos.forEach(item => {
+                        addReemplazanteRow(item.reemplazante_id, item.sala_id);
+                    });
+                }
+                updateEmptyState();
+            });
+        } else {
+            updateEmptyState();
+        }
     });
 </script>
+
 <style>
     .border-light-subtle {
         border-color: #e2e8f0 !important;
@@ -168,7 +376,7 @@
 
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         color: #1e293b;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         padding-left: 14px;
         line-height: 42px;
     }
@@ -231,3 +439,4 @@
     }
 </style>
 {% endblock %}
+

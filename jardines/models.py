@@ -258,6 +258,7 @@ class AsistenciaDocente(models.Model):
         ('T', 'Llegada Tarde'),
         ('R', 'Retiro Temprano'),
         ('L', 'Ausente por licencia'),
+        ('E', 'Actividad Especial / Exento'),
     ]
     
     docente = models.ForeignKey(
@@ -322,6 +323,7 @@ class AsistenciaDocente(models.Model):
         """
         Calcula el estado actual de la jornada de fichaje:
         - Ausente por licencia: si estado == 'L'
+        - Exento por Actividad Especial: si estado == 'E'
         - Sin fichaje: si no fichó ingreso (fichado == False)
         - Jornada finalizada: si fichó ingreso y salida (fichado == True y fichado_salida == True)
         - Jornada en curso: si fichó ingreso pero no salida y la fecha es hoy
@@ -329,6 +331,8 @@ class AsistenciaDocente(models.Model):
         """
         if self.estado == 'L':
             return "Ausente por licencia"
+        if self.estado == 'E':
+            return "Exento por Actividad Especial"
         if not self.fichado:
             return "Sin fichaje"
         if self.fichado and self.fichado_salida:
@@ -401,6 +405,8 @@ def _turno_por_hora(hora):
 def inicializar_asistencia_diaria(user, request=None):
     """
     Crea los registros de AsistenciaDocente del día para el docente o auxiliar.
+    - Contempla Licencias Médicas / Especiales (estado 'L').
+    - Contempla Actividades Especiales (estado 'E' por franja horaria distinta o solapamiento).
     - Para docentes con salas: un registro por cada combinación única (jardín, turno) en sus salas asignadas para el día de hoy.
     - Para auxiliares o personal sin salas: un único registro diario de asistencia.
     """
@@ -423,14 +429,17 @@ def inicializar_asistencia_diaria(user, request=None):
     }
     dia_nombre = dias_map.get(hoy.weekday(), 'lunes')
 
-    # Licencia activa
+    # 1. Licencia activa
     licencia = LicenciaDocente.obtener_licencia_activa(user, hoy)
     if licencia:
-        estado_inicial = 'L'
-        obs_inicial = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
+        estado_base = 'L'
+        obs_base = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
     else:
-        estado_inicial = 'A'
-        obs_inicial = 'Registro inicializado por el sistema.'
+        estado_base = 'A'
+        obs_base = 'Registro inicializado por el sistema.'
+
+    # 2. Actividades especiales que afectan al docente hoy
+    actividades_hoy = ActividadEspecial.obtener_actividades_docente(user, hoy)
 
     salas = user.salas_asignadas.select_related('jardin').all()
 
@@ -465,6 +474,40 @@ def inicializar_asistencia_diaria(user, request=None):
             ).exists():
                 continue
 
+            # Determinar estado para esta sala/turno considerando actividades especiales
+            estado_sala = estado_base
+            obs_sala = obs_base
+
+            if not licencia and actividades_hoy.exists():
+                # Evaluar relación de la actividad con el turno y horario de la sala
+                for act in actividades_hoy:
+                    # Verificar si la actividad aplica a este turno
+                    if act.turno_afectado != 'todo_el_dia' and act.turno_afectado != turno:
+                        continue
+
+                    if sala.horario_inicio and sala.horario_fin:
+                        # Escenario A: Franja distinta (ej. clase 10 a 11, actividad 12 a 14) -> Exime la clase habitual del turno
+                        if act.hora_fin <= sala.horario_inicio or act.hora_inicio >= sala.horario_fin:
+                            estado_sala = 'E'
+                            obs_sala = f"Exento de clase habitual por actividad especial: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
+                            break
+                        # Escenario B: Solapamiento parcial (ej. clase 18 a 20, actividad 19 a 20) -> Mantiene para fichar al inicio
+                        elif act.hora_inicio > sala.horario_inicio and act.hora_fin >= sala.horario_fin:
+                            estado_sala = 'A'
+                            obs_sala = f"Clase habitual con solapamiento por actividad especial: {act.nombre} a las {act.hora_inicio.strftime('%H:%M')} hs (exención del tramo restante tras fichado de ingreso)."
+                        elif act.hora_inicio <= sala.horario_inicio and act.hora_fin < sala.horario_fin:
+                            estado_sala = 'A'
+                            obs_sala = f"Actividad especial {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
+                        else:
+                            # Cubre todo el horario
+                            estado_sala = 'E'
+                            obs_sala = f"Exento por actividad especial completa: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
+                            break
+                    else:
+                        estado_sala = 'E'
+                        obs_sala = f"Exento por actividad especial: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
+                        break
+
             if sala.horario_inicio and sala.horario_fin:
                 h_inicio = (datetime.combine(hoy, sala.horario_inicio) - timedelta(minutes=30)).time()
                 h_fin = (datetime.combine(hoy, sala.horario_fin) + timedelta(minutes=30)).time()
@@ -480,13 +523,10 @@ def inicializar_asistencia_diaria(user, request=None):
                 hora_ingreso=None,
                 ip_address=ip,
                 fuera_de_jornada=fuera,
-                estado=estado_inicial,
+                estado=estado_sala,
                 fichado=False,
-                observaciones=obs_inicial
+                observaciones=obs_sala
             )
-
-        # Si tras filtrar por día no se creó ninguna ficha porque todas son de otros días,
-        # pero el docente intentara fichar, dejamos que else maneje auxiliares o que se inicialice al fichar.
     else:
         # Para Auxiliares o personal sin salas asignadas: 1 solo registro de asistencia diaria
         if not AsistenciaDocente.objects.filter(docente=user, fecha=hoy).exists():
@@ -496,6 +536,13 @@ def inicializar_asistencia_diaria(user, request=None):
             if not target_jardin:
                 target_jardin = Jardin.objects.first()
 
+            estado_aux = estado_base
+            obs_aux = "Registro de asistencia de auxiliar."
+            if not licencia and actividades_hoy.exists():
+                act = actividades_hoy.first()
+                estado_aux = 'E'
+                obs_aux = f"Exento por actividad especial: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
+
             AsistenciaDocente.objects.create(
                 docente=user,
                 jardin=target_jardin,
@@ -504,10 +551,181 @@ def inicializar_asistencia_diaria(user, request=None):
                 hora_ingreso=None,
                 ip_address=ip,
                 fuera_de_jornada=False,
-                estado=estado_inicial,
+                estado=estado_aux,
                 fichado=False,
-                observaciones="Registro de asistencia de auxiliar."
+                observaciones=obs_aux
             )
+
+
+class TipoActividadEspecial(models.Model):
+    """
+    Categoría o tipo de actividad especial (ej: Festejos, Capacitaciones, Jornadas, Comisiones).
+    """
+    nombre = models.CharField(max_length=100, unique=True, verbose_name="Nombre del tipo")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    es_default = models.BooleanField(default=False, verbose_name="Tipo predeterminado")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        verbose_name = "Tipo de Actividad Especial"
+        verbose_name_plural = "Tipos de Actividades Especiales"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class ActividadEspecial(models.Model):
+    """
+    Representa una actividad institucional o cambio de jornada que afecta la asistencia habitual de los docentes.
+    Permite eximir automáticamente clases regulares o contemplar solapamientos parciales.
+    """
+    ALCANCE_CHOICES = [
+        ('programa', 'Programa completo'),
+        ('jardin', 'Espacio / Jardín'),
+        ('sala', 'Salas específicas'),
+        ('docente', 'Docentes puntuales'),
+    ]
+
+    TURNO_AFECTADO_CHOICES = [
+        ('todo_el_dia', 'Todo el día (Mañana y Tarde)'),
+        ('mañana', 'Turno Mañana'),
+        ('tarde', 'Turno Tarde'),
+    ]
+
+    nombre = models.CharField(max_length=150, verbose_name="Nombre de la actividad")
+    tipo = models.ForeignKey(
+        TipoActividadEspecial,
+        on_delete=models.PROTECT,
+        related_name="actividades",
+        verbose_name="Tipo de actividad"
+    )
+    fecha = models.DateField(verbose_name="Fecha")
+    hora_inicio = models.TimeField(verbose_name="Hora de inicio")
+    hora_fin = models.TimeField(verbose_name="Hora de fin")
+    turno_afectado = models.CharField(
+        max_length=20,
+        choices=TURNO_AFECTADO_CHOICES,
+        default='todo_el_dia',
+        verbose_name="Turno exento de clases habituales"
+    )
+    descripcion = models.TextField(blank=True, verbose_name="Descripción / Observaciones")
+
+    alcance = models.CharField(
+        max_length=20,
+        choices=ALCANCE_CHOICES,
+        default='docente',
+        verbose_name="Alcance de asignación"
+    )
+
+    programa = models.ForeignKey(
+        Programa,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="actividades_especiales",
+        verbose_name="Programa"
+    )
+    jardin = models.ForeignKey(
+        Jardin,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="actividades_especiales",
+        verbose_name="Espacio / Jardín"
+    )
+    salas = models.ManyToManyField(
+        Sala,
+        blank=True,
+        related_name="actividades_especiales",
+        verbose_name="Salas afectadas"
+    )
+    docentes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="actividades_especiales",
+        verbose_name="Docentes afectados"
+    )
+
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actividades_creadas",
+        verbose_name="Creado por"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Actividad Especial"
+        verbose_name_plural = "Actividades Especiales"
+        ordering = ["-fecha", "hora_inicio", "nombre"]
+
+    def clean(self):
+        super().clean()
+        if self.hora_inicio and self.hora_fin and self.hora_fin <= self.hora_inicio:
+            raise ValidationError({"hora_fin": "La hora de fin debe ser posterior a la hora de inicio."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def obtener_docentes_afectados(self):
+        """Retorna el queryset de usuarios docentes/auxiliares afectados según el alcance."""
+        from users.models import Usuario
+        if self.alcance == 'programa' and self.programa_id:
+            return Usuario.objects.filter(
+                rol__in=["docente", "auxiliar"],
+                salas_asignadas__jardin__programa_id=self.programa_id
+            ).distinct()
+        elif self.alcance == 'jardin' and self.jardin_id:
+            return Usuario.objects.filter(
+                rol__in=["docente", "auxiliar"],
+                salas_asignadas__jardin_id=self.jardin_id
+            ).distinct()
+        elif self.alcance == 'sala':
+            return Usuario.objects.filter(
+                rol__in=["docente", "auxiliar"],
+                salas_asignadas__in=self.salas.all()
+            ).distinct()
+        elif self.alcance == 'docente':
+            return self.docentes.filter(rol__in=["docente", "auxiliar"]).distinct()
+        return Usuario.objects.none()
+
+    def afecta_docente(self, docente):
+        """Evalúa si un docente específico está incluido en el alcance de la actividad."""
+        if self.alcance == 'docente':
+            return self.docentes.filter(id=docente.id).exists()
+        elif self.alcance == 'sala':
+            return docente.salas_asignadas.filter(id__in=self.salas.values_list('id', flat=True)).exists()
+        elif self.alcance == 'jardin' and self.jardin_id:
+            return docente.salas_asignadas.filter(jardin_id=self.jardin_id).exists()
+        elif self.alcance == 'programa' and self.programa_id:
+            return docente.salas_asignadas.filter(jardin__programa_id=self.programa_id).exists()
+        return False
+
+    @classmethod
+    def obtener_actividades_docente(cls, docente, fecha):
+        """Retorna las actividades especiales que afectan al docente en una fecha dada."""
+        from django.db.models import Q
+        salas_ids = docente.salas_asignadas.values_list('id', flat=True)
+        jardines_ids = docente.salas_asignadas.values_list('jardin_id', flat=True)
+        programas_ids = docente.salas_asignadas.values_list('jardin__programa_id', flat=True)
+
+        return cls.objects.filter(
+            fecha=fecha
+        ).filter(
+            Q(alcance='docente', docentes=docente) |
+            Q(alcance='sala', salas__id__in=salas_ids) |
+            Q(alcance='jardin', jardin_id__in=jardines_ids) |
+            Q(alcance='programa', programa_id__in=programas_ids)
+        ).distinct().order_by('hora_inicio')
+
+    def __str__(self):
+        return f"{self.nombre} ({self.fecha.strftime('%d/%m/%Y')} {self.hora_inicio.strftime('%H:%M')}-{self.hora_fin.strftime('%H:%M')})"
 
 
 class LicenciaDocente(models.Model):
@@ -524,6 +742,11 @@ class LicenciaDocente(models.Model):
         ('otro', 'Otro'),
     ]
 
+    TURNO_LICENCIA_CHOICES = [
+        ('manana', 'Mañana'),
+        ('tarde', 'Tarde'),
+    ]
+
     docente = models.ForeignKey(
         "users.Usuario",
         on_delete=models.CASCADE,
@@ -535,6 +758,14 @@ class LicenciaDocente(models.Model):
         choices=TIPO_CHOICES,
         verbose_name="Tipo de licencia"
     )
+    turno_licencia = models.CharField(
+        max_length=10,
+        choices=TURNO_LICENCIA_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Turno afectado",
+        help_text="Dejar vacío si la licencia afecta a todos los turnos del docente."
+    )
     motivo = models.TextField(
         verbose_name="Motivo / Descripción"
     )
@@ -543,14 +774,6 @@ class LicenciaDocente(models.Model):
     )
     fecha_hasta = models.DateField(
         verbose_name="Fecha hasta"
-    )
-    reemplazante = models.ForeignKey(
-        "users.Usuario",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="reemplazos",
-        verbose_name="Docente reemplazante"
     )
     creado_por = models.ForeignKey(
         "users.Usuario",
@@ -574,23 +797,89 @@ class LicenciaDocente(models.Model):
                 raise ValidationError({
                     "fecha_hasta": "La fecha hasta debe ser posterior o igual a la fecha desde."
                 })
-        
-        if self.docente and self.reemplazante and self.docente == self.reemplazante:
-            raise ValidationError({
-                "reemplazante": "El docente reemplazante no puede ser la misma persona con licencia."
-            })
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
 
     @classmethod
-    def obtener_licencia_activa(cls, docente, fecha):
-        return cls.objects.filter(
+    def obtener_licencia_activa(cls, docente, fecha, turno=None):
+        """
+        Retorna la licencia activa para un docente en una fecha dada.
+        Si se pasa `turno` (ej: 'mañana' o 'tarde'), solo bloquea la licencia
+        si esta no tiene turno específico (afecta a todos) O si el turno coincide.
+        """
+        # Mapa de turno de sala → valor en turno_licencia
+        turno_map = {
+            'mañana': 'manana',
+            'manana': 'manana',
+            'tarde': 'tarde',
+        }
+        turno_normalizado = turno_map.get(str(turno).lower()) if turno else None
+
+        qs = cls.objects.filter(
             docente=docente,
             fecha_desde__lte=fecha,
             fecha_hasta__gte=fecha
-        ).first()
+        )
+
+        if turno_normalizado:
+            # Bloquea si la licencia no tiene turno (afecta todo el día)
+            # O si el turno de la licencia coincide con el turno del docente
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(turno_licencia__isnull=True) | Q(turno_licencia='') | Q(turno_licencia=turno_normalizado)
+            )
+
+        return qs.first()
+
+    def get_reemplazantes_display(self):
+        """Retorna una lista de strings con 'Apellido, Nombre (Sala)' de cada reemplazante."""
+        return [
+            f"{r.reemplazante.last_name}, {r.reemplazante.first_name}" +
+            (f" ({r.sala})" if r.sala else "")
+            for r in self.reemplazantes_licencia.select_related('reemplazante', 'sala').all()
+        ]
 
     def __str__(self):
         return f"Licencia de {self.docente} ({self.fecha_desde} al {self.fecha_hasta})"
+
+
+class ReemplazanteLicencia(models.Model):
+    """Docente reemplazante vinculado a una licencia, con sala opcional de cobertura."""
+    licencia = models.ForeignKey(
+        LicenciaDocente,
+        on_delete=models.CASCADE,
+        related_name="reemplazantes_licencia"
+    )
+    reemplazante = models.ForeignKey(
+        "users.Usuario",
+        on_delete=models.CASCADE,
+        related_name="reemplazos_realizados",
+        verbose_name="Docente reemplazante"
+    )
+    sala = models.ForeignKey(
+        "Sala",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reemplazos",
+        verbose_name="Sala a cubrir"
+    )
+
+    class Meta:
+        verbose_name = "Reemplazante de Licencia"
+        verbose_name_plural = "Reemplazantes de Licencia"
+        unique_together = [("licencia", "reemplazante")]
+
+    def clean(self):
+        super().clean()
+        if self.licencia_id and self.reemplazante_id:
+            if self.reemplazante == self.licencia.docente:
+                raise ValidationError({
+                    "reemplazante": "El reemplazante no puede ser el mismo docente con licencia."
+                })
+
+    def __str__(self):
+        sala_str = f" → {self.sala}" if self.sala else ""
+        return f"{self.reemplazante} reemplaza a {self.licencia.docente}{sala_str}"

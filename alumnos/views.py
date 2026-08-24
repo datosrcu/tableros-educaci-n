@@ -86,7 +86,7 @@ def dashboard_docente(request):
     Vista principal para el rol Docente y Auxiliar.
     Muestra el listado de salas y un botón de fichada por cada turno que tiene hoy.
     """
-    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, Jardin
+    from jardines.models import AsistenciaDocente, inicializar_asistencia_diaria, LicenciaDocente, Jardin, ActividadEspecial
     from django.utils import timezone
     
     # Inicializar registros de asistencia de hoy si no existen
@@ -98,6 +98,9 @@ def dashboard_docente(request):
     # Verificar si está de licencia hoy
     licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
     licencia_activa = licencia is not None
+
+    # Verificar si tiene actividades especiales hoy
+    actividades_especiales_hoy = ActividadEspecial.obtener_actividades_docente(request.user, hoy)
 
     # Obtener todas las salas asignadas al docente con sus jardines pre-cargados
     salas = (
@@ -125,6 +128,8 @@ def dashboard_docente(request):
                 "estado_jornada": asist.estado_jornada,
                 "horas_trabajadas": asist.horas_trabajadas_str,
                 "estado": asist.estado,
+                "es_exento": (asist.estado == 'E'),
+                "observaciones": asist.observaciones or "",
                 "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                 "salas_nombres": salas_nombres,
             })
@@ -167,13 +172,15 @@ def dashboard_docente(request):
                     "estado_jornada": asist.estado_jornada,
                     "horas_trabajadas": asist.horas_trabajadas_str,
                     "estado": asist.estado,
+                    "es_exento": (asist.estado == 'E'),
+                    "observaciones": asist.observaciones or "",
                     "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                     "salas_nombres": salas_nombres,
                 })
     
-    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] for t in turnos_hoy)
-    fichado_salida_hoy = bool(turnos_hoy) and all(t["fichado_salida"] for t in turnos_hoy)
-    hora_fichada = turnos_hoy[0]["hora_fichada"] if fichado_hoy and turnos_hoy else None
+    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] or t["es_exento"] for t in turnos_hoy)
+    fichado_salida_hoy = bool(turnos_hoy) and all(t["fichado_salida"] or t["es_exento"] for t in turnos_hoy)
+    hora_fichada = turnos_hoy[0]["hora_fichada"] if turnos_hoy and turnos_hoy[0]["fichado"] else None
 
     return render(request, "alumnos/dashboard_docente.html", {
         "salas": salas,
@@ -181,6 +188,7 @@ def dashboard_docente(request):
         "fichado_salida_hoy": fichado_salida_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
+        "actividades_especiales_hoy": actividades_especiales_hoy,
         "tiene_jardines": True,
         "turnos_hoy": turnos_hoy,
     })

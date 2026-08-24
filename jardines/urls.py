@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_licencias
+from . import views_actividades
 
 app_name = "jardines"
 
@@ -32,5 +33,16 @@ urlpatterns = [
     path("licencias/<int:pk>/eliminar/", views_licencias.eliminar_licencia, name="eliminar_licencia"),
     path("licencias/exportar/", views_licencias.exportar_licencias_excel, name="exportar_licencias"),
     path("licencias/reporte/", views_licencias.reporte_licencias, name="reporte_licencias"),
+    path("licencias/ajax/salas-reemplazante/", views_licencias.ajax_salas_reemplazante, name="ajax_salas_reemplazante"),
+
+    # Actividades Especiales
+    path("actividades/", views_actividades.lista_actividades, name="lista_actividades"),
+    path("actividades/crear/", views_actividades.crear_actividad, name="crear_actividad"),
+    path("actividades/<int:pk>/", views_actividades.ver_detalle_actividad, name="ver_detalle_actividad"),
+    path("actividades/<int:pk>/editar/", views_actividades.editar_actividad, name="editar_actividad"),
+    path("actividades/<int:pk>/eliminar/", views_actividades.eliminar_actividad, name="eliminar_actividad"),
+    path("actividades/ajax/crear-tipo/", views_actividades.crear_tipo_actividad_ajax, name="crear_tipo_actividad_ajax"),
+    path("actividades/exportar/", views_actividades.exportar_actividades_csv, name="exportar_actividades"),
 ]
+
 
