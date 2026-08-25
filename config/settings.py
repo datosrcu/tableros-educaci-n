@@ -246,7 +246,7 @@ GOOGLE_APPS_SCRIPT_COSTOS_URL = config('GOOGLE_APPS_SCRIPT_COSTOS_URL', default=
 GOOGLE_APPS_SCRIPT_COSTOS_URL_2 = config('GOOGLE_APPS_SCRIPT_COSTOS_URL_2', default='https://script.google.com/macros/s/AKfycbwIJKyzHvIAsxK5aPwpR6ZjgwI31jLP7jXcI4rOnCNEkkststYWgntjGgl4kBjtJool/exec')
 
 # Modo mantenimiento programado (10:00 hs a 12:00 hs - Trabajos en bases de datos)
-MAINTENANCE_MODE = False if TESTING else config('MAINTENANCE_MODE', default=True, cast=bool)
+MAINTENANCE_MODE = False if TESTING else config('MAINTENANCE_MODE', default=False, cast=bool)
 
 
 
