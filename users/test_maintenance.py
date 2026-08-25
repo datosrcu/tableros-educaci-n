@@ -54,3 +54,36 @@ class MaintenanceModeTests(TestCase):
         # Redirige al login para usuarios anónimos
         self.assertEqual(response.status_code, 302)
         self.assertIn('/accounts/login/', response.url)
+
+    def test_clean_env_bool_variants(self):
+        """Valida que todas las variantes de strings provenientes de Dokploy/env se parseen correctamente."""
+        from config.settings import clean_env_bool
+        # Casos verdaderos
+        self.assertTrue(clean_env_bool('True'))
+        self.assertTrue(clean_env_bool('true'))
+        self.assertTrue(clean_env_bool('TRUE'))
+        self.assertTrue(clean_env_bool('1'))
+        self.assertTrue(clean_env_bool('"true"'))
+        self.assertTrue(clean_env_bool("'true'"))
+        self.assertTrue(clean_env_bool('  true  '))
+        self.assertTrue(clean_env_bool('"1"'))
+        self.assertTrue(clean_env_bool('yes'))
+        self.assertTrue(clean_env_bool('on'))
+        self.assertTrue(clean_env_bool('activo'))
+        self.assertTrue(clean_env_bool('habilitado'))
+
+        # Casos falsos
+        self.assertFalse(clean_env_bool('False'))
+        self.assertFalse(clean_env_bool('false'))
+        self.assertFalse(clean_env_bool('FALSE'))
+        self.assertFalse(clean_env_bool('0'))
+        self.assertFalse(clean_env_bool('"false"'))
+        self.assertFalse(clean_env_bool("'false'"))
+        self.assertFalse(clean_env_bool('  false  '))
+        self.assertFalse(clean_env_bool('"0"'))
+        self.assertFalse(clean_env_bool('no'))
+        self.assertFalse(clean_env_bool('off'))
+        self.assertFalse(clean_env_bool('inactivo'))
+        self.assertFalse(clean_env_bool('deshabilitado'))
+        self.assertFalse(clean_env_bool(''))
+        self.assertFalse(clean_env_bool(None))
