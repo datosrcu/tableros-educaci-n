@@ -83,6 +83,11 @@ urlpatterns = [
         name="imprimir_espacios",
     ),
     path(
+        "coordinador/espacios/reporte-desglose-salas/",
+        views.reporte_desglose_salas,
+        name="reporte_desglose_salas",
+    ),
+    path(
         "coordinador/espacios/nuevo/",
         views.crear_jardin,
         name="crear_espacio",

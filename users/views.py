@@ -76,6 +76,11 @@ def lista_espacios(request):
         espacios = Jardin.objects.all()
     else:
         espacios = Jardin.objects.filter(programa__in=user.programas_asignados.all())
+    
+    espacios = espacios.select_related("programa", "subprograma").annotate(
+        num_salas=Count("salas")
+    ).prefetch_related("salas").order_by("programa__nombre", "nombre")
+    
     return render(request, "users/lista_espacios.html", {"espacios": espacios})
 
 
@@ -633,18 +638,33 @@ def imprimir_salas(request):
 @solo_coordinador
 def exportar_espacios_csv(request):
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="espacios.csv"'
+    response['Content-Disposition'] = 'attachment; filename="espacios_y_salas.csv"'
     response.write('\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
-    writer.writerow(['Nombre', 'Dirección', 'Coordenadas', 'Sector', 'Programa', 'Subprograma'])
+    writer.writerow(['Nombre', 'Dirección', 'Coordenadas', 'Sector', 'Programa', 'Subprograma', 'Cant. Salas', 'Detalle Salas'])
 
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+        jardines = Jardin.objects.all()
     else:
-        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all()).select_related('programa', 'subprograma').order_by('nombre')
+        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all())
+    
+    jardines = jardines.select_related('programa', 'subprograma').annotate(
+        num_salas=Count('salas')
+    ).prefetch_related('salas').order_by('programa__nombre', 'nombre')
+
     for j in jardines:
-        writer.writerow([j.nombre, j.direccion, j.coordenadas, j.sector, j.programa.nombre if j.programa else '-', j.subprograma.nombre if j.subprograma else '-'])
+        salas_det = " | ".join([f"{s.nombre} ({s.get_turno_display()})" for s in j.salas.all()])
+        writer.writerow([
+            j.nombre,
+            j.direccion,
+            j.coordenadas,
+            j.sector,
+            j.programa.nombre if j.programa else '-',
+            j.subprograma.nombre if j.subprograma else '-',
+            j.num_salas,
+            salas_det if salas_det else 'Sin salas'
+        ])
     return response
 
 @login_required
@@ -652,13 +672,78 @@ def exportar_espacios_csv(request):
 def imprimir_espacios(request):
     user = request.user
     if user.es_admin() or not user.programas_asignados.exists():
-        jardines = Jardin.objects.all().select_related('programa', 'subprograma').order_by('nombre')
+        jardines = Jardin.objects.all()
     else:
-        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all()).select_related('programa', 'subprograma').order_by('nombre')
+        jardines = Jardin.objects.filter(programa__in=user.programas_asignados.all())
+    
+    jardines = jardines.select_related('programa', 'subprograma').annotate(
+        num_salas=Count('salas')
+    ).prefetch_related('salas').order_by('programa__nombre', 'nombre')
+
     return render(request, "users/imprimir_espacios.html", {
         "jardines": jardines,
         "fecha": date.today()
     })
+
+@login_required
+@solo_coordinador
+def reporte_desglose_salas(request):
+    """
+    Reporte oficial y descargable en PDF con el desglose exacto de espacios
+    y la cantidad y detalle de salas (turnos, horarios y docentes).
+    """
+    user = request.user
+    
+    if user.es_admin() or not user.programas_asignados.exists():
+        programas_qs = Programa.objects.all().order_by("nombre")
+        espacios_base = Jardin.objects.all()
+        salas_base = Sala.objects.all()
+    else:
+        programas_qs = user.programas_asignados.all().order_by("nombre")
+        espacios_base = Jardin.objects.filter(programa__in=programas_qs)
+        salas_base = Sala.objects.filter(jardin__programa__in=programas_qs)
+
+    total_espacios = espacios_base.count()
+    total_salas = salas_base.count()
+    total_salas_manana = salas_base.filter(turno__iexact="mañana").count()
+    total_salas_tarde = salas_base.filter(turno__iexact="tarde").count()
+
+    programas_detalle = []
+    for prog in programas_qs:
+        espacios = espacios_base.filter(programa=prog).select_related("subprograma").prefetch_related(
+            "salas",
+            "salas__asignaciones_docentes__docente"
+        ).order_by("nombre")
+
+        espacios_list = []
+        prog_total_salas = 0
+        for esp in espacios:
+            salas = list(esp.salas.all())
+            cant_salas = len(salas)
+            prog_total_salas += cant_salas
+            espacios_list.append({
+                "espacio": esp,
+                "cant_salas": cant_salas,
+                "salas": salas
+            })
+
+        if espacios_list or prog.activo:
+            programas_detalle.append({
+                "programa": prog,
+                "total_espacios": len(espacios_list),
+                "total_salas": prog_total_salas,
+                "espacios": espacios_list,
+            })
+
+    context = {
+        "fecha_reporte": timezone.now(),
+        "total_espacios": total_espacios,
+        "total_salas": total_salas,
+        "total_salas_manana": total_salas_manana,
+        "total_salas_tarde": total_salas_tarde,
+        "programas_detalle": programas_detalle,
+    }
+    return render(request, "users/reporte_desglose_salas.html", context)
 
 @login_required
 @solo_coordinador

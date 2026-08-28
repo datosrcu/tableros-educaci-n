@@ -32,10 +32,10 @@
             <tr>
                 <th>Nombre</th>
                 <th>Dirección</th>
-                <th>Coordenadas</th>
                 <th>Sector</th>
-                <th>Programa</th>
-                <th>Subprograma</th>
+                <th>Programa / Subprograma</th>
+                <th>Cant. Salas</th>
+                <th>Detalle Salas</th>
             </tr>
         </thead>
         <tbody>
@@ -43,10 +43,19 @@
             <tr>
                 <td><strong>{{ j.nombre }}</strong></td>
                 <td>{{ j.direccion|default:"-" }}</td>
-                <td>{{ j.coordenadas|default:"-" }}</td>
                 <td>{{ j.sector|default:"-" }}</td>
-                <td>{{ j.programa.nombre|default:"-" }}</td>
-                <td>{{ j.subprograma.nombre|default:"-" }}</td>
+                <td>
+                    {{ j.programa.nombre|default:"-" }}
+                    {% if j.subprograma %}<br><small style="color:#666;">{{ j.subprograma.nombre }}</small>{% endif %}
+                </td>
+                <td style="text-align: center;"><strong>{{ j.num_salas }}</strong></td>
+                <td>
+                    {% for s in j.salas.all %}
+                        {{ s.nombre }} ({{ s.get_turno_display|default:s.turno }}){% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        <span style="color:#999; font-style:italic;">Sin salas</span>
+                    {% endfor %}
+                </td>
             </tr>
             {% empty %}
             <tr>
