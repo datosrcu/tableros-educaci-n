@@ -422,6 +422,41 @@ def resumen_actividad_docente(request):
         asists = asistencias_dict.get(d.id, [])
         accs = acciones_por_usuario.get(d.id, [])
         
+        # Ordenar asistencias por turno ('mañana', 'tarde')
+        def sort_key_asist(a):
+            t = a.turno or ""
+            if t == "mañana":
+                return (0, a.id)
+            if t == "tarde":
+                return (1, a.id)
+            return (2, a.id)
+        
+        asists_ordenadas = sorted(asists, key=sort_key_asist)
+
+        # Construir desglose detallado de todos los turnos del día
+        turnos_detalle = []
+        for a in asists_ordenadas:
+            lat_a = float(a.latitude) if (a.fichado and a.latitude) else None
+            lon_a = float(a.longitude) if (a.fichado and a.longitude) else None
+            turnos_detalle.append({
+                "id": a.id,
+                "turno": a.turno,
+                "turno_display": a.get_turno_display() if a.turno else "General",
+                "jardin_nombre": a.jardin.nombre if a.jardin else "General",
+                "fichado": a.fichado,
+                "fichado_salida": a.fichado_salida,
+                "hora_ingreso": a.hora_ingreso if a.fichado else None,
+                "hora_salida": a.hora_salida if a.fichado_salida else None,
+                "horas_trabajadas": a.horas_trabajadas_str,
+                "estado_jornada": a.estado_jornada,
+                "estado": a.estado,
+                "ip": a.ip_address if a.fichado else None,
+                "lat": lat_a,
+                "lon": lon_a,
+                "observaciones": a.observaciones or "",
+                "asistencia": a,
+            })
+        
         # Determine if they checked in (fichó) today
         fichado = any(a.fichado for a in asists) if asists else False
         fichado_salida = any(a.fichado_salida for a in asists) if asists else False
@@ -429,21 +464,25 @@ def resumen_actividad_docente(request):
         # Get coordinates if fichado
         lat = None
         lon = None
-        for a in asists:
-            if a.fichado and a.latitude and a.longitude:
-                lat = float(a.latitude)
-                lon = float(a.longitude)
+        for td in turnos_detalle:
+            if td["lat"] and td["lon"]:
+                lat = td["lat"]
+                lon = td["lon"]
                 break
         
+        primer_asist = asists_ordenadas[0] if asists_ordenadas else None
+
         resumen.append({
             "docente": d,
-            "asistencias": asists,
+            "asistencias": asists_ordenadas,
+            "turnos_detalle": turnos_detalle,
+            "tiene_doble_turno": len(turnos_detalle) > 1,
             "fichado": fichado,
             "fichado_salida": fichado_salida,
-            "inicio_sesion": asists[0].hora_ingreso if (asists and asists[0].hora_ingreso) else None,
-            "hora_salida": asists[0].hora_salida if (asists and asists[0].hora_salida) else None,
-            "horas_trabajadas": asists[0].horas_trabajadas_str if asists else "—",
-            "ip": asists[0].ip_address if asists else None,
+            "inicio_sesion": primer_asist.hora_ingreso if (primer_asist and primer_asist.hora_ingreso) else None,
+            "hora_salida": primer_asist.hora_salida if (primer_asist and primer_asist.hora_salida) else None,
+            "horas_trabajadas": primer_asist.horas_trabajadas_str if primer_asist else "—",
+            "ip": primer_asist.ip_address if primer_asist else None,
             "ultima_accion": accs[0] if accs else None,
             "total_acciones": len(accs),
             "activo": len(asists) > 0 or len(accs) > 0,

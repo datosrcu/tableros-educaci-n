@@ -57,10 +57,17 @@
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-dark">{{ item.docente.last_name }}, {{ item.docente.first_name }}</div>
+                                    <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                        <span>{{ item.docente.last_name }}, {{ item.docente.first_name }}</span>
+                                        {% if item.tiene_doble_turno %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary micro-text fw-bold px-2 py-0.5 rounded-pill" title="Docente con asignación de doble turno">
+                                            <i class="fas fa-layer-group me-1"></i>Doble Turno
+                                        </span>
+                                        {% endif %}
+                                    </div>
                                     <div class="text-muted small">
                                         {% for as in item.asistencias %}
-                                            {{ as.jardin.nombre }}{% if not forloop.last %}, {% endif %}
+                                            {{ as.jardin.nombre }}{% if as.turno %} ({{ as.get_turno_display|capfirst }}){% endif %}{% if not forloop.last %}, {% endif %}
                                         {% empty %}
                                             Sin espacio asignado
                                         {% endfor %}
@@ -69,56 +76,107 @@
                             </div>
                         </td>
                         <td>
-                            {% if item.fichado_salida %}
-                                <div class="d-flex flex-column gap-1">
-                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-1.5 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
-                                        <i class="fas fa-check-double me-1"></i> Finalizada ({{ item.inicio_sesion|time:"H:i" }} - {{ item.hora_salida|time:"H:i" }})
-                                    </span>
-                                    <span class="badge bg-primary bg-opacity-10 text-primary micro-text fw-bold" style="width: fit-content;">
-                                        <i class="fas fa-stopwatch me-1"></i> Total: {{ item.horas_trabajadas }}
-                                    </span>
+                            <div class="d-flex flex-column gap-2">
+                                {% for td in item.turnos_detalle %}
+                                <div class="p-2 rounded-3 {% if item.tiene_doble_turno %}border bg-white bg-opacity-50{% endif %}">
+                                    {% if item.tiene_doble_turno %}
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="micro-text uppercase fw-bold text-muted">
+                                            <i class="fas {% if td.turno == 'mañana' %}fa-sun text-warning{% elif td.turno == 'tarde' %}fa-moon text-info{% else %}fa-clock text-secondary{% endif %} me-1"></i>
+                                            Turno {{ td.turno_display }}
+                                        </span>
+                                        <span class="text-muted micro-text">{{ td.jardin_nombre }}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if td.fichado_salida %}
+                                        <div class="d-flex flex-wrap align-items-center gap-1">
+                                            <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2.5 py-1 rounded-pill" style="font-size: 0.82rem;">
+                                                <i class="fas fa-check-double me-1"></i> Finalizada ({{ td.hora_ingreso|time:"H:i" }} - {{ td.hora_salida|time:"H:i" }})
+                                            </span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary micro-text fw-bold">
+                                                <i class="fas fa-stopwatch me-1"></i> {{ td.horas_trabajadas }}
+                                            </span>
+                                        </div>
+                                    {% elif td.fichado %}
+                                        <div class="d-flex flex-wrap align-items-center gap-1">
+                                            <span class="badge bg-warning bg-opacity-15 text-dark fw-bold px-2.5 py-1 rounded-pill" style="font-size: 0.82rem;">
+                                                <i class="fas fa-clock me-1"></i> Ingreso ({{ td.hora_ingreso|time:"H:i" }} hs)
+                                            </span>
+                                            <span class="badge bg-warning bg-opacity-10 text-warning micro-text">
+                                                En curso &bull; Sin salida
+                                            </span>
+                                        </div>
+                                    {% elif td.estado == 'L' %}
+                                        <span class="badge bg-purple bg-opacity-10 text-purple fw-bold px-2.5 py-1 rounded-pill" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.82rem;">
+                                            <i class="fas fa-id-card-alt me-1"></i> Licencia
+                                        </span>
+                                    {% elif td.estado == 'E' %}
+                                        <span class="badge bg-info bg-opacity-10 text-info fw-bold px-2.5 py-1 rounded-pill" style="font-size: 0.82rem;">
+                                            <i class="fas fa-calendar-star me-1"></i> Exento (Act. Especial)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold px-2.5 py-1 rounded-pill" style="font-size: 0.82rem;">
+                                            <i class="fas fa-times-circle me-1"></i> No Fichó
+                                        </span>
+                                    {% endif %}
                                 </div>
-                            {% elif item.fichado %}
-                                <div class="d-flex flex-column gap-1">
-                                    <span class="badge bg-warning bg-opacity-15 text-dark fw-bold px-3 py-1.5 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
-                                        <i class="fas fa-clock me-1"></i> Ingreso ({{ item.inicio_sesion|time:"H:i" }} hs)
+                                {% empty %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
+                                        <i class="fas fa-times-circle me-1"></i> Sin registros hoy
                                     </span>
-                                    <span class="badge bg-warning bg-opacity-10 text-warning micro-text" style="width: fit-content;">
-                                        En curso &bull; Sin salida
-                                    </span>
-                                </div>
-                            {% else %}
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold px-3 py-2 rounded-pill" style="width: fit-content; font-size: 0.85rem;">
-                                    <i class="fas fa-times-circle me-1"></i> No Fichó
-                                </span>
-                            {% endif %}
+                                {% endfor %}
+                            </div>
                         </td>
                         <td>
-                            {% if item.ip %}
-                                <code class="small bg-light px-2 py-1 rounded text-primary">{{ item.ip }}</code>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
+                            <div class="d-flex flex-column gap-1">
+                                {% for td in item.turnos_detalle %}
+                                    {% if td.ip %}
+                                        <div class="d-flex align-items-center gap-1">
+                                            {% if item.tiene_doble_turno %}
+                                            <span class="micro-text text-muted fw-bold">{{ td.turno_display|slice:":1"|upper }}:</span>
+                                            {% endif %}
+                                            <code class="small bg-light px-2 py-0.5 rounded text-primary">{{ td.ip }}</code>
+                                        </div>
+                                    {% endif %}
+                                {% empty %}
+                                    <span class="text-muted">-</span>
+                                {% endfor %}
+                                {% if not item.ip and not item.turnos_detalle %}
+                                    <span class="text-muted">-</span>
+                                {% elif not item.fichado %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>
-                            {% if item.lat and item.lon %}
+                            <div class="d-flex flex-column gap-2">
                                 {% load l10n %}
                                 {% localize off %}
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="small text-muted fw-mono" style="font-family: monospace;">{{ item.lat|floatformat:6 }}, {{ item.lon|floatformat:6 }}</span>
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 transition-hover" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#mapModal" 
-                                            data-lat="{{ item.lat }}" 
-                                            data-lon="{{ item.lon }}" 
-                                            data-name="{{ item.docente.last_name }}, {{ item.docente.first_name }}">
-                                        <i class="fas fa-map-marked-alt me-1"></i> Mapa
-                                    </button>
-                                </div>
+                                {% for td in item.turnos_detalle %}
+                                    {% if td.lat and td.lon %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if item.tiene_doble_turno %}
+                                        <span class="badge bg-light text-dark border micro-text px-1.5 py-0.5">{{ td.turno_display }}</span>
+                                        {% endif %}
+                                        <span class="small text-muted fw-mono" style="font-family: monospace; font-size: 0.8rem;">{{ td.lat|floatformat:4 }}, {{ td.lon|floatformat:4 }}</span>
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5 transition-hover" 
+                                                style="font-size: 0.75rem;"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#mapModal" 
+                                                data-lat="{{ td.lat }}" 
+                                                data-lon="{{ td.lon }}" 
+                                                data-name="{{ item.docente.last_name }}, {{ item.docente.first_name }} (Turno {{ td.turno_display }})">
+                                            <i class="fas fa-map-marked-alt me-1"></i> Mapa
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
                                 {% endlocalize %}
-                            {% else %}
-                                <span class="text-muted small italic">Sin coordenadas</span>
-                            {% endif %}
+                                {% if not item.lat %}
+                                    <span class="text-muted small italic">Sin coordenadas</span>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
