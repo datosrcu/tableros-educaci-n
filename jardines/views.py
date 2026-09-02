@@ -775,7 +775,7 @@ def obtener_costos_docentes_api(target_date):
                     api_url,
                     headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                 )
-                with urllib.request.urlopen(req, timeout=4.0, context=ssl_ctx) as resp:
+                with urllib.request.urlopen(req, timeout=25.0, context=ssl_ctx) as resp:
                     if resp.status in (200, 302):
                         payload = json.loads(resp.read().decode('utf-8'))
                         if isinstance(payload, dict) and "data" in payload:
