@@ -262,7 +262,7 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Google Apps Script API URLs para los costos del Dashboard (Hoja 1 RUL_long y Hoja 2 Database RRHH_2026)
-GOOGLE_APPS_SCRIPT_COSTOS_URL = config('GOOGLE_APPS_SCRIPT_COSTOS_URL', default='https://script.google.com/macros/s/AKfycbwGeKMUcjaWUbFBxzxoXYDfSxnmVpmsbt-gYsxOY3pXiAGwIPl3KgcrduDbkC2HA-cl/exec')
+GOOGLE_APPS_SCRIPT_COSTOS_URL = config('GOOGLE_APPS_SCRIPT_COSTOS_URL', default='https://script.google.com/macros/s/AKfycbxqC9jvLKgZ_rTLraYGkbILfH-en1p0b2Wp1Rl_bl_wLK8_MajcmtBivK28R683ZIwy/exec')
 GOOGLE_APPS_SCRIPT_COSTOS_URL_2 = config('GOOGLE_APPS_SCRIPT_COSTOS_URL_2', default='https://script.google.com/macros/s/AKfycbwCS0hm5FK-19Gm-RlzFEU17spWJ2IT4-AuJcguzjxQt9TxhLb2_nV8NQICzgzNZ-eq/exec')
 
 # Modo mantenimiento programado (10:00 hs a 12:00 hs - Trabajos en bases de datos)
