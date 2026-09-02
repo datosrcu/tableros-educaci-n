@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
+
 from django.db.models import Count, Q
 from .models import Programa, Subprograma, Jardin, Sala, AsistenciaDocente
 from users.decorators import rol_requerido
@@ -1284,4 +1286,68 @@ class DashboardExpresionCulturalView(BaseDashboardProgramaView):
     programa_nombre = "Expresión Cultural"
     programa_titulo = "Expresión Cultural"
     programa_subtitulo = "Dashboard de gestión del Programa Expresión Cultural."
+
+
+@csrf_exempt
+def api_dashboard_datos(request):
+    """
+    API en tiempo real que devuelve la estructura completa de datos del tablero:
+    Métricas, evolución histórica, gráfico por zonas, mapa interactivo, tabla jerárquica de espacios y matriz de asistencias.
+    Soporta CORS y filtros por subprograma, zona y período.
+    """
+    programa_param = request.GET.get('programa')
+    
+    views_map = {
+        '2': DashboardEspaciosLudicosView,
+        '6': DashboardAlfabetizacionView,
+        '7': DashboardCarpinteriaView,
+        '8': DashboardArtesPlasticasView,
+        '9': DashboardExpresionCulturalView,
+        'espacios-ludicos': DashboardEspaciosLudicosView,
+        'alfabetizacion': DashboardAlfabetizacionView,
+        'carpinteria': DashboardCarpinteriaView,
+        'artes-plasticas': DashboardArtesPlasticasView,
+        'expresion-cultural': DashboardExpresionCulturalView,
+    }
+    
+    view_cls = views_map.get(str(programa_param), DashboardEspaciosLudicosView)
+    view_inst = view_cls()
+    view_inst.request = request
+
+    ctx = view_inst.get_context_data()
+
+    subprogramas_data = [{"id": s.id, "nombre": s.nombre} for s in ctx.get("subprogramas", [])]
+    sectores_data = [{"val": s[0], "label": s[1]} for s in ctx.get("sectores", [])]
+
+    data = {
+        "programa_titulo": ctx.get("programa_titulo", ""),
+        "programa_subtitulo": ctx.get("programa_subtitulo", ""),
+        "total_inscriptos": ctx.get("total_inscriptos", 0),
+        "activos": ctx.get("activos", 0),
+        "bajas": ctx.get("bajas", 0),
+        "cantidad_espacios": ctx.get("cantidad_espacios", 0),
+        "cantidad_docentes": ctx.get("cantidad_docentes", 0),
+        "costo_total_docentes": ctx.get("costo_total_docentes", 0),
+        "costo_x_alumno_global": round(ctx.get("costo_x_alumno_global", 0)),
+        "grafico_labels": json.loads(ctx.get("grafico_labels_json", "[]")),
+        "grafico_data": json.loads(ctx.get("grafico_data_json", "[]")),
+        "grafico_crecimiento": json.loads(ctx.get("grafico_crecimiento_json", "[]")),
+        "pie_labels": json.loads(ctx.get("pie_labels_json", "[]")),
+        "pie_data": json.loads(ctx.get("pie_data_json", "[]")),
+        "mapa_data": json.loads(ctx.get("mapa_data_json", "[]")),
+        "espacios_dict": ctx.get("espacios_dict", {}),
+        "reporte_mensual": ctx.get("reporte_mensual", []),
+        "dias_mes": ctx.get("dias_mes", []),
+        "mes_nombre_reporte": ctx.get("mes_nombre_reporte", ""),
+        "subprogramas": subprogramas_data,
+        "subprograma_sel": ctx.get("subprograma_sel", ""),
+        "zona_sel": ctx.get("zona_sel", ""),
+        "sectores": sectores_data,
+    }
+
+    response = JsonResponse(data)
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Access-Control-Allow-Headers"] = "*"
+    return response
+
 

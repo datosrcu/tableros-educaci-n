@@ -16,6 +16,8 @@ urlpatterns = [
     path("dashboard-carpinteria/", views.DashboardCarpinteriaView.as_view(), name="dashboard_carpinteria"),
     path("dashboard-artes-plasticas/", views.DashboardArtesPlasticasView.as_view(), name="dashboard_artes_plasticas"),
     path("dashboard-expresion-cultural/", views.DashboardExpresionCulturalView.as_view(), name="dashboard_expresion_cultural"),
+    path("api/dashboard-datos/", views.api_dashboard_datos, name="api_dashboard_datos"),
+
     
     # Asistencia Docente
     path("asistencia/", views.lista_jardines_asistencia, name="lista_jardines_asistencia"),

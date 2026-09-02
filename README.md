@@ -59,6 +59,59 @@ La aplicación estará disponible en `http://localhost:8000`.
 
 ---
 
+## 🔧 Modo Mantenimiento
+
+El sistema cuenta con una pantalla institucional de mantenimiento que se activa mediante una variable de entorno, sin necesidad de tocar código.
+Cuando está activo, **todos los accesos al sistema** (salvo `/health/` para Docker) son redirigidos a la página de aviso.
+
+### ▶️ Activar el mantenimiento
+
+**Opción A – vía `.env` (local o si Dokploy lee el repo):**
+```env
+# .env
+MAINTENANCE_MODE=True
+```
+Luego hacer redeploy del contenedor.
+
+**Opción B – vía panel de Dokploy (producción):**
+1. Ingresar al panel de Dokploy → aplicación → **Environment Variables**
+2. Agregar o editar:
+   ```
+   MAINTENANCE_MODE=True
+   ```
+3. Hacer **Redeploy** (o reiniciar el contenedor).
+
+---
+
+### ⏹️ Desactivar el mantenimiento
+
+**Opción A – vía `.env`:**
+```env
+# .env
+MAINTENANCE_MODE=False
+```
+Luego hacer redeploy.
+
+**Opción B – vía panel de Dokploy:**
+1. Cambiar el valor de la variable a:
+   ```
+   MAINTENANCE_MODE=False
+   ```
+2. Hacer **Redeploy**.
+
+> **⚠️ Importante:** si el `.env` del repositorio y el panel de Dokploy definen la misma variable, **el panel de Dokploy tiene prioridad**. Asegurarse de actualizar en el lugar correcto según el entorno.
+
+### 🛡️ Rutas que nunca son bloqueadas
+
+| Ruta | Propósito |
+|---|---|
+| `/health/` | Healthcheck de Docker/Dokploy |
+| `/static/` | Archivos estáticos (CSS, JS, imágenes) |
+| `/media/` | Archivos de medios subidos |
+| `/favicon.ico` | Ícono del sitio |
+
+---
+
 ## 🛠️ Instalación Local (Desarrollo)
 
 Si prefieres ejecutar el sistema sin Docker, sigue estos pasos:
