@@ -55,7 +55,10 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 ALLOWED_HOSTS = clean_env_list(config('ALLOWED_HOSTS', default='jardines.gobiernoriocuarto.gob.ar,jardinesdev.gobiernoriocuarto.gob.ar,localhost,127.0.0.1,*'))
 
-CSRF_TRUSTED_ORIGINS = clean_env_list(config('CSRF_TRUSTED_ORIGINS', default='https://jardines.gobiernoriocuarto.gob.ar,https://jardinesdev.gobiernoriocuarto.gob.ar'))
+CSRF_TRUSTED_ORIGINS = clean_env_list(config('CSRF_TRUSTED_ORIGINS', default='https://jardines.gobiernoriocuarto.gob.ar,https://jardinesdev.gobiernoriocuarto.gob.ar,https://datos.riocuarto.gov.ar'))
+
+# Configuración para permitir incrustación en iFrames / Tableros
+X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='ALLOWALL')
 
 
 # Application definition
