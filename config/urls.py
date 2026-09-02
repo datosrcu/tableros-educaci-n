@@ -39,6 +39,8 @@ def health_check(request):
     """Endpoint para el healthcheck de Docker. No toca la DB."""
     return HttpResponse("OK", status=200, content_type="text/plain")
 
+from jardines import views as jardines_views
+
 urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('mantenimiento/', mantenimiento_view, name='mantenimiento'),
@@ -55,6 +57,15 @@ urlpatterns = [
     path("usuarios/", include("users.urls")),
     path("formularios/", include("formularios.urls")),
     path("cobros/", include("cobros.urls")),
+    
+    # Rutas públicas directas de Tableros (/tableros/...)
+    path("tableros/espacios-ludicos/", jardines_views.DashboardEspaciosLudicosView.as_view(), name="tablero_espacios_ludicos"),
+    path("tableros/alfabetizacion/", jardines_views.DashboardAlfabetizacionView.as_view(), name="tablero_alfabetizacion"),
+    path("tableros/carpinteria/", jardines_views.DashboardCarpinteriaView.as_view(), name="tablero_carpinteria"),
+    path("tableros/artes-plasticas/", jardines_views.DashboardArtesPlasticasView.as_view(), name="tablero_artes_plasticas"),
+    path("tableros/expresion-cultural/", jardines_views.DashboardExpresionCulturalView.as_view(), name="tablero_expresion_cultural"),
+    path("tableros/", RedirectView.as_view(url='/tableros/espacios-ludicos/'), name="tableros_index"),
+
     path(
         'imprimir-asistencias-sala/<int:sala_id>/',
         RedirectView.as_view(url=reverse_lazy('alumnos:imprimir_asistencias_sala_docente', args=[0])),
