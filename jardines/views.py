@@ -772,20 +772,20 @@ def obtener_costos_docentes_api(target_date):
             data_rows = cached_data
         else:
             try:
-                resp = requests.get(
+                # Usar urllib.request (librería estándar de Python) para prevenir error ModuleNotFoundError: requests
+                req = urllib.request.Request(
                     api_url,
-                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-                    timeout=3.0,
-                    verify=False
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                 )
-                if resp.status_code == 200:
-                    payload = resp.json()
-                    if isinstance(payload, dict) and "data" in payload:
-                        data_rows = payload["data"]
-                    elif isinstance(payload, list):
-                        data_rows = payload
-                    if data_rows:
-                        cache.set(cache_key, data_rows, 86400)  # Caché persistente de 24 horas
+                with urllib.request.urlopen(req, timeout=4.0, context=ssl_ctx) as resp:
+                    if resp.status in (200, 302):
+                        payload = json.loads(resp.read().decode('utf-8'))
+                        if isinstance(payload, dict) and "data" in payload:
+                            data_rows = payload["data"]
+                        elif isinstance(payload, list):
+                            data_rows = payload
+                        if data_rows:
+                            cache.set(cache_key, data_rows, 86400)  # Caché persistente de 24 horas
             except Exception:
                 data_rows = None
 
