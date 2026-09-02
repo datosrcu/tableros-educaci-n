@@ -759,9 +759,7 @@ def obtener_costos_docentes_api(target_date):
     if url1: api_urls.append((url1, "sheet1_rul"))
     if url2: api_urls.append((url2, "sheet2_rrhh"))
 
-    import requests
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    import urllib.request
 
     for api_url, tag in api_urls:
         cache_key = f"costos_google_sheets_rows_{tag}"
