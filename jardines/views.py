@@ -775,7 +775,7 @@ def obtener_costos_docentes_api(target_date):
                 resp = requests.get(
                     api_url,
                     headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-                    timeout=15,
+                    timeout=3.0,
                     verify=False
                 )
                 if resp.status_code == 200:
@@ -840,7 +840,8 @@ def obtener_costos_docentes_api(target_date):
             excel_path = next((p for p in excel_candidates if os.path.exists(p)), None)
             
             if excel_path:
-                wb = openpyxl.load_workbook(excel_path, data_only=True)
+                import openpyxl
+                wb = openpyxl.load_workbook(excel_path, data_only=True, read_only=True)
                 sheet = wb['Locaciones']
                 header_row = [cell for cell in next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))]
                 
@@ -885,6 +886,7 @@ def obtener_costos_docentes_api(target_date):
                                     costos_excel[d_key] = c_val
                     except Exception:
                         pass
+                wb.close()
         except Exception:
             pass
 
