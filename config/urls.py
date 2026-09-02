@@ -13,12 +13,14 @@ def logout_view(request):
     django_logout(request)
     return redirect("login")
 
+from config.middleware import is_maintenance_mode_active
+
 def mantenimiento_view(request):
     """Vista directa para el estado de mantenimiento programado."""
     return render(request, "mantenimiento.html", status=200)
 
 def home_redirect(request):
-    if getattr(settings, 'MAINTENANCE_MODE', False):
+    if is_maintenance_mode_active():
         return render(request, "mantenimiento.html", status=200)
 
     if not request.user.is_authenticated:

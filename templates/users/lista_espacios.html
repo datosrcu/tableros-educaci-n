@@ -13,6 +13,8 @@
                     <i class="fas fa-file-export me-1"></i>Exportar
                 </button>
                 <ul class="dropdown-menu shadow-sm">
+                    <li><a class="dropdown-item" href="{% url 'users:reporte_desglose_salas' %}" target="_blank"><i class="fas fa-file-pdf me-2 text-danger"></i>Reporte Desglose de Salas (PDF)</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="{% url 'users:exportar_espacios_csv' %}"><i class="fas fa-file-csv me-2 text-success"></i>Descargar CSV</a></li>
                     <li><a class="dropdown-item" href="{% url 'users:imprimir_espacios' %}" target="_blank"><i class="fas fa-print me-2 text-primary"></i>Imprimir / PDF</a></li>
                 </ul>
@@ -33,6 +35,7 @@
                     <th>Programa</th>
                     <th>Subprograma</th>
                     <th>Sector</th>
+                    <th class="text-center">Salas</th>
                     <th>Teléfono</th>
                     <th class="text-end pe-4">Acciones</th>
                 </tr>
@@ -58,6 +61,13 @@
                             {{ e.sector|default:"—" }}
                         </span>
                     </td>
+                    <td class="text-center">
+                        <a href="{% url 'users:lista_salas' %}?q={{ e.nombre|urlencode }}" class="text-decoration-none" title="Ver salas de {{ e.nombre }}">
+                            <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 px-2 py-1">
+                                <i class="fas fa-door-open me-1"></i>{{ e.num_salas }} sala{{ e.num_salas|pluralize:"s" }}
+                            </span>
+                        </a>
+                    </td>
                     <td>
                         <small class="text-muted"><i class="fas fa-phone-alt me-1 micro-text"></i>
                             {{ e.telefono|default:"—" }}
@@ -80,7 +90,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
+                    <td colspan="7" class="text-center py-5 text-muted">
                         <i class="fas fa-info-circle me-1"></i>No hay espacios registrados.
                     </td>
                 </tr>

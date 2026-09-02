@@ -61,54 +61,56 @@ La aplicación estará disponible en `http://localhost:8000`.
 
 ## 🔧 Modo Mantenimiento
 
-El sistema cuenta con una pantalla institucional de mantenimiento que se activa mediante una variable de entorno, sin necesidad de tocar código.
-Cuando está activo, **todos los accesos al sistema** (salvo `/health/` para Docker) son redirigidos a la página de aviso.
+El sistema cuenta con una pantalla institucional de mantenimiento que se activa mediante una variable de entorno en Dokploy o en el `.env`, sin necesidad de tocar código ni la base de datos.
+Cuando está activo, **todos los accesos al sistema** (salvo `/health/` y estáticos) son interceptados y responden con la pantalla de aviso oficial.
 
 ### ▶️ Activar el mantenimiento
 
-**Opción A – vía `.env` (local o si Dokploy lee el repo):**
-```env
-# .env
-MAINTENANCE_MODE=True
-```
-Luego hacer redeploy del contenedor.
-
-**Opción B – vía panel de Dokploy (producción):**
-1. Ingresar al panel de Dokploy → aplicación → **Environment Variables**
+**Opción A – vía panel de Dokploy (Producción):**
+1. Ingresar al panel de Dokploy → Aplicación → **Environment Variables**
 2. Agregar o editar:
+   ```env
+   MAINTENANCE_MODE=true
    ```
-   MAINTENANCE_MODE=True
-   ```
-3. Hacer **Redeploy** (o reiniciar el contenedor).
+   *(También acepta `1`, `True`, `yes`, con o sin comillas)*
+3. Hacer **Redeploy** (o Save & Restart).
+
+**Opción B – vía `.env` local:**
+```env
+MAINTENANCE_MODE=true
+```
+
+**Opción C – mediante archivo flag en el contenedor:**
+Crear un archivo vacío `maintenance.flag` en la raíz del proyecto o en `/tmp/maintenance.flag`.
 
 ---
 
-### ⏹️ Desactivar el mantenimiento
+### ⏹️ Desactivar el mantenimiento (Volver a la normalidad)
 
-**Opción A – vía `.env`:**
-```env
-# .env
-MAINTENANCE_MODE=False
-```
-Luego hacer redeploy.
-
-**Opción B – vía panel de Dokploy:**
-1. Cambiar el valor de la variable a:
+**Opción A – vía panel de Dokploy (Producción):**
+1. En Dokploy → **Environment Variables**, cambiar a:
+   ```env
+   MAINTENANCE_MODE=false
    ```
-   MAINTENANCE_MODE=False
-   ```
+   *(o `0`, `False`, `off`)*
 2. Hacer **Redeploy**.
 
-> **⚠️ Importante:** si el `.env` del repositorio y el panel de Dokploy definen la misma variable, **el panel de Dokploy tiene prioridad**. Asegurarse de actualizar en el lugar correcto según el entorno.
+**Opción B – vía `.env` local:**
+```env
+MAINTENANCE_MODE=false
+```
+
+> **🛡️ Nota de Resiliencia:** El parser de variables de entorno limpia automáticamente comillas (`"true"`, `'false'`), espacios accidentales y mayúsculas/minúsculas para evitar cualquier falla de despliegue en Dokploy.
 
 ### 🛡️ Rutas que nunca son bloqueadas
 
 | Ruta | Propósito |
 |---|---|
-| `/health/` | Healthcheck de Docker/Dokploy |
+| `/health/`, `/healthz`, `/ping` | Healthcheck de Docker y Dokploy |
 | `/static/` | Archivos estáticos (CSS, JS, imágenes) |
 | `/media/` | Archivos de medios subidos |
 | `/favicon.ico` | Ícono del sitio |
+| `?bypass_mantenimiento=grcu_admin_2026` | Bypass administrativo para pruebas |
 
 ---
 

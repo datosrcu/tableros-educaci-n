@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Estructura y Desglose de Salas - Sistema Presente GRCU</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --primary-dark: #0a58ca;
+            --secondary: #6c757d;
+            --dark: #212529;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --success: #198754;
+            --info: #0dcaf0;
+            --warning: #ffc107;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.5;
+            padding: 24px;
+        }
+
+        .report-container {
+            max-width: 1080px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 40px;
+        }
+
+        /* Barra de acciones superior */
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .actions-left, .actions-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border-color: var(--border-color);
+            color: var(--dark);
+        }
+        .btn-outline:hover {
+            background-color: var(--light-bg);
+            border-color: #adb5bd;
+        }
+
+        /* Encabezado del reporte */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 20px;
+            margin-bottom: 28px;
+        }
+
+        .header-title h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #1a1e21;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .header-title h2 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-meta {
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--secondary);
+        }
+
+        .header-meta strong {
+            color: var(--dark);
+        }
+
+        /* Resumen de KPIs / Métricas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-card.card-success { border-left-color: var(--success); }
+        .stat-card.card-info { border-left-color: var(--info); }
+        .stat-card.card-warning { border-left-color: var(--warning); }
+
+        .stat-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--secondary);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #111;
+        }
+
+        .stat-sub {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            margin-top: 4px;
+        }
+
+        /* Secciones por Programa */
+        .program-section {
+            margin-bottom: 36px;
+            page-break-inside: avoid;
+        }
+
+        .program-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f5f9;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            border-left: 5px solid var(--primary);
+        }
+
+        .program-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .program-badge {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Tabla de Espacios y Salas */
+        .spaces-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            margin-bottom: 10px;
+        }
+
+        .spaces-table th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 2px solid #cbd5e1;
+            text-align: left;
+        }
+
+        .spaces-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        .spaces-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .space-name {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 0.95rem;
+        }
+
+        .space-subtext {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 3px;
+        }
+
+        .badge-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e0e7ff;
+            color: #3730a3;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+
+        .room-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .room-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .room-name-tag {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .room-turno-tag {
+            font-size: 0.72rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .turno-manana {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+        .turno-tarde {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .room-teachers {
+            font-size: 0.76rem;
+            color: #475569;
+            margin-top: 2px;
+        }
+
+        .footer {
+            border-top: 1px solid var(--border-color);
+            padding-top: 18px;
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+
+        /* Notificación Toast para Copiado */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px 20px;
+            position: fixed;
+            z-index: 9999;
+            bottom: 30px;
+            right: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Estilos específicos para impresión / PDF */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                font-size: 10.5pt;
+            }
+
+            .report-container {
+                box-shadow: none !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .program-section {
+                page-break-inside: avoid;
+            }
+
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 12mm 12mm 15mm 12mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="report-container">
+        
+        <!-- Barra de Acciones (No se imprime) -->
+        <div class="actions-bar no-print">
+            <div class="actions-left">
+                <a href="{% url 'users:lista_espacios' %}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> Volver a Espacios
+                </a>
+                <span style="font-size: 0.85rem; color: #64748b;">
+                    <i class="fas fa-info-circle"></i> Listo para imprimir o guardar como PDF oficial
+                </span>
+            </div>
+            <div class="actions-right">
+                <button onclick="copiarResumenTexto()" class="btn btn-outline" title="Copiar reporte en formato texto para WhatsApp o email">
+                    <i class="fas fa-copy"></i> Copiar Resumen
+                </button>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Imprimir / Guardar en PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Encabezado Institucional -->
+        <div class="header">
+            <div class="header-title">
+                <h2>Gobierno de Río Cuarto &bull; Subsecretaría de Educación</h2>
+                <h1>Estructura Educativa: Desglose de Salas por Espacio</h1>
+                <p style="color: #64748b; font-size: 0.88rem; margin-top: 4px;">
+                    Relevamiento consolidado de Sedes, Aulas, Turnos y Docentes a cargo.
+                </p>
+            </div>
+            <div class="header-meta">
+                <p><strong>Fecha de Emisión:</strong> {{ fecha_reporte|date:"d/m/Y" }}</p>
+                <p><strong>Generado por:</strong> {{ request.user.get_full_name|default:request.user.username }}</p>
+                <p><strong>Sistema:</strong> Presente GRCU</p>
+            </div>
+        </div>
+
+        <!-- Tarjetas de Resumen Ejecutivo (Totales) -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Total Espacios Físicos</span>
+                <span class="stat-value">{{ total_espacios }}</span>
+                <span class="stat-sub">Sedes y Edificios Educativos</span>
+            </div>
+            <div class="stat-card card-success">
+                <span class="stat-label">Total Salas Activas</span>
+                <span class="stat-value">{{ total_salas }}</span>
+                <span class="stat-sub">Aulas y Secciones operativas</span>
+            </div>
+            <div class="stat-card card-info">
+                <span class="stat-label">Salas Turno Mañana</span>
+                <span class="stat-value">{{ total_salas_manana }}</span>
+                <span class="stat-sub">Jornada matutina</span>
+            </div>
+            <div class="stat-card card-warning">
+                <span class="stat-label">Salas Turno Tarde</span>
+                <span class="stat-value">{{ total_salas_tarde }}</span>
+                <span class="stat-sub">Jornada vespertina</span>
+            </div>
+        </div>
+
+        <!-- Desglose Seccionado por Programa -->
+        {% for prog_data in programas_detalle %}
+        <div class="program-section">
+            <div class="program-header">
+                <div class="program-title">
+                    <i class="fas fa-graduation-cap text-primary"></i>
+                    {{ prog_data.programa.nombre }}
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="program-badge">
+                        {{ prog_data.total_espacios }} Espacio{{ prog_data.total_espacios|pluralize:"s" }}
+                    </span>
+                    <span class="program-badge" style="background: #e0f2fe; color: #0369a1;">
+                        {{ prog_data.total_salas }} Sala{{ prog_data.total_salas|pluralize:"s" }}
+                    </span>
+                </div>
+            </div>
+
+            <table class="spaces-table">
+                <thead>
+                    <tr>
+                        <th style="width: 32%;">Espacio / Sede</th>
+                        <th style="width: 20%;">Ubicación / Sector</th>
+                        <th style="width: 12%; text-align: center;">Cant. Salas</th>
+                        <th style="width: 36%;">Desglose de Salas (Nombre, Turno y Docente)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in prog_data.espacios %}
+                    <tr>
+                        <td>
+                            <div class="space-name">{{ item.espacio.nombre }}</div>
+                            {% if item.espacio.subprograma %}
+                            <div class="space-subtext"><i class="fas fa-tag"></i> {{ item.espacio.subprograma.nombre }}</div>
+                            {% endif %}
+                            {% if item.espacio.telefono %}
+                            <div class="space-subtext"><i class="fas fa-phone-alt"></i> {{ item.espacio.telefono }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-size: 0.85rem; color: #334155;">{{ item.espacio.direccion|default:"—" }}</div>
+                            <div class="space-subtext">Sector: <strong>{{ item.espacio.sector|default:"—" }}</strong></div>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge-count">
+                                {{ item.cant_salas }} sala{{ item.cant_salas|pluralize:"s" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.salas %}
+                                {% for s in item.salas %}
+                                <div class="room-item">
+                                    <div>
+                                        <span class="room-name-tag">{{ s.nombre }}</span>
+                                        <div class="room-teachers">
+                                            <i class="far fa-clock"></i> {{ s.horario_inicio|time:"H:i" }} - {{ s.horario_fin|time:"H:i" }} &bull;
+                                            {% for asig in s.asignaciones_docentes.all %}
+                                                {{ asig.docente.last_name }} {{ asig.docente.first_name|slice:":1" }}.{% if not forloop.last %}, {% endif %}
+                                            {% empty %}
+                                                <span style="color: #94a3b8; font-style: italic;">Sin docente asignado</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <span class="room-turno-tag {% if s.turno == 'mañana' %}turno-manana{% else %}turno-tarde{% endif %}">
+                                        {{ s.get_turno_display|default:s.turno }}
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: #94a3b8; font-size: 0.82rem; font-style: italic;">
+                                    Sin salas configuradas actualmente.
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">
+                            No hay espacios registrados en este programa.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            <p>No se encontraron programas ni espacios disponibles para mostrar.</p>
+        </div>
+        {% endfor %}
+
+        <!-- Pie de página -->
+        <div class="footer">
+            <div>
+                <strong>Sistema Presente GRCU</strong> &bull; Municipalidad de Río Cuarto
+            </div>
+            <div>
+                Página generada el {{ fecha_reporte|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast de Confirmación -->
+    <div id="toast">
+        <i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i>
+        ¡Resumen copiado al portapapeles!
+    </div>
+
+    <!-- Script para copiar resumen formateado en texto plano -->
+    <script>
+        function copiarResumenTexto() {
+            let texto = "=====================================================\n";
+            texto += "GOBIERNO DE RÍO CUARTO - SUBSECRETARÍA DE EDUCACIÓN\n";
+            texto += "REPORTE CONSOLIDADO DE SALAS POR ESPACIO\n";
+            texto += "Fecha: {{ fecha_reporte|date:'d/m/Y' }}\n";
+            texto += "=====================================================\n\n";
+            texto += "📊 TOTALES GENERALES:\n";
+            texto += "• Espacios Educativos: {{ total_espacios }}\n";
+            texto += "• Total de Salas Activas: {{ total_salas }}\n";
+            texto += "  - Turno Mañana: {{ total_salas_manana }}\n";
+            texto += "  - Turno Tarde: {{ total_salas_tarde }}\n\n";
+            texto += "-----------------------------------------------------\n";
+
+            {% for prog_data in programas_detalle %}
+            texto += "\n📂 PROGRAMA: {{ prog_data.programa.nombre|upper }}\n";
+            texto += "Total: {{ prog_data.total_espacios }} espacios | {{ prog_data.total_salas }} salas\n";
+            texto += "-----------------------------------------------------\n";
+            {% for item in prog_data.espacios %}
+            texto += "📍 {{ item.espacio.nombre }} ({{ item.cant_salas }} sala{{ item.cant_salas|pluralize:'s' }})\n";
+            texto += "   Dirección: {{ item.espacio.direccion|default:'-' }} | Sector: {{ item.espacio.sector|default:'-' }}\n";
+            {% for s in item.salas %}
+            texto += "   • [{{ s.get_turno_display|default:s.turno|upper }}] {{ s.nombre }} ({{ s.horario_inicio|time:'H:i' }}-{{ s.horario_fin|time:'H:i' }})\n";
+            {% empty %}
+            texto += "   • (Sin salas cargadas)\n";
+            {% endfor %}
+            texto += "\n";
+            {% endfor %}
+            {% endfor %}
+
+            texto += "=====================================================\n";
+            texto += "Generado desde Sistema Presente GRCU\n";
+
+            navigator.clipboard.writeText(texto).then(function() {
+                mostrarToast();
+            }).catch(function(err) {
+                alert("No se pudo copiar automáticamente. Por favor use el botón de Imprimir.");
+            });
+        }
+
+        function mostrarToast() {
+            var toast = document.getElementById("toast");
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+    </script>
+</body>
+</html>

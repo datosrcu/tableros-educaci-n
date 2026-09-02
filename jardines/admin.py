@@ -70,6 +70,7 @@ class EspacioAdmin(BaseAdmin):
         'nombre',
         'programa',
         'subprograma',
+        'cantidad_salas',
         'direccion',
     )
     list_display_links = ('id', 'nombre')
@@ -77,6 +78,10 @@ class EspacioAdmin(BaseAdmin):
     list_filter = ('programa', 'subprograma')
     search_fields = ('nombre', 'direccion')
     ordering = ('programa__nombre', 'nombre')
+
+    def cantidad_salas(self, obj):
+        return obj.salas.count()
+    cantidad_salas.short_description = 'Cant. Salas'
 
     fieldsets = (
         ('Información básica', {

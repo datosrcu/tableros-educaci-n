@@ -6,17 +6,38 @@ from pathlib import Path
 import os
 import sys
 
+def clean_env_bool(val, default=False):
+    """Limpia y castea de forma ultra-robusta valores booleanos desde variables de entorno (p. ej. en Dokploy)."""
+    if val is None:
+        return default
+    if isinstance(val, bool):
+        return val
+    cleaned = str(val).strip().strip('\'"').lower()
+    if cleaned in ('1', 'true', 't', 'yes', 'y', 'on', 'si', 's', 'activo', 'habilitado'):
+        return True
+    if cleaned in ('0', 'false', 'f', 'no', 'n', 'off', 'inactivo', 'deshabilitado', ''):
+        return False
+    return default
+
+# Limpiamos posibles comillas accidentales de variables de entorno (p. ej. en Dokploy)
+def clean_env_list(env_val):
+    if not env_val:
+        return []
+    if isinstance(env_val, list):
+        return env_val
+    return [item.strip().strip('\'"[]') for item in str(env_val).split(',') if item.strip()]
+
 try:
     from decouple import config, Csv
 except ImportError:
     def config(name, default=None, cast=None):
         val = os.environ.get(name, default)
-        if cast == bool and isinstance(val, str):
-            return val.lower() in ('true', '1', 't')
+        if cast == clean_env_bool or cast == bool:
+            return clean_env_bool(val, default=default if isinstance(default, bool) else False)
         if cast == list or (isinstance(cast, type) and cast.__name__ == '<lambda>'):
-             return [s.strip() for s in val.split(',') if s.strip()] if val else []
+             return clean_env_list(val)
         if cast == Csv:
-            return [s.strip() for s in val.split(',') if s.strip()] if val else []
+            return clean_env_list(val)
         return val
     def Csv():
         return list
@@ -29,12 +50,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=clean_env_bool)
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
-
-# Limpiamos posibles comillas accidentales de variables de entorno (p. ej. en Dokploy)
-def clean_env_list(env_val):
-    return [item.strip().strip('\'"[]') for item in env_val.split(',') if item.strip()]
 
 ALLOWED_HOSTS = clean_env_list(config('ALLOWED_HOSTS', default='jardines.gobiernoriocuarto.gob.ar,jardinesdev.gobiernoriocuarto.gob.ar,localhost,127.0.0.1,*'))
 
@@ -184,12 +201,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Security Settings for Production
 if not DEBUG and not TESTING:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
-    SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
-    CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=clean_env_bool)
+    SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=clean_env_bool)
+    CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=clean_env_bool)
     SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
-    SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=clean_env_bool)
+    SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=clean_env_bool)
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
 

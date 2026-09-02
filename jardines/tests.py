@@ -295,6 +295,93 @@ class AsistenciaDocenteTestCase(TestCase):
         for item in resumen:
             self.assertIn("fichado_salida", item)
             self.assertIn("horas_trabajadas", item)
+            self.assertIn("turnos_detalle", item)
+            self.assertIn("tiene_doble_turno", item)
+
+    def test_resumen_actividad_docente_doble_turno(self):
+        coordinador = User.objects.create_user(
+            username="coordinadordoble",
+            password="testpassword",
+            rol="coordinador"
+        )
+        coordinador.programas_asignados.add(self.programa)
+        self.client.login(username="coordinadordoble", password="testpassword")
+        
+        docente_doble = User.objects.create_user(
+            username="docentedoble",
+            password="testpassword",
+            rol="docente",
+            first_name="Ana",
+            last_name="Gomez"
+        )
+        sala_tarde = Sala.objects.create(
+            jardin=self.jardin,
+            nombre="Sala Tarde",
+            turno="tarde",
+            horario_inicio="13:00",
+            horario_fin="17:00"
+        )
+        self.sala.docentes.add(docente_doble)
+        sala_tarde.docentes.add(docente_doble)
+        
+        hoy = timezone.localtime(timezone.now()).date()
+        from datetime import time
+        # Asistencia Mañana (Finalizada)
+        AsistenciaDocente.objects.create(
+            docente=docente_doble,
+            jardin=self.jardin,
+            turno="mañana",
+            fecha=hoy,
+            fichado=True,
+            fichado_salida=True,
+            hora_ingreso=time(8, 0),
+            hora_salida=time(12, 0),
+            ip_address="192.168.1.50",
+            latitude=Decimal("-33.123456"),
+            longitude=Decimal("-64.345678"),
+            estado="P"
+        )
+        # Asistencia Tarde (En curso)
+        AsistenciaDocente.objects.create(
+            docente=docente_doble,
+            jardin=self.jardin,
+            turno="tarde",
+            fecha=hoy,
+            fichado=True,
+            fichado_salida=False,
+            hora_ingreso=time(13, 10),
+            ip_address="192.168.1.51",
+            latitude=Decimal("-33.123400"),
+            longitude=Decimal("-64.345600"),
+            estado="P"
+        )
+        
+        response = self.client.get(reverse("jardines:resumen_actividad_docente"))
+        self.assertEqual(response.status_code, 200)
+        resumen = response.context["resumen"]
+        item_doble = next((item for item in resumen if item["docente"] == docente_doble), None)
+        self.assertIsNotNone(item_doble)
+        self.assertTrue(item_doble["tiene_doble_turno"])
+        self.assertEqual(len(item_doble["turnos_detalle"]), 2)
+        
+        td_manana = item_doble["turnos_detalle"][0]
+        self.assertEqual(td_manana["turno"], "mañana")
+        self.assertTrue(td_manana["fichado_salida"])
+        self.assertEqual(td_manana["hora_ingreso"], time(8, 0))
+        self.assertEqual(td_manana["hora_salida"], time(12, 0))
+        
+        td_tarde = item_doble["turnos_detalle"][1]
+        self.assertEqual(td_tarde["turno"], "tarde")
+        self.assertTrue(td_tarde["fichado"])
+        self.assertFalse(td_tarde["fichado_salida"])
+        self.assertEqual(td_tarde["hora_ingreso"], time(13, 10))
+        
+        content = response.content.decode("utf-8")
+        self.assertIn("Doble Turno", content)
+        self.assertIn("Turno Mañana", content)
+        self.assertIn("Turno Tarde", content)
+        self.assertIn("Finalizada", content)
+        self.assertIn("Ingreso (13:10 hs)", content)
 
     def test_inicializar_asistencia_diaria_does_not_overwrite(self):
         inicializar_asistencia_diaria(self.docente)
