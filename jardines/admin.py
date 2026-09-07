@@ -168,7 +168,7 @@ class AsistenciaDocenteAdmin(BaseAdmin):
         return request.user.rol == "administrador"
 
 
-from .models import TipoActividadEspecial, ActividadEspecial
+from .models import TipoActividadEspecial, ActividadEspecial, CostoDocente
 
 @admin.register(TipoActividadEspecial)
 class TipoActividadEspecialAdmin(BaseAdmin):
@@ -183,4 +183,14 @@ class ActividadEspecialAdmin(BaseAdmin):
     list_filter = ('tipo', 'fecha', 'alcance')
     search_fields = ('nombre', 'descripcion', 'tipo__nombre')
     filter_horizontal = ('salas', 'docentes')
+
+
+@admin.register(CostoDocente)
+class CostoDocenteAdmin(BaseAdmin):
+    list_display = ('id', 'dni', 'mes', 'costo', 'origen', 'actualizado_el')
+    list_display_links = ('id', 'dni')
+    list_filter = ('mes', 'origen')
+    search_fields = ('dni', 'mes')
+    ordering = ('-mes', 'dni')
+
 

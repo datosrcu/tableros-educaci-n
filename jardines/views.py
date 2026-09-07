@@ -713,187 +713,23 @@ from alumnos.models import Asistencia
 
 def obtener_costos_docentes_api(target_date):
     """
-    Obtiene los costos de docentes y auxiliares por DNI para un mes/año dado.
-    Prioriza la API de Google Apps Script (Google Sheets).
-    Fallback a último mes cargado por DNI y fallback a archivo Excel local si la API no está configurada o falla.
+    Obtiene los costos de docentes y auxiliares por DNI/CUIL desde la base de datos local CostoDocente (<5ms).
+    Con fallback automático al último costo registrado por DNI si el mes solicitado aún no fue liquidado.
     """
-    import ssl
+    from .models import CostoDocente
+    mes_target_str = target_date.strftime("%Y-%m")
     costos = {}
-    costos_fallback_ultimo_mes = {}
-    from django.conf import settings
 
-    # Crear contexto SSL permisivo por si el servidor de prod no tiene certifi / CA estricto
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
+    # 1. Obtenemos costos específicos del mes solicitado
+    qs = CostoDocente.objects.filter(mes=mes_target_str)
+    for cd in qs:
+        costos[cd.dni] = float(cd.costo)
 
-    meses_es = {
-        1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
-        5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
-        9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
-    }
-    
-    nombre_mes = meses_es.get(target_date.month, '')
-    mes_abrev = nombre_mes[:3] if nombre_mes else ''
-    year_str = str(target_date.year)
-    year_short = year_str[-2:]
-    
-    candidatos_mes = {
-        nombre_mes,
-        mes_abrev,
-        f"{mes_abrev}-{year_short}",
-        f"{nombre_mes}-{year_short}",
-        f"{nombre_mes} {year_short}",
-        f"{nombre_mes}-{year_str}",
-        f"{target_date.month:02d}-{year_short}",
-        f"{target_date.month}-{year_short}"
-    }
-    if target_date.month == 9:
-        candidatos_mes.add(f"sept-{year_short}")
-        candidatos_mes.add("sept")
-
-    api_urls = []
-    url1 = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL', '')
-    url2 = getattr(settings, 'GOOGLE_APPS_SCRIPT_COSTOS_URL_2', '')
-    
-    if url1: api_urls.append((url1, "sheet1_rul"))
-    if url2: api_urls.append((url2, "sheet2_rrhh"))
-
-    import urllib.request
-
-    for api_url, tag in api_urls:
-        cache_key = f"costos_google_sheets_rows_{tag}"
-        cached_data = cache.get(cache_key)
-        
-        data_rows = None
-        if cached_data:
-            data_rows = cached_data
-        else:
-            try:
-                # Usar urllib.request (librería estándar de Python) para prevenir error ModuleNotFoundError: requests
-                req = urllib.request.Request(
-                    api_url,
-                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-                )
-                with urllib.request.urlopen(req, timeout=25.0, context=ssl_ctx) as resp:
-                    if resp.status in (200, 302):
-                        payload = json.loads(resp.read().decode('utf-8'))
-                        if isinstance(payload, dict) and "data" in payload:
-                            data_rows = payload["data"]
-                        elif isinstance(payload, list):
-                            data_rows = payload
-                        if data_rows:
-                            cache.set(cache_key, data_rows, 86400)  # Caché persistente de 24 horas
-            except Exception:
-                data_rows = None
-
-        if data_rows:
-            for item in data_rows:
-                try:
-                    dni_raw = str(item.get("dni", "")).strip().replace(".", "").replace(" ", "")
-                    if not dni_raw:
-                        continue
-                    dni = "".join(filter(str.isdigit, dni_raw))
-                    if not dni:
-                        continue
-                    
-                    mes_item = str(item.get("mes", "")).strip().lower()
-                    costo_val = float(item.get("costo", 0) or 0)
-                    while 0 < costo_val < 100000:
-                        costo_val *= 1000  # Convertir montos expresados en miles o millones (ej: 2.566 -> 2566000 pesos)
-
-                    dnis_to_add = [dni]
-                    if len(dni) == 11 and dni[:2] in ('20', '27', '23', '24', '25', '26'):
-                        dnis_to_add.append(dni[2:10])
-
-                    if costo_val > 0:
-                        for d_key in dnis_to_add:
-                            if d_key not in costos_fallback_ultimo_mes or tag == "sheet2_rrhh":
-                                costos_fallback_ultimo_mes[d_key] = costo_val
-
-                    if mes_item in candidatos_mes or (nombre_mes == mes_item) or ((nombre_mes in mes_item or mes_abrev in mes_item) and year_short in mes_item):
-                        for d_key in dnis_to_add:
-                            if d_key not in costos or (tag == "sheet2_rrhh" and costo_val > 0):
-                                costos[d_key] = costo_val
-
-                except (ValueError, TypeError):
-                    pass
-
-    for dni, costo_f in costos_fallback_ultimo_mes.items():
-        if dni not in costos or costos[dni] == 0:
-            costos[dni] = costo_f
-
-    # --- SUPPLEMENT / FALLBACK CON EXCEL LOCAL ---
-    # Cargar archivo Excel (con caché de 10 minutos para respuesta instantánea)
-    excel_cache_key = f"costos_excel_local_parsed_{target_date.year}_{target_date.month}"
-    costos_excel = cache.get(excel_cache_key)
-
-    if costos_excel is None:
-        costos_excel = {}
-        try:
-            excel_candidates = [
-                os.path.join(settings.BASE_DIR, "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx"),
-                os.path.join(settings.BASE_DIR, "data", "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx")
-            ]
-            excel_path = next((p for p in excel_candidates if os.path.exists(p)), None)
-            
-            if excel_path:
-                import openpyxl
-                wb = openpyxl.load_workbook(excel_path, data_only=True, read_only=True)
-                sheet = wb['Locaciones']
-                header_row = [cell for cell in next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))]
-                
-                target_col_idx = None
-                for idx, val in enumerate(header_row):
-                    if hasattr(val, 'year') and hasattr(val, 'month'):
-                        if val.year == target_date.year and val.month == target_date.month:
-                            target_col_idx = idx
-                            break
-
-                for row in sheet.iter_rows(min_row=2, values_only=True):
-                    try:
-                        val = row[2]
-                        if not val: continue
-                        dni_clean = "".join(filter(str.isdigit, str(val)))
-                        if not dni_clean: continue
-
-                        c_val = 0
-                        if target_col_idx is not None and target_col_idx < len(row):
-                            try: c_val = float(row[target_col_idx] or 0)
-                            except: pass
-
-                        if c_val == 0:
-                            for cell_v in reversed(row[8:]):
-                                try:
-                                    num = float(cell_v or 0)
-                                    if num > 0:
-                                        c_val = num
-                                        break
-                                except: pass
-
-                        while 0 < c_val < 100000:
-                            c_val *= 1000
-
-                        if c_val > 0:
-                            dnis_list = [dni_clean]
-                            if len(dni_clean) == 11 and dni_clean[:2] in ('20', '27', '23', '24', '25', '26'):
-                                dnis_list.append(dni_clean[2:10])
-
-                            for d_key in dnis_list:
-                                if d_key not in costos_excel:
-                                    costos_excel[d_key] = c_val
-                    except Exception:
-                        pass
-                wb.close()
-        except Exception:
-            pass
-
-        cache.set(excel_cache_key, costos_excel, 600)
-
-    # Rellenar cualquier DNI no encontrado en Google Sheets con los datos de la planilla Excel
-    for d_key, c_val in costos_excel.items():
-        if d_key not in costos or costos[d_key] == 0:
-            costos[d_key] = c_val
+    # 2. Fallback a la última liquidación disponible por DNI
+    all_costos = CostoDocente.objects.all().order_by('-mes')
+    for cd in all_costos:
+        if cd.dni not in costos or costos[cd.dni] == 0:
+            costos[cd.dni] = float(cd.costo)
 
     return costos
 

@@ -883,3 +883,23 @@ class ReemplazanteLicencia(models.Model):
     def __str__(self):
         sala_str = f" → {self.sala}" if self.sala else ""
         return f"{self.reemplazante} reemplaza a {self.licencia.docente}{sala_str}"
+
+
+class CostoDocente(models.Model):
+    """
+    Registra el costo laboral mensual acumulado por docente (DNI/CUIL).
+    Se sincroniza periódicamente desde Google Sheets / Apps Script o planillas de liquidación.
+    """
+    dni = models.CharField(max_length=20, db_index=True, verbose_name="DNI / CUIL (Limpio)")
+    mes = models.CharField(max_length=7, db_index=True, help_text="Formato YYYY-MM (ej: 2026-03)", verbose_name="Mes / Período")
+    costo = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Costo Laboral ($)")
+    origen = models.CharField(max_length=50, default="GoogleSheets", verbose_name="Origen de Datos")
+    actualizado_el = models.DateTimeField(auto_now=True, verbose_name="Última Sincronización")
+
+    class Meta:
+        verbose_name = "Costo Docente"
+        verbose_name_plural = "Costos Docentes"
+        unique_together = [("dni", "mes")]
+
+    def __str__(self):
+        return f"DNI {self.dni} | {self.mes}: $ {self.costo}"
