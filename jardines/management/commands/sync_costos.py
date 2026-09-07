@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import ssl
 import urllib.request
@@ -56,8 +57,9 @@ class Command(BaseCommand):
                         val_dni = row[2] if len(row) > 2 else None
                         if not val_dni:
                             continue
-                        dni_clean = "".join(filter(str.isdigit, str(val_dni)))
-                        if not dni_clean:
+
+                        dni_clean = self.clean_dni(val_dni)
+                        if not dni_clean or len(dni_clean) < 6:
                             continue
 
                         dnis_to_save = [dni_clean]
@@ -126,12 +128,12 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.SUCCESS(f"Recibidos {len(data_rows)} registros de {tag}"))
 
                             for item in data_rows:
-                                dni_raw = str(item.get("dni", "")).strip()
-                                mes_raw = str(item.get("mes", "")).strip()
-                                costo_raw = item.get("costo", item.get("costo_total", 0))
+                                dni_raw = item.get("dni", item.get("DNI", ""))
+                                mes_raw = item.get("mes", item.get("Mes", ""))
+                                costo_raw = item.get("costo", item.get("costo_total", item.get("CMRC", 0)))
 
-                                dni_clean = "".join(filter(str.isdigit, dni_raw))
-                                if not dni_clean:
+                                dni_clean = self.clean_dni(dni_raw)
+                                if not dni_clean or len(dni_clean) < 6:
                                     continue
 
                                 clean_mes = self.parse_mes(mes_raw)
@@ -166,77 +168,20 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.WARNING(f"Error al sincronizar desde {tag}: {e}"))
 
-
-        # --- 2. PROCESAR EXCEL LOCAL SI EXISTE ---
-        excel_candidates = []
-        if excel_path_arg:
-            excel_candidates.append(excel_path_arg)
-        else:
-            excel_candidates.extend([
-                os.path.join(settings.BASE_DIR, "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx"),
-                os.path.join(settings.BASE_DIR, "data", "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx")
-            ])
-
-        excel_path = next((p for p in excel_candidates if os.path.exists(p)), None)
-        if excel_path:
-            self.stdout.write(self.style.NOTICE(f"Procesando planilla Excel local: {excel_path}"))
-            try:
-                import openpyxl
-                wb = openpyxl.load_workbook(excel_path, data_only=True, read_only=True)
-                sheet_names = wb.sheetnames
-                sheet_name = 'Locaciones' if 'Locaciones' in sheet_names else sheet_names[0]
-                sheet = wb[sheet_name]
-
-                header_row = [cell for cell in next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))]
-                
-                col_meses = {}
-                for idx, val in enumerate(header_row):
-                    if hasattr(val, 'year') and hasattr(val, 'month'):
-                        col_meses[idx] = f"{val.year:04d}-{val.month:02d}"
-
-                for row in sheet.iter_rows(min_row=2, values_only=True):
-                    try:
-                        val_dni = row[2] if len(row) > 2 else None
-                        if not val_dni:
-                            continue
-                        dni_clean = "".join(filter(str.isdigit, str(val_dni)))
-                        if not dni_clean:
-                            continue
-
-                        dnis_to_save = [dni_clean]
-                        if len(dni_clean) == 11 and dni_clean[:2] in ('20', '27', '23', '24', '25', '26'):
-                            dnis_to_save.append(dni_clean[2:10])
-
-                        for col_idx, m_str in col_meses.items():
-                            if mes_filtro and m_str != mes_filtro:
-                                continue
-
-                            if col_idx < len(row):
-                                c_val = self.parse_costo(row[col_idx])
-                                if c_val > 0:
-                                    for d_key in dnis_to_save:
-                                        obj, created = CostoDocente.objects.update_or_create(
-                                            dni=d_key,
-                                            mes=m_str,
-                                            defaults={
-                                                'costo': c_val,
-                                                'origen': 'ExcelLocal'
-                                            }
-                                        )
-                                        if created:
-                                            registros_creados += 1
-                                        else:
-                                            registros_actualizados += 1
-                    except Exception:
-                        pass
-                wb.close()
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f"Error al procesar Excel local: {e}"))
-
         total_actuales = CostoDocente.objects.count()
         self.stdout.write(self.style.SUCCESS(
             f"✅ Sincronización finalizada con éxito. Creados: {registros_creados}, Actualizados: {registros_actualizados}. Total registros en BD: {total_actuales}"
         ))
+
+    def clean_dni(self, val):
+        if val is None:
+            return ""
+        try:
+            # Manejar floats de openpyxl como 36133163.0 para evitar 361331630
+            num_int = int(float(val))
+            return str(num_int)
+        except (ValueError, TypeError):
+            return "".join(filter(str.isdigit, str(val)))
 
     def parse_mes(self, val):
         if not val:
@@ -244,6 +189,20 @@ class Command(BaseCommand):
         val_str = str(val).strip().lower()
         if len(val_str) == 7 and val_str[4] == '-':
             return val_str
+
+        meses_dict = {
+            'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06',
+            'jul': '07', 'ago': '08', 'sep': '09', 'set': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+        }
+        for key, num_str in meses_dict.items():
+            if key in val_str:
+                digits = re.findall(r'\d+', val_str)
+                if digits:
+                    yr = digits[-1]
+                    if len(yr) == 2:
+                        yr = "20" + yr
+                    return f"{yr}-{num_str}"
+
         try:
             dt = datetime.strptime(val_str, "%Y-%m-%d")
             return dt.strftime("%Y-%m")
