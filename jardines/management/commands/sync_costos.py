@@ -170,7 +170,7 @@ class Command(BaseCommand):
 
         total_actuales = CostoDocente.objects.count()
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Sincronización finalizada con éxito. Creados: {registros_creados}, Actualizados: {registros_actualizados}. Total registros en BD: {total_actuales}"
+            f"[OK] Sincronización finalizada con éxito. Creados: {registros_creados}, Actualizados: {registros_actualizados}. Total registros en BD: {total_actuales}"
         ))
 
     def clean_dni(self, val):
