@@ -26,18 +26,14 @@ class Command(BaseCommand):
         registros_creados = 0
         registros_actualizados = 0
 
-        # --- 1. PROCESAR EXCEL LOCAL PRIMERO ---
+        # --- 1. PROCESAR EXCEL LOCAL SOLO SI SE PASA POR PARÁMETRO ---
         excel_candidates = []
         if excel_path_arg:
             excel_candidates.append(excel_path_arg)
-        excel_candidates.extend([
-            os.path.join(settings.BASE_DIR, "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx"),
-            os.path.join(settings.BASE_DIR, "data", "Locaciones 02. Secretaria de Gestión y Participación Ciudadana.xlsx")
-        ])
 
         excel_path = next((p for p in excel_candidates if os.path.exists(p)), None)
         if excel_path:
-            self.stdout.write(self.style.NOTICE(f"Procesando planilla Excel local: {excel_path}"))
+            self.stdout.write(self.style.NOTICE(f"Procesando planilla Excel especificada: {excel_path}"))
             try:
                 import openpyxl
                 wb = openpyxl.load_workbook(excel_path, data_only=True, read_only=True)
@@ -116,7 +112,7 @@ class Command(BaseCommand):
                         api_url,
                         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                     )
-                    with urllib.request.urlopen(req, timeout=15.0, context=ssl_ctx) as resp:
+                    with urllib.request.urlopen(req, timeout=90.0, context=ssl_ctx) as resp:
                         if resp.status in (200, 302):
                             payload = json.loads(resp.read().decode('utf-8'))
                             data_rows = []
