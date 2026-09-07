@@ -714,22 +714,32 @@ from alumnos.models import Asistencia
 def obtener_costos_docentes_api(target_date):
     """
     Obtiene los costos de docentes y auxiliares por DNI/CUIL desde la base de datos local CostoDocente (<5ms).
+    Con mapeo bidireccional entre DNI (8 dígitos) y CUIL (11 dígitos).
     Con fallback automático al último costo registrado por DNI si el mes solicitado aún no fue liquidado.
     """
     from .models import CostoDocente
     mes_target_str = target_date.strftime("%Y-%m")
     costos = {}
 
+    def registrar_costo(dni_raw, monto):
+        dni_clean = "".join(filter(str.isdigit, str(dni_raw)))
+        if dni_clean and float(monto) > 0:
+            if dni_clean not in costos or costos[dni_clean] == 0:
+                costos[dni_clean] = float(monto)
+            if len(dni_clean) == 11 and dni_clean[:2] in ('20', '27', '23', '24', '25', '26'):
+                dni_8 = dni_clean[2:10]
+                if dni_8 not in costos or costos[dni_8] == 0:
+                    costos[dni_8] = float(monto)
+
     # 1. Obtenemos costos específicos del mes solicitado
     qs = CostoDocente.objects.filter(mes=mes_target_str)
     for cd in qs:
-        costos[cd.dni] = float(cd.costo)
+        registrar_costo(cd.dni, cd.costo)
 
     # 2. Fallback a la última liquidación disponible por DNI
     all_costos = CostoDocente.objects.all().order_by('-mes')
     for cd in all_costos:
-        if cd.dni not in costos or costos[cd.dni] == 0:
-            costos[cd.dni] = float(cd.costo)
+        registrar_costo(cd.dni, cd.costo)
 
     return costos
 
@@ -970,7 +980,11 @@ class BaseDashboardProgramaView(TemplateView):
                     horas_totales = docente_horas_totales.get(dni_db, 1)
                     proporcion = (horas_sala / horas_totales) if horas_totales > 0 else 0
                     
-                    c_total = costos_docentes.get(dni_db, 0)
+                    dni_clean = "".join(filter(str.isdigit, dni_db))
+                    c_total = costos_docentes.get(dni_clean, 0)
+                    if c_total == 0 and len(dni_clean) == 11 and dni_clean[:2] in ('20', '27', '23', '24', '25', '26'):
+                        c_total = costos_docentes.get(dni_clean[2:10], 0)
+
                     c_proporcional = c_total * proporcion
                     costo_sala += c_proporcional
                     docentes.append({
