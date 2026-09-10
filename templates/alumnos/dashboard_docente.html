@@ -347,40 +347,64 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (error.code === error.PERMISSION_DENIED) {
                     msg = "Permiso de ubicación denegado. Es obligatorio que habilites los permisos de ubicación en tu navegador para fichar.";
                 } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    msg = "La ubicación no está disponible en este momento. Verificá que el GPS esté encendido en tu dispositivo.";
+                    msg = "La ubicación no está disponible en este momento. Verificá que la ubicación esté encendida en tu dispositivo.";
                 } else if (error.code === error.TIMEOUT) {
-                    msg = "Se agotó el tiempo de espera para obtener la ubicación. Verificá la señal del GPS o WiFi y volvé a intentar.";
+                    msg = "No se pudo obtener la ubicación a tiempo. Verificá que la ubicación de tu celular esté encendida (modo Alta Precisión / Wi-Fi) y volvé a intentar.";
                 }
                 errorText.textContent = msg;
                 errorAlert.classList.remove('d-none');
             }
 
-            // Intento 1: Alta precisión (GPS) con 20 segundos de espera y hasta 60s de caché
+            // Estrategia Progresiva y Rápida de Ubicación:
+            // Intento 1: Consulta inmediata a la caché reciente del sistema (hasta 10 min, antenas/WiFi)
+            let enviado = false;
+            function enviarUnaVez(position) {
+                if (enviado) return;
+                enviado = true;
+                enviarAsistencia(position);
+            }
+
             navigator.geolocation.getCurrentPosition(
-                enviarAsistencia,
-                function(errorHighAccuracy) {
-                    // Si el usuario denegó permisos, no reintentar
-                    if (errorHighAccuracy.code === errorHighAccuracy.PERMISSION_DENIED) {
-                        manejarErrorFinal(errorHighAccuracy);
+                enviarUnaVez,
+                function(errorCache) {
+                    if (errorCache.code === errorCache.PERMISSION_DENIED) {
+                        manejarErrorFinal(errorCache);
                         return;
                     }
 
-                    // Intento 2: Fallback por red/WiFi con 15 segundos adicionales
+                    // Intento 2: Red celular y Wi-Fi en vivo (ideal para interiores y aulas)
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Conectando ubicación...';
                     navigator.geolocation.getCurrentPosition(
-                        enviarAsistencia,
-                        manejarErrorFinal,
+                        enviarUnaVez,
+                        function(errorRed) {
+                            if (errorRed.code === errorRed.PERMISSION_DENIED) {
+                                manejarErrorFinal(errorRed);
+                                return;
+                            }
+
+                            // Intento 3: GPS satelital con tiempo controlado
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sintonizando GPS...';
+                            navigator.geolocation.getCurrentPosition(
+                                enviarUnaVez,
+                                manejarErrorFinal,
+                                {
+                                    enableHighAccuracy: true,
+                                    timeout: 10000,
+                                    maximumAge: 600000
+                                }
+                            );
+                        },
                         {
                             enableHighAccuracy: false,
-                            timeout: 15000,
-                            maximumAge: 120000
+                            timeout: 7000,
+                            maximumAge: 600000
                         }
                     );
                 },
                 {
-                    enableHighAccuracy: true,
-                    timeout: 20000,
-                    maximumAge: 60000
+                    enableHighAccuracy: false,
+                    timeout: 3000,
+                    maximumAge: 600000
                 }
             );
         });
