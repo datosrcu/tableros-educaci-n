@@ -99,3 +99,63 @@ class AlumnoTutorTest(TestCase):
         asistencia = Asistencia.objects.get(alumno=alumno, fecha='2026-02-18')
         self.assertEqual(asistencia.estado, 'J')
         self.assertEqual(asistencia.motivo, motivo)
+
+
+class LicenciaPorTurnoTest(TestCase):
+    def setUp(self):
+        from jardines.models import Sala, Jardin, Programa, LicenciaDocente, AsistenciaDocente
+        from django.utils import timezone
+        self.hoy = timezone.localtime(timezone.now()).date()
+        self.docente = Usuario.objects.create_user(
+            username='docente_turnos',
+            password='password123',
+            rol='docente'
+        )
+        self.programa = Programa.objects.create(nombre="Programa Test")
+        self.jardin = Jardin.objects.create(
+            nombre="Jardin Test",
+            programa=self.programa,
+            direccion="Calle 123",
+            sector="Centro"
+        )
+        self.sala_manana = Sala.objects.create(nombre="Sala Mañana", jardin=self.jardin, turno="mañana")
+        self.sala_tarde = Sala.objects.create(nombre="Sala Tarde", jardin=self.jardin, turno="tarde")
+        self.docente.salas_asignadas.add(self.sala_manana, self.sala_tarde)
+
+        self.client = Client()
+        self.client.login(username='docente_turnos', password='password123')
+
+    def test_licencia_turno_tarde_permite_fichar_manana(self):
+        from jardines.models import LicenciaDocente, AsistenciaDocente, inicializar_asistencia_diaria
+        # Licencia solo para el turno tarde
+        LicenciaDocente.objects.create(
+            docente=self.docente,
+            tipo_licencia='otro',
+            turno_licencia='tarde',
+            motivo='Trámite personal',
+            fecha_desde=self.hoy,
+            fecha_hasta=self.hoy
+        )
+
+        # Inicializar asistencia
+        inicializar_asistencia_diaria(self.docente)
+
+        asist_manana = AsistenciaDocente.objects.get(docente=self.docente, fecha=self.hoy, turno='mañana')
+        asist_tarde = AsistenciaDocente.objects.get(docente=self.docente, fecha=self.hoy, turno='tarde')
+
+        self.assertEqual(asist_manana.estado, 'A')
+        self.assertEqual(asist_tarde.estado, 'L')
+
+        # Visitar dashboard
+        url = reverse('alumnos:dashboard_docente')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        if response.context:
+            self.assertTrue(response.context['licencia_parcial'])
+            self.assertFalse(response.context['licencia_activa'])
+
+        content = response.content.decode('utf-8')
+        self.assertIn('Licencia Parcial', content)
+        self.assertIn('Fichar Ingreso', content)
+        self.assertIn('De Licencia', content)
+

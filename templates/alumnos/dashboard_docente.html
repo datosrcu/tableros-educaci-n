@@ -94,6 +94,18 @@
             </div>
           </div>
 
+          {% if licencia_parcial %}
+          <div class="alert mb-2 py-2.5 px-3 border-0 d-flex align-items-center justify-content-between" style="background-color: #ede9fe; color: #6d28d9; border-radius: 12px; font-size: 0.92rem;">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-info-circle fa-lg"></i>
+              <div>
+                <strong>Licencia en Turno {{ turnos_licencia_labels }}:</strong> Tu inasistencia en ese turno está justificada por licencia oficial. Podés fichar con normalidad en el resto de tus turnos asignados hoy.
+              </div>
+            </div>
+            <span class="badge rounded-pill" style="background-color: #7c3aed; color: white;">Licencia Parcial</span>
+          </div>
+          {% endif %}
+
           <div class="row g-3">
             {% for t in turnos_hoy %}
             <div class="col-md-6">
@@ -104,7 +116,11 @@
                       <i class="fas {% if t.turno == 'mañana' %}fa-sun{% else %}fa-moon{% endif %} me-1"></i>
                       Turno {{ t.turno_label }}
                     </span>
-                    {% if t.es_exento %}
+                    {% if t.es_licencia %}
+                      <span class="badge rounded-pill micro-text px-2" style="background-color: #ede9fe; color: #7c3aed; border: 1px solid #c4b5fd;">
+                        <i class="fas fa-id-card-alt me-1"></i>De Licencia
+                      </span>
+                    {% elif t.es_exento %}
                       <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill micro-text px-2">Exento por Actividad</span>
                     {% elif t.fichado and t.fichado_salida %}
                       <span class="badge bg-success bg-opacity-10 text-success rounded-pill micro-text px-2">Finalizada</span>
@@ -121,7 +137,11 @@
                     <i class="fas fa-door-open me-1"></i>Sala: <strong>{{ t.salas_nombres }}</strong>
                   </div>
                   
-                  {% if t.es_exento %}
+                  {% if t.es_licencia %}
+                    <div class="small fw-semibold" style="color: #7c3aed;">
+                      <i class="fas fa-id-card-alt me-1"></i>{{ t.licencia_obs|default:t.observaciones|default:"Ausente por licencia." }}
+                    </div>
+                  {% elif t.es_exento %}
                     <div class="text-primary small fw-semibold">
                       <i class="fas fa-info-circle me-1"></i>{{ t.observaciones|default:"Exento de clase regular por actividad especial." }}
                     </div>
@@ -143,7 +163,11 @@
                 </div>
 
                 <div>
-                  {% if t.es_exento %}
+                  {% if t.es_licencia %}
+                    <button class="btn btn-sm rounded-pill px-3" style="background-color: #ede9fe; color: #7c3aed; border: 1px solid #c4b5fd;" disabled>
+                      <i class="fas fa-id-card-alt me-1"></i> Licencia
+                    </button>
+                  {% elif t.es_exento %}
                     <button class="btn btn-sm btn-outline-info rounded-pill px-3" disabled>
                       <i class="fas fa-check me-1"></i> Exento
                     </button>

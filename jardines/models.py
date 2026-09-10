@@ -429,16 +429,7 @@ def inicializar_asistencia_diaria(user, request=None):
     }
     dia_nombre = dias_map.get(hoy.weekday(), 'lunes')
 
-    # 1. Licencia activa
-    licencia = LicenciaDocente.obtener_licencia_activa(user, hoy)
-    if licencia:
-        estado_base = 'L'
-        obs_base = f"Ausente por licencia ({licencia.get_tipo_licencia_display()})."
-    else:
-        estado_base = 'A'
-        obs_base = 'Registro inicializado por el sistema.'
-
-    # 2. Actividades especiales que afectan al docente hoy
+    # Actividades especiales que afectan al docente hoy
     actividades_hoy = ActividadEspecial.obtener_actividades_docente(user, hoy)
 
     salas = user.salas_asignadas.select_related('jardin').all()
@@ -469,16 +460,34 @@ def inicializar_asistencia_diaria(user, request=None):
             jardin = sala.jardin
             turno = sala.turno  # 'mañana' o 'tarde'
 
-            if AsistenciaDocente.objects.filter(
+            asist_existente = AsistenciaDocente.objects.filter(
                 docente=user, jardin=jardin, turno=turno, fecha=hoy
-            ).exists():
+            ).first()
+
+            if asist_existente:
+                # Si el registro no fue fichado todavía por el docente, sincronizar estado de licencia del turno
+                if not asist_existente.fichado:
+                    licencia_turno = LicenciaDocente.obtener_licencia_activa(user, hoy, turno=turno)
+                    if licencia_turno and asist_existente.estado != 'L':
+                        asist_existente.estado = 'L'
+                        asist_existente.observaciones = f"Ausente por licencia ({licencia_turno.get_tipo_licencia_display()})."
+                        asist_existente.save(update_fields=['estado', 'observaciones'])
+                    elif not licencia_turno and asist_existente.estado == 'L':
+                        asist_existente.estado = 'A'
+                        asist_existente.observaciones = 'Registro inicializado por el sistema.'
+                        asist_existente.save(update_fields=['estado', 'observaciones'])
                 continue
 
-            # Determinar estado para esta sala/turno considerando actividades especiales
-            estado_sala = estado_base
-            obs_sala = obs_base
+            # Determinar estado para esta sala/turno considerando licencia específica de este turno
+            licencia_turno = LicenciaDocente.obtener_licencia_activa(user, hoy, turno=turno)
+            if licencia_turno:
+                estado_sala = 'L'
+                obs_sala = f"Ausente por licencia ({licencia_turno.get_tipo_licencia_display()})."
+            else:
+                estado_sala = 'A'
+                obs_sala = 'Registro inicializado por el sistema.'
 
-            if not licencia and actividades_hoy.exists():
+            if not licencia_turno and actividades_hoy.exists():
                 # Evaluar relación de la actividad con el turno y horario de la sala
                 for act in actividades_hoy:
                     # Verificar si la actividad aplica a este turno
@@ -529,16 +538,33 @@ def inicializar_asistencia_diaria(user, request=None):
             )
     else:
         # Para Auxiliares o personal sin salas asignadas: 1 solo registro de asistencia diaria
-        if not AsistenciaDocente.objects.filter(docente=user, fecha=hoy).exists():
+        licencia_aux = LicenciaDocente.obtener_licencia_activa(user, hoy)
+        asist_aux = AsistenciaDocente.objects.filter(docente=user, fecha=hoy).first()
+        if asist_aux:
+            if not asist_aux.fichado:
+                if licencia_aux and asist_aux.estado != 'L':
+                    asist_aux.estado = 'L'
+                    asist_aux.observaciones = f"Ausente por licencia ({licencia_aux.get_tipo_licencia_display()})."
+                    asist_aux.save(update_fields=['estado', 'observaciones'])
+                elif not licencia_aux and asist_aux.estado == 'L':
+                    asist_aux.estado = 'A'
+                    asist_aux.observaciones = "Registro de asistencia de auxiliar."
+                    asist_aux.save(update_fields=['estado', 'observaciones'])
+        else:
             target_jardin = None
             if user.programas_asignados.exists():
                 target_jardin = Jardin.objects.filter(programa__in=user.programas_asignados.all()).first()
             if not target_jardin:
                 target_jardin = Jardin.objects.first()
 
-            estado_aux = estado_base
-            obs_aux = "Registro de asistencia de auxiliar."
-            if not licencia and actividades_hoy.exists():
+            if licencia_aux:
+                estado_aux = 'L'
+                obs_aux = f"Ausente por licencia ({licencia_aux.get_tipo_licencia_display()})."
+            else:
+                estado_aux = 'A'
+                obs_aux = "Registro de asistencia de auxiliar."
+
+            if not licencia_aux and actividades_hoy.exists():
                 act = actividades_hoy.first()
                 estado_aux = 'E'
                 obs_aux = f"Exento por actividad especial: {act.nombre} ({act.hora_inicio.strftime('%H:%M')} a {act.hora_fin.strftime('%H:%M')} hs)."
@@ -803,11 +829,12 @@ class LicenciaDocente(models.Model):
         super().save(*args, **kwargs)
 
     @classmethod
-    def obtener_licencia_activa(cls, docente, fecha, turno=None):
+    def obtener_licencia_activa(cls, docente, fecha, turno=None, solo_dia_completo=False):
         """
         Retorna la licencia activa para un docente en una fecha dada.
         Si se pasa `turno` (ej: 'mañana' o 'tarde'), solo bloquea la licencia
         si esta no tiene turno específico (afecta a todos) O si el turno coincide.
+        Si `solo_dia_completo=True`, solo retorna licencias que no tengan turno específico.
         """
         # Mapa de turno de sala → valor en turno_licencia
         turno_map = {
@@ -815,7 +842,7 @@ class LicenciaDocente(models.Model):
             'manana': 'manana',
             'tarde': 'tarde',
         }
-        turno_normalizado = turno_map.get(str(turno).lower()) if turno else None
+        from django.db.models import Q
 
         qs = cls.objects.filter(
             docente=docente,
@@ -823,13 +850,16 @@ class LicenciaDocente(models.Model):
             fecha_hasta__gte=fecha
         )
 
-        if turno_normalizado:
-            # Bloquea si la licencia no tiene turno (afecta todo el día)
-            # O si el turno de la licencia coincide con el turno del docente
-            from django.db.models import Q
-            qs = qs.filter(
-                Q(turno_licencia__isnull=True) | Q(turno_licencia='') | Q(turno_licencia=turno_normalizado)
-            )
+        if solo_dia_completo:
+            qs = qs.filter(Q(turno_licencia__isnull=True) | Q(turno_licencia=''))
+        elif turno:
+            turno_normalizado = turno_map.get(str(turno).lower())
+            if turno_normalizado:
+                # Bloquea si la licencia no tiene turno (afecta todo el día)
+                # O si el turno de la licencia coincide con el turno del docente
+                qs = qs.filter(
+                    Q(turno_licencia__isnull=True) | Q(turno_licencia='') | Q(turno_licencia=turno_normalizado)
+                )
 
         return qs.first()
 

@@ -94,10 +94,6 @@ def dashboard_docente(request):
     
     hoy = timezone.localtime(timezone.now()).date()
     asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
-    
-    # Verificar si está de licencia hoy
-    licencia = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
-    licencia_activa = licencia is not None
 
     # Verificar si tiene actividades especiales hoy
     actividades_especiales_hoy = ActividadEspecial.obtener_actividades_docente(request.user, hoy)
@@ -115,6 +111,10 @@ def dashboard_docente(request):
             salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
             salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
             
+            lic_turno = LicenciaDocente.obtener_licencia_activa(request.user, hoy, turno=asist.turno)
+            es_licencia = (asist.estado == 'L' or lic_turno is not None)
+            lic_obs = f"Ausente por licencia ({lic_turno.get_tipo_licencia_display()})." if lic_turno else (asist.observaciones if asist.estado == 'L' else None)
+
             turnos_hoy.append({
                 "asistencia_id": asist.id,
                 "jardin_id": asist.jardin_id,
@@ -129,6 +129,8 @@ def dashboard_docente(request):
                 "horas_trabajadas": asist.horas_trabajadas_str,
                 "estado": asist.estado,
                 "es_exento": (asist.estado == 'E'),
+                "es_licencia": es_licencia,
+                "licencia_obs": lic_obs,
                 "observaciones": asist.observaciones or "",
                 "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                 "salas_nombres": salas_nombres,
@@ -141,6 +143,13 @@ def dashboard_docente(request):
                 if par in pares_vistos:
                     continue
                 pares_vistos.add(par)
+                lic_turno = LicenciaDocente.obtener_licencia_activa(request.user, hoy, turno=sala.turno)
+                if lic_turno:
+                    estado_init = "L"
+                    obs_init = f"Ausente por licencia ({lic_turno.get_tipo_licencia_display()})."
+                else:
+                    estado_init = "A"
+                    obs_init = "Registro inicializado desde panel docente."
                 asist, _ = AsistenciaDocente.objects.get_or_create(
                     docente=request.user,
                     jardin=sala.jardin,
@@ -150,15 +159,18 @@ def dashboard_docente(request):
                         "hora_ingreso": None,
                         "ip_address": request.META.get('REMOTE_ADDR'),
                         "fuera_de_jornada": False,
-                        "estado": "A",
+                        "estado": estado_init,
                         "fichado": False,
-                        "observaciones": "Registro inicializado desde panel docente."
+                        "observaciones": obs_init
                     }
                 )
             asistencias_hoy = AsistenciaDocente.objects.filter(docente=request.user, fecha=hoy)
             for asist in asistencias_hoy.select_related("jardin").order_by("turno"):
                 salas_turno = [s for s in salas if s.jardin_id == asist.jardin_id and (s.turno == asist.turno or not asist.turno)]
                 salas_nombres = ", ".join([s.nombre for s in salas_turno]) if salas_turno else "Sin sala asignada"
+                lic_turno = LicenciaDocente.obtener_licencia_activa(request.user, hoy, turno=asist.turno)
+                es_licencia = (asist.estado == 'L' or lic_turno is not None)
+                lic_obs = f"Ausente por licencia ({lic_turno.get_tipo_licencia_display()})." if lic_turno else (asist.observaciones if asist.estado == 'L' else None)
                 turnos_hoy.append({
                     "asistencia_id": asist.id,
                     "jardin_id": asist.jardin_id,
@@ -173,13 +185,30 @@ def dashboard_docente(request):
                     "horas_trabajadas": asist.horas_trabajadas_str,
                     "estado": asist.estado,
                     "es_exento": (asist.estado == 'E'),
+                    "es_licencia": es_licencia,
+                    "licencia_obs": lic_obs,
                     "observaciones": asist.observaciones or "",
                     "jardin_nombre": asist.jardin.nombre if asist.jardin else "General",
                     "salas_nombres": salas_nombres,
                 })
-    
-    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] or t["es_exento"] for t in turnos_hoy)
-    fichado_salida_hoy = bool(turnos_hoy) and all(t["fichado_salida"] or t["es_exento"] for t in turnos_hoy)
+
+    # Determinar si la licencia cubre TODO el día o solo algunos turnos
+    if turnos_hoy:
+        todos_turnos_licencia = all(t["es_licencia"] for t in turnos_hoy)
+        turnos_con_licencia = [t for t in turnos_hoy if t["es_licencia"]]
+        turnos_sin_licencia = [t for t in turnos_hoy if not t["es_licencia"]]
+        licencia_parcial = (len(turnos_con_licencia) > 0 and len(turnos_sin_licencia) > 0)
+        turnos_licencia_labels = ", ".join([t["turno_label"] for t in turnos_con_licencia])
+        licencia_activa = todos_turnos_licencia
+    else:
+        # Auxiliares o personal sin salas
+        lic_general = LicenciaDocente.obtener_licencia_activa(request.user, hoy)
+        licencia_activa = lic_general is not None
+        licencia_parcial = False
+        turnos_licencia_labels = ""
+
+    fichado_hoy = bool(turnos_hoy) and all(t["fichado"] or t["es_exento"] or t["es_licencia"] for t in turnos_hoy)
+    fichado_salida_hoy = bool(turnos_hoy) and all(t["fichado_salida"] or t["es_exento"] or t["es_licencia"] for t in turnos_hoy)
     hora_fichada = turnos_hoy[0]["hora_fichada"] if turnos_hoy and turnos_hoy[0]["fichado"] else None
 
     return render(request, "alumnos/dashboard_docente.html", {
@@ -188,6 +217,8 @@ def dashboard_docente(request):
         "fichado_salida_hoy": fichado_salida_hoy,
         "hora_fichada": hora_fichada,
         "licencia_activa": licencia_activa,
+        "licencia_parcial": licencia_parcial,
+        "turnos_licencia_labels": turnos_licencia_labels,
         "actividades_especiales_hoy": actividades_especiales_hoy,
         "tiene_jardines": True,
         "turnos_hoy": turnos_hoy,
