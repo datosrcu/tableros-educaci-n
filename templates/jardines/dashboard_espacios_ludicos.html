@@ -1,3 +1,4 @@
+{% load filters %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -131,7 +132,7 @@
         <div class="col">
             <div class="card border-0 shadow-sm p-3 h-100 bg-success bg-opacity-10 text-success text-center d-flex flex-column justify-content-center">
                 <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Costo Total Docente</h6>
-                <h2 class="fw-bold mb-0">$ {{ costo_total_docentes|floatformat:0 }}</h2>
+                <h2 class="fw-bold mb-0">$ {{ costo_total_docentes|separador_miles }}</h2>
             </div>
         </div>
 
@@ -139,7 +140,7 @@
         <div class="col">
             <div class="card border-0 shadow-sm p-3 h-100 bg-warning bg-opacity-10 text-dark text-center d-flex flex-column justify-content-center">
                 <h6 class="micro-text uppercase fw-bold opacity-75 mb-2">Costo x Alumno</h6>
-                <h2 class="fw-bold mb-0">$ {{ costo_x_alumno_global|floatformat:0 }}</h2>
+                <h2 class="fw-bold mb-0">$ {{ costo_x_alumno_global|separador_miles }}</h2>
             </div>
         </div>
     </div>
@@ -214,8 +215,8 @@
                                 <td class="text-center text-muted">{{ datos_jardin.desercion|floatformat:1 }} %</td>
                                 <td class="text-center fs-5 text-success fw-bold">{{ datos_jardin.total_activos }}</td>
                                 <td class="text-center fs-5 text-danger fw-bold">{{ datos_jardin.total_bajas }}</td>
-                                <td class="text-center text-muted">$ {{ datos_jardin.costo_x_alumno|floatformat:0 }}</td>
-                                <td class="text-center text-muted">$ {{ datos_jardin.costo_total|floatformat:0 }}</td>
+                                <td class="text-center text-muted">$ {{ datos_jardin.costo_x_alumno|separador_miles }}</td>
+                                <td class="text-center text-muted">$ {{ datos_jardin.costo_total|separador_miles }}</td>
                             </tr>
                             
                             <!-- Filas Turnos -->
@@ -226,8 +227,8 @@
                                     <td class="text-center text-muted">{{ datos_turno.desercion|floatformat:1 }} %</td>
                                     <td class="text-center text-success fw-bold">{{ datos_turno.total_activos }}</td>
                                     <td class="text-center text-danger fw-bold">{{ datos_turno.total_bajas }}</td>
-                                    <td class="text-center text-muted">$ {{ datos_turno.costo_x_alumno|floatformat:0 }}</td>
-                                    <td class="text-center text-muted">$ {{ datos_turno.costo_total|floatformat:0 }}</td>
+                                    <td class="text-center text-muted">$ {{ datos_turno.costo_x_alumno|separador_miles }}</td>
+                                    <td class="text-center text-muted">$ {{ datos_turno.costo_total|separador_miles }}</td>
                                 </tr>
 
                                 <!-- Filas Salas -->
@@ -238,8 +239,8 @@
                                         <td class="text-center">{{ sala.desercion|floatformat:1 }} %</td>
                                         <td class="text-center text-success">{{ sala.activos }}</td>
                                         <td class="text-center text-danger">{{ sala.bajas }}</td>
-                                        <td class="text-center text-muted">$ {{ sala.costo_x_alumno|floatformat:0 }}</td>
-                                        <td class="text-center text-muted">$ {{ sala.costo_total|floatformat:0 }}</td>
+                                        <td class="text-center text-muted">$ {{ sala.costo_x_alumno|separador_miles }}</td>
+                                        <td class="text-center text-muted">$ {{ sala.costo_total|separador_miles }}</td>
                                     </tr>
 
                                     <!-- Filas Docentes -->
@@ -247,7 +248,7 @@
                                         <tr class="sala-kids-{{ forloop.parentloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }} docente-row bg-light" style="display: none;">
                                             <td class="text-secondary" style="padding-left: 4.5rem !important;"><i class="fas fa-user-circle text-muted me-2"></i>{{ docente.nombres|default:"Sin docente asignado" }}</td>
                                             <td colspan="5" class="text-muted text-center" style="font-size: 0.85rem;">Docente a cargo de la sala</td>
-                                            <td class="text-center text-muted" style="font-size: 0.85rem;">$ {{ docente.costo|floatformat:0 }}</td>
+                                            <td class="text-center text-muted" style="font-size: 0.85rem;">$ {{ docente.costo|separador_miles }}</td>
                                         </tr>
                                     {% empty %}
                                         <tr class="sala-kids-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }} docente-row bg-light" style="display: none;">
